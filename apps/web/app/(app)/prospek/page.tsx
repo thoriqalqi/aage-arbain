@@ -9,7 +9,7 @@ import useSWR from "swr"
 import { AButton } from "@/components/aage/button"
 import { ScoreBar } from "@/components/aage/charts"
 import { EmptyState, SkeletonRows } from "@/components/aage/empty-state"
-import { GlassCard, PageHeader, Surface } from "@/components/aage/glass-card"
+import { Panel, PageHeader, Surface } from "@/components/aage/panel"
 import { Pill, VerdictBadge } from "@/components/aage/status"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { api, fetcher, getToken } from "@/lib/api"
@@ -22,13 +22,13 @@ const ProspectMap = dynamic(() => import("@/components/aage/prospect-map"), {
 })
 
 const STATUS: Record<Prospect["status"], { label: string; cls: string }> = {
-  baru: { label: "Baru", cls: "bg-cream-100 text-muted-foreground" },
+  baru: { label: "Baru", cls: "bg-soft text-muted-foreground" },
   dihubungi: { label: "Dihubungi", cls: "bg-info-bg text-info" },
   merespons: { label: "Merespons", cls: "bg-ok-bg text-ok" },
   menolak: { label: "Menolak", cls: "bg-blocked-bg text-blocked" },
 }
 const SOURCE: Record<string, string> = { google_places: "Google Places", osm: "OpenStreetMap", sintetis: "Data sintetis" }
-const field = "h-10 rounded-md border border-cream-200 bg-white px-3 text-[14px] outline-none focus:border-emerald-500"
+const field = "h-10 rounded-md border border-line bg-white px-3 text-[14px] outline-none focus:border-blue-500"
 
 function DetailSheet({ p, onClose, onStatus }: { p: Prospect | null; onClose: () => void; onStatus: (p: Prospect, s: Prospect["status"]) => void }) {
   return (
@@ -59,8 +59,8 @@ function DetailSheet({ p, onClose, onStatus }: { p: Prospect | null; onClose: ()
                         <span>{r.faktor}</span>
                         <span className="tabular font-medium">+{r.poin}/{r.maks}</span>
                       </div>
-                      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-cream-200">
-                        <div className="h-full rounded-full bg-emerald-500" style={{ width: `${(r.poin / r.maks) * 100}%` }} />
+                      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-line">
+                        <div className="h-full rounded-full bg-blue-500" style={{ width: `${(r.poin / r.maks) * 100}%` }} />
                       </div>
                       <div className="mt-0.5 text-[12px] text-muted-foreground">{r.keterangan}</div>
                     </li>
@@ -72,7 +72,7 @@ function DetailSheet({ p, onClose, onStatus }: { p: Prospect | null; onClose: ()
                   <h3 className="text-[13px] font-semibold">Draf pesan pembuka</h3>
                   <VerdictBadge verdict={p.draf_verdict} />
                 </div>
-                <p className="rounded-lg bg-emerald-100/60 p-3 text-[13px] leading-6">{p.draf_pesan}</p>
+                <p className="rounded-lg bg-blue-50 p-3 text-[13px] leading-6">{p.draf_pesan}</p>
                 <AButton
                   variant="outline"
                   size="sm"
@@ -90,7 +90,7 @@ function DetailSheet({ p, onClose, onStatus }: { p: Prospect | null; onClose: ()
                     <button
                       key={s}
                       onClick={() => onStatus(p, s)}
-                      className={cn("h-9 rounded-full px-3 text-[13px] font-medium", p.status === s ? "ring-2 ring-emerald-500" : "", STATUS[s].cls)}
+                      className={cn("h-9 rounded-full px-3 text-[13px] font-medium", p.status === s ? "ring-2 ring-blue-500" : "", STATUS[s].cls)}
                     >
                       {STATUS[s].label}
                     </button>
@@ -160,12 +160,12 @@ export default function ProspekPage() {
         title="Prospek"
         description="Petakan apotek, toko obat, dan minimarket per wilayah. Skor 0–100 dihitung dari aturan transparan; draf pesan pembuka sudah lolos ClaimGuard."
       />
-      <GlassCard className="mb-4 flex flex-wrap items-end gap-3 p-4">
+      <Panel className="mb-4 flex flex-wrap items-end gap-3 p-4">
         <label className="grid gap-1 text-[12px] text-muted-foreground">
           Wilayah (kota/kecamatan)
           <input list="wilayah-list" value={wilayah} onChange={(e) => setWilayah(e.target.value)} className={cn(field, "w-64")} />
           <datalist id="wilayah-list">
-            {["Kota Semarang", "Kabupaten Semarang", "Surakarta", "Kudus", "Salatiga", "Demak", "Kendal", ...(data?.wilayah ?? [])].map((w) => (
+            {[...new Set(["Kota Semarang", "Kabupaten Semarang", "Surakarta", "Kudus", "Salatiga", "Demak", "Kendal", ...(data?.wilayah ?? [])])].map((w) => (
               <option key={w} value={w} />
             ))}
           </datalist>
@@ -187,7 +187,7 @@ export default function ProspekPage() {
               {SOURCE[meta.sumber]} · {(meta.durasi_ms / 1000).toFixed(1).replace(".", ",")} dtk{meta.cache ? " · cache" : ""}
             </span>
           )}
-          <div className="flex rounded-lg bg-cream-100 p-1" role="radiogroup" aria-label="Tampilan">
+          <div className="flex rounded-lg bg-soft p-1" role="radiogroup" aria-label="Tampilan">
             {(
               [
                 ["tabel", Table2, "Tabel"],
@@ -209,7 +209,7 @@ export default function ProspekPage() {
             <Download className="size-4" /> CSV
           </AButton>
         </div>
-      </GlassCard>
+      </Panel>
 
       {!data ? (
         <SkeletonRows rows={10} />
@@ -224,9 +224,9 @@ export default function ProspekPage() {
       ) : (
         <Surface className="overflow-x-auto">
           <table className="w-full text-[13px]">
-            <thead className="bg-cream-100 text-left text-[12px] tracking-[0.02em] text-muted-foreground">
+            <thead className="bg-soft text-left text-[12px] tracking-[0.02em] text-muted-foreground">
               <tr>
-                <th className="sticky left-0 bg-cream-100 px-3 py-2.5 font-medium">Skor</th>
+                <th className="sticky left-0 bg-soft px-3 py-2.5 font-medium">Skor</th>
                 <th className="px-3 py-2.5 font-medium">Nama</th>
                 <th className="px-3 py-2.5 font-medium">Jarak</th>
                 <th className="px-3 py-2.5 font-medium">Rating</th>
@@ -237,8 +237,8 @@ export default function ProspekPage() {
             </thead>
             <tbody>
               {items.map((p, i) => (
-                <tr key={p.id} onClick={() => setSelected(p)} className={cn("cursor-pointer border-t border-cream-200 hover:bg-emerald-100/40", i % 2 ? "bg-cream-50" : "bg-white")}>
-                  <td className={cn("sticky left-0 px-3 py-2.5", i % 2 ? "bg-cream-50" : "bg-white")}>
+                <tr key={p.id} onClick={() => setSelected(p)} className={cn("cursor-pointer border-t border-line hover:bg-blue-50", i % 2 ? "bg-canvas" : "bg-white")}>
+                  <td className={cn("sticky left-0 px-3 py-2.5", i % 2 ? "bg-canvas" : "bg-white")}>
                     <ScoreBar score={p.skor} reasons={p.alasan_skor} />
                   </td>
                   <td className="px-3 py-2.5">
@@ -249,7 +249,7 @@ export default function ProspekPage() {
                   <td className="px-3 py-2.5 whitespace-nowrap">
                     {p.rating != null ? (
                       <span className="inline-flex items-center gap-1">
-                        <Star className="size-3.5 fill-champagne-600 text-champagne-600" /> {p.rating.toLocaleString("id-ID")}
+                        <Star className="size-3.5 fill-blue-400 text-blue-400" /> {p.rating.toLocaleString("id-ID")}
                         <span className="text-subtle-foreground">({p.jumlah_ulasan})</span>
                       </span>
                     ) : (

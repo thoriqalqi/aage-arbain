@@ -3,86 +3,85 @@
 @import "shadcn/tailwind.css";
 
 /* ============================================================
-   Token AAGE — design.md §2 & §6. Jangan pakai hex lepas di komponen.
-   Tema gelap penuh tidak termasuk MVP; nuansa gelap lewat sidebar,
-   hero, dan panel .glass-dark.
+   Token AAGE v2 — palet navy → soft blue, latar putih bersih.
+   Liquid glass hanya untuk tombol & elemen melayang; kartu putih solid.
+   Jangan pakai hex lepas di komponen.
    ============================================================ */
 
 :root {
   --radius: 0.75rem;
 
-  --background: #fcfbf7;
-  --foreground: #0e1a16;
+  /* netral */
+  --background: #fafbfd;
+  --foreground: #101828;
   --card: #ffffff;
-  --card-foreground: #0e1a16;
+  --card-foreground: #101828;
   --popover: #ffffff;
-  --popover-foreground: #0e1a16;
+  --popover-foreground: #101828;
+  --canvas: #fafbfd;
+  --soft: #f3f5f9;
+  --line: #e8ebf1;
+  --muted: #f3f5f9;
+  --muted-foreground: #5b6474;
+  --subtle-foreground: #8c94a3;
+  --secondary: #f3f5f9;
+  --secondary-foreground: #101828;
+  --border: #e8ebf1;
+  --input: #e1e5ec;
 
-  --primary: #0b3d2e;
-  --primary-foreground: #f3f1ea;
-  --primary-hover: #0f5c45;
-  --secondary: #f7f4ec;
-  --secondary-foreground: #0e1a16;
-  --muted: #f7f4ec;
-  --muted-foreground: #4a5a54;
-  --subtle-foreground: #8a968f;
-  --accent: #d7f2e6;
-  --accent-foreground: #0b3d2e;
-  --destructive: #b42318;
+  /* navy → soft blue */
+  --navy-950: #0b1437;
+  --navy-900: #1a2b6b;
+  --navy-800: #22378a;
+  --navy-700: #2c47a8;
+  --blue-600: #3b63d6;
+  --blue-500: #5b86ee;
+  --blue-400: #86a8f4;
+  --blue-300: #afc6f8;
+  --blue-200: #d3e0fc;
+  --blue-100: #e8effe;
+  --blue-50: #f4f7ff;
 
-  --border: #eee9dc;
-  --input: #e4ded0;
-  --ring: #16a37a;
+  --primary: #1a2b6b;
+  --primary-foreground: #ffffff;
+  --primary-hover: #22378a;
+  --accent: #e8effe;
+  --accent-foreground: #1a2b6b;
+  --destructive: #d92d20;
+  --ring: #5b86ee;
 
-  --cream-50: #fcfbf7;
-  --cream-100: #f7f4ec;
-  --cream-200: #eee9dc;
-  --emerald-950: #06251c;
-  --emerald-900: #0b3d2e;
-  --emerald-700: #0f5c45;
-  --emerald-500: #16a37a;
-  --emerald-100: #d7f2e6;
-  --mint-glow: #a7f3d0;
-  --champagne-300: #e6d3a8;
-  --champagne-600: #c9a86a;
-  --mist-blue: #5b8db8;
+  --chart-1: #1a2b6b;
+  --chart-2: #3b63d6;
+  --chart-3: #5b86ee;
+  --chart-4: #86a8f4;
+  --chart-5: #c9d8fb;
+  --chart-muted: #eef1f7;
+  --chart-grid: #eef1f6;
+  --chart-axis: #8c94a3;
 
-  --chart-1: #16a37a;
-  --chart-2: #0b3d2e;
-  --chart-3: #c9a86a;
-  --chart-4: #5b8db8;
-  --chart-5: #b9c4be;
-  --chart-grid: #eee9dc;
-  --chart-axis: #8a968f;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #344054;
+  --sidebar-primary: #1a2b6b;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f4f7ff;
+  --sidebar-accent-foreground: #1a2b6b;
+  --sidebar-border: #e8ebf1;
+  --sidebar-ring: #5b86ee;
 
-  --sidebar: #06251c;
-  --sidebar-foreground: #e8e4d8;
-  --sidebar-primary: #a7f3d0;
-  --sidebar-primary-foreground: #06251c;
-  --sidebar-accent: rgb(255 255 255 / 0.06);
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: rgb(255 255 255 / 0.08);
-  --sidebar-ring: #16a37a;
+  /* status — semantik tetap hijau/kuning/merah, sisanya navy/biru */
+  --ok: #067647;        --ok-bg: #ecfdf3;
+  --review: #b54708;    --review-bg: #fffaeb;
+  --blocked: #d92d20;   --blocked-bg: #fef3f2;
+  --info: #3b63d6;      --info-bg: #f4f7ff;
+  --escalate: #1a2b6b;  --escalate-bg: #e8effe;
 
-  /* status (design.md §2.2) */
-  --ok: #13795b;        --ok-bg: #e3f5ec;
-  --review: #a15c07;    --review-bg: #fbf0dc;
-  --blocked: #b42318;   --blocked-bg: #fde7e4;
-  --info: #1f5f8b;      --info-bg: #e4eff7;
-  --escalate: #6b4fa0;  --escalate-bg: #eee8f7;
+  --shadow-xs: 0 1px 2px rgb(16 24 40 / 0.04);
+  --shadow-md: 0 4px 12px -2px rgb(16 24 40 / 0.06), 0 2px 4px -2px rgb(16 24 40 / 0.04);
+  --shadow-lg: 0 12px 24px -6px rgb(16 24 40 / 0.08);
+  --shadow-glow: 0 0 0 4px rgb(91 134 238 / 0.18);
 
-  /* bayangan bernuansa emerald */
-  --shadow-xs: 0 1px 2px rgb(14 26 22 / 0.05);
-  --shadow-md: 0 8px 24px -6px rgb(11 61 46 / 0.1);
-  --shadow-lg: 0 20px 48px -12px rgb(11 61 46 / 0.18);
-  --shadow-glow: 0 0 0 4px rgb(22 163 122 / 0.15);
-
-  /* motion */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-  --dur-fast: 150ms;
-  --dur-base: 240ms;
-  --dur-slow: 420ms;
 }
 
 @theme inline {
@@ -106,17 +105,20 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-cream-50: var(--cream-50);
-  --color-cream-100: var(--cream-100);
-  --color-cream-200: var(--cream-200);
-  --color-emerald-950: var(--emerald-950);
-  --color-emerald-900: var(--emerald-900);
-  --color-emerald-700: var(--emerald-700);
-  --color-emerald-500: var(--emerald-500);
-  --color-emerald-100: var(--emerald-100);
-  --color-mint-glow: var(--mint-glow);
-  --color-champagne-300: var(--champagne-300);
-  --color-champagne-600: var(--champagne-600);
+  --color-canvas: var(--canvas);
+  --color-soft: var(--soft);
+  --color-line: var(--line);
+  --color-navy-950: var(--navy-950);
+  --color-navy-900: var(--navy-900);
+  --color-navy-800: var(--navy-800);
+  --color-navy-700: var(--navy-700);
+  --color-blue-600: var(--blue-600);
+  --color-blue-500: var(--blue-500);
+  --color-blue-400: var(--blue-400);
+  --color-blue-300: var(--blue-300);
+  --color-blue-200: var(--blue-200);
+  --color-blue-100: var(--blue-100);
+  --color-blue-50: var(--blue-50);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -141,18 +143,16 @@
   --color-escalate: var(--escalate);
   --color-escalate-bg: var(--escalate-bg);
   --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 4px);
-  --radius-xl: calc(var(--radius) + 12px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
   --shadow-xs: var(--shadow-xs);
   --shadow-md: var(--shadow-md);
   --shadow-lg: var(--shadow-lg);
   --shadow-glow: var(--shadow-glow);
   --font-sans: var(--font-jakarta);
   --font-heading: var(--font-jakarta);
-  --font-display: var(--font-fraunces);
   --font-mono: var(--font-jetbrains);
-  --ease-out: var(--ease-out);
 }
 
 @layer base {
@@ -176,115 +176,157 @@
   }
 }
 
-/* ---------- Latar aplikasi: cream + blob gradient yang bergeser pelan (§2.4, §9) ---------- */
-.app-bg {
-  position: relative;
-  background: var(--cream-50);
-  isolation: isolate;
-}
-.app-bg::before {
-  content: "";
-  position: fixed;
-  inset: -10%;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(60rem 40rem at 10% -10%, rgb(167 243 208 / 0.35), transparent 60%),
-    radial-gradient(50rem 36rem at 110% 10%, rgb(230 211 168 / 0.3), transparent 60%),
-    radial-gradient(40rem 30rem at 50% 120%, rgb(22 163 122 / 0.1), transparent 60%);
-  animation: blob-drift 36s var(--ease-in-out) infinite alternate;
-}
-@keyframes blob-drift {
-  0% { transform: translate3d(0, 0, 0) scale(1); }
-  50% { transform: translate3d(2%, 1.5%, 0) scale(1.03); }
-  100% { transform: translate3d(-1.5%, 2%, 0) scale(1.01); }
+/* ---------- Kartu: putih solid, garis tipis ---------- */
+.panel {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow-xs);
 }
 
-.dark-anchor {
+/* ---------- Gradient merek (panel login, header web chat) ---------- */
+.brand-gradient {
   background:
-    radial-gradient(30rem 20rem at 0% 0%, rgb(22 163 122 / 0.25), transparent 60%),
-    radial-gradient(24rem 18rem at 100% 100%, rgb(230 211 168 / 0.1), transparent 60%),
-    linear-gradient(180deg, #082e22 0%, #06251c 100%);
-  color: var(--sidebar-foreground);
+    radial-gradient(40rem 26rem at 100% 0%, rgb(134 168 244 / 0.45), transparent 60%),
+    linear-gradient(160deg, #0b1437 0%, #1a2b6b 45%, #3b63d6 100%);
+  color: #ffffff;
 }
 
-/* ---------- Liquid glass (§3) ---------- */
+/* ---------- Liquid glass ---------- */
+/* Permukaan melayang (popover, composer chat, tooltip grafik) */
 .glass {
-  background: linear-gradient(135deg, rgb(255 255 255 / 0.72), rgb(255 255 255 / 0.48));
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border: 1px solid rgb(255 255 255 / 0.7);
+  background: linear-gradient(135deg, rgb(255 255 255 / 0.82), rgb(255 255 255 / 0.62));
+  backdrop-filter: blur(16px) saturate(170%);
+  -webkit-backdrop-filter: blur(16px) saturate(170%);
+  border: 1px solid rgb(255 255 255 / 0.8);
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.85),
-    inset 0 -1px 0 rgb(14 26 22 / 0.04),
-    0 1px 2px rgb(14 26 22 / 0.04),
-    0 12px 32px -8px rgb(11 61 46 / 0.12);
-  border-radius: var(--radius-xl);
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 1px 2px rgb(16 24 40 / 0.05),
+    0 10px 24px -10px rgb(26 43 107 / 0.18);
+  border-radius: 14px;
 }
 .glass-strong {
-  background: linear-gradient(135deg, rgb(255 255 255 / 0.86), rgb(255 255 255 / 0.74));
+  background: linear-gradient(135deg, rgb(255 255 255 / 0.94), rgb(255 255 255 / 0.84));
 }
-.glass-dark {
-  background: linear-gradient(135deg, rgb(11 61 46 / 0.78), rgb(6 37 28 / 0.86));
-  backdrop-filter: blur(24px) saturate(140%);
-  -webkit-backdrop-filter: blur(24px) saturate(140%);
-  border: 1px solid rgb(255 255 255 / 0.08);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.1),
-    0 20px 48px -12px rgb(6 37 28 / 0.45);
-  color: #f3f1ea;
-  border-radius: var(--radius-xl);
-}
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .glass { background: rgb(255 255 255 / 0.92); }
-  .glass-dark { background: #0b3d2e; }
-}
-@media (prefers-reduced-transparency: reduce) {
-  .glass { background: #ffffff; backdrop-filter: none; -webkit-backdrop-filter: none; }
-  .glass-dark { background: #0b3d2e; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.glass-on-dark {
+  background: linear-gradient(135deg, rgb(255 255 255 / 0.16), rgb(255 255 255 / 0.06));
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid rgb(255 255 255 / 0.22);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25);
 }
 
-.glass-sheen { position: relative; overflow: hidden; }
-.glass-sheen::after {
+/* Tombol liquid glass — primer: navy berkilau; sekunder: kaca bening */
+.btn-liquid,
+.btn-glass {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  transition:
+    transform 150ms var(--ease-out),
+    box-shadow 150ms var(--ease-out),
+    filter 150ms var(--ease-out);
+}
+.btn-liquid::before,
+.btn-glass::before {
   content: "";
   position: absolute;
-  inset: -40%;
-  background: conic-gradient(from 180deg, transparent 0 70%, rgb(255 255 255 / 0.35) 80%, transparent 90%);
+  inset: 1px 1px 50% 1px;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.32), rgb(255 255 255 / 0));
+  pointer-events: none;
+  z-index: -1;
+}
+.btn-liquid::after,
+.btn-glass::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -60%;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.35), transparent);
+  transform: skewX(-20deg);
   opacity: 0;
-  transition: opacity 0.4s var(--ease-out);
   pointer-events: none;
 }
-.glass-sheen:hover::after { opacity: 1; animation: sheen 2.4s linear infinite; }
-@keyframes sheen { to { transform: rotate(1turn); } }
+.btn-liquid:hover::after,
+.btn-glass:hover::after {
+  opacity: 1;
+  left: 120%;
+  transition: left 700ms var(--ease-out), opacity 150ms;
+}
+.btn-liquid {
+  color: #ffffff;
+  background: linear-gradient(180deg, #34509f 0%, #1a2b6b 55%, #15235a 100%);
+  border: 1px solid rgb(11 20 55 / 0.6);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.28),
+    inset 0 -1px 0 rgb(0 0 0 / 0.18),
+    0 1px 2px rgb(16 24 40 / 0.12),
+    0 6px 14px -6px rgb(26 43 107 / 0.55);
+}
+.btn-liquid:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+.btn-glass {
+  color: var(--foreground);
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.95), rgb(244 247 255 / 0.7));
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  border: 1px solid rgb(26 43 107 / 0.12);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 1),
+    inset 0 -1px 0 rgb(26 43 107 / 0.04),
+    0 1px 2px rgb(16 24 40 / 0.05);
+}
+.btn-glass:hover:not(:disabled) {
+  border-color: rgb(59 99 214 / 0.3);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 1),
+    0 4px 12px -4px rgb(26 43 107 / 0.15);
+  transform: translateY(-1px);
+}
+.btn-liquid:active:not(:disabled),
+.btn-glass:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass, .btn-glass { background: rgb(255 255 255 / 0.96); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass, .btn-glass, .glass-on-dark { backdrop-filter: none; -webkit-backdrop-filter: none; background: #ffffff; }
+  .glass-on-dark { background: rgb(255 255 255 / 0.18); }
+}
 
 .lift {
-  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+  transition: box-shadow 150ms var(--ease-out), border-color 150ms var(--ease-out);
 }
-.lift:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.lift:hover { box-shadow: var(--shadow-md); border-color: var(--blue-200); }
 
-/* Skeleton shimmer cream → putih (§9) */
+/* Skeleton shimmer */
 .shimmer {
-  background: linear-gradient(90deg, var(--cream-100) 0%, #ffffff 50%, var(--cream-100) 100%);
+  background: linear-gradient(90deg, var(--soft) 0%, #ffffff 50%, var(--soft) 100%);
   background-size: 200% 100%;
   animation: shimmer 1.2s linear infinite;
 }
 @keyframes shimmer { to { background-position: -200% 0; } }
 
-/* Badge bertambah: denyut sekali */
 @keyframes pulse-once {
-  0% { box-shadow: 0 0 0 0 rgb(167 243 208 / 0.6); }
-  100% { box-shadow: 0 0 0 10px rgb(167 243 208 / 0); }
+  0% { box-shadow: 0 0 0 0 rgb(91 134 238 / 0.5); }
+  100% { box-shadow: 0 0 0 8px rgb(91 134 238 / 0); }
 }
 .pulse-once { animation: pulse-once 600ms var(--ease-out) 1; }
 
-/* Ledger: titik event baru berdenyut */
 @keyframes ring-once {
-  0% { box-shadow: 0 0 0 0 rgb(22 163 122 / 0.5); }
-  100% { box-shadow: 0 0 0 8px rgb(22 163 122 / 0); }
+  0% { box-shadow: 0 0 0 0 rgb(59 99 214 / 0.45); }
+  100% { box-shadow: 0 0 0 8px rgb(59 99 214 / 0); }
 }
 .ring-once { animation: ring-once 600ms var(--ease-out) 1; }
 
-/* Klaim diblokir: garis bergelombang tergambar + shake halus */
+/* Sorotan ClaimGuard */
 .mark-blocked {
   background: var(--blocked-bg);
   text-decoration: underline wavy var(--blocked);
@@ -301,7 +343,6 @@
   75% { transform: translateX(2px); }
 }
 
-/* Indikator mengetik */
 .typing-dot { animation: typing 1s infinite var(--ease-in-out); }
 .typing-dot:nth-child(2) { animation-delay: 0.15s; }
 .typing-dot:nth-child(3) { animation-delay: 0.3s; }
@@ -310,10 +351,10 @@
   30% { transform: translateY(-3px); opacity: 1; }
 }
 
-.scrollbar-thin { scrollbar-width: thin; scrollbar-color: var(--cream-200) transparent; }
+.scrollbar-thin { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 
 @media (prefers-reduced-motion: reduce) {
-  .app-bg::before, .glass-sheen::after, .mark-blocked, .typing-dot, .pulse-once, .ring-once { animation: none !important; }
-  .glass-sheen:hover::after { opacity: 0; }
+  .mark-blocked, .typing-dot, .pulse-once, .ring-once { animation: none !important; }
+  .btn-liquid::after, .btn-glass::after { display: none; }
   *, *::before, *::after { transition-duration: 100ms !important; }
 }

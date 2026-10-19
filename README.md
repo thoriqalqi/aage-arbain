@@ -110,11 +110,11 @@ apps/api/            FastAPI + LangGraph + LiteLLM (Python 3.12)
   data/              katalog & dokumen sintetis untuk seed
   eval/              dataset uji + eval/run.py
   tests/             pytest
-apps/web/            Next.js 15 + Tailwind v4 + shadcn/ui (Base UI) + Motion + Three.js
+apps/web/            Next.js 15 + Tailwind v4 + shadcn/ui (Base UI) + Motion · palet navy → soft blue
   app/(app)/         Ringkasan, Inbox, Approval, Ledger, Konten, Prospek, ClaimGuard, Katalog
-  app/(auth)/login   login dengan orb kaca cair 3D
+  app/(auth)/login   login
   app/chat           web chat cadangan (mobile)
-  components/aage/   GlassCard, VerdictBadge, ClaimHighlight, LedgerTimeline, KpiTile, ScoreBar, FunnelChart, …
+  components/aage/   Panel, AButton (liquid glass), VerdictBadge, ClaimHighlight, LedgerTimeline, KpiTile, ScoreBar, FunnelChart, …
 docs/                PRD, design, panduan staf
 infra/               init Postgres
 ```

@@ -1,5 +1,14 @@
 # design.md — AAGE (Arba'in Autonomous Growth Engine)
 
+> **Revisi v2 (19 Okt 2026) — menggantikan arah visual di bawah.** Atas masukan tim, gaya "emerald gelap + cream + orb 3D"
+> diganti gaya dashboard bersih ala referensi Nexus: **latar putih**, **palet navy → soft blue** (`navy-950 #0B1437`,
+> `navy-900 #1A2B6B` primer, `blue-600 #3B63D6`, `blue-500 #5B86EE`, `blue-300 #AFC6F8`, `blue-100 #E8EFFE`),
+> sidebar putih berkelompok (Umum/Alat/Dukungan, bisa diciutkan), topbar putih dengan pencarian ⌘K, kartu putih
+> bergaris tipis (radius 14px), angka KPI + pill delta hijau/merah. **Liquid glass hanya untuk tombol** (`.btn-liquid`
+> navy berkilau, `.btn-glass` kaca bening) dan elemen melayang. Serif Fraunces dan Three.js dihapus. Warna status
+> (hijau/kuning/merah) tetap untuk semantik ClaimGuard. Token lengkap: `apps/web/app/globals.css`.
+
+
 Panduan desain UI untuk MVP AAGE. Dokumen ini menjadi acuan bagi frontend (Next.js + Tailwind + shadcn/ui) dan bagi siapa pun (termasuk AI coding agent) yang membangun halaman baru. Lihat `PRD` untuk fungsi tiap modul; dokumen ini hanya mengatur **tampilan, rasa, dan gerak**.
 
 ---

@@ -9,7 +9,7 @@ import useSWR from "swr"
 import { AButton } from "@/components/aage/button"
 import { ClaimHighlight } from "@/components/aage/claim-highlight"
 import { EmptyState } from "@/components/aage/empty-state"
-import { GlassCard, PageHeader, SectionTitle, Surface } from "@/components/aage/glass-card"
+import { Panel, PageHeader, SectionTitle, Surface } from "@/components/aage/panel"
 import { Pill, ScanningBadge, VerdictBadge } from "@/components/aage/status"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { api, fetcher } from "@/lib/api"
@@ -17,7 +17,7 @@ import { formatDateTime } from "@/lib/format"
 import type { CheckResult, ContentDraft, Product, Verdict } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
-const field = "h-10 w-full rounded-md border border-cream-200 bg-white px-3 text-[14px] outline-none focus:border-emerald-500"
+const field = "h-10 w-full rounded-md border border-line bg-white px-3 text-[14px] outline-none focus:border-blue-500"
 
 function Markdown({ text }: { text: string }) {
   return (
@@ -48,7 +48,7 @@ function Step({ n, title, active, done }: { n: number; title: string; active: bo
       <span
         className={cn(
           "flex size-6 items-center justify-center rounded-full text-[12px] font-semibold",
-          done ? "bg-emerald-500 text-white" : active ? "bg-primary text-primary-foreground" : "bg-cream-200",
+          done ? "bg-blue-500 text-white" : active ? "bg-primary text-primary-foreground" : "bg-line",
         )}
       >
         {done ? <Check className="size-3.5" /> : n}
@@ -129,7 +129,7 @@ function Studio() {
           <Step n={2} title="Pratinjau draf" active={step === 2} done={step > 2} />
           <Step n={3} title="Verdict & ekspor" active={step === 3} done={false} />
         </div>
-        <GlassCard className="grid gap-4 p-5 md:grid-cols-2">
+        <Panel className="grid gap-4 p-5 md:grid-cols-2">
           <label className="grid gap-1 text-[12px] text-muted-foreground">
             Produk
             <select value={productId} onChange={(e) => setProductId(e.target.value)} className={field}>
@@ -164,12 +164,12 @@ function Studio() {
               {loading ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Buat draf + FAQ + JSON-LD
             </AButton>
           </div>
-        </GlassCard>
+        </Panel>
 
         {loading && <div className="shimmer h-72 rounded-xl" />}
         {draft && !loading && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
-            <GlassCard strong className="p-5">
+            <Panel className="p-5">
               <div className="mb-4 flex flex-wrap items-center gap-2">
                 <h2 className="mr-auto text-lg font-semibold">{draft.judul}</h2>
                 {elapsed != null && <Pill>selesai {(elapsed / 1000).toFixed(1).replace(".", ",")} dtk</Pill>}
@@ -189,7 +189,7 @@ function Studio() {
                 </TabsContent>
                 <TabsContent value="faq" className="space-y-3 pt-3">
                   {draft.faq?.map((f) => (
-                    <div key={f.q} className="rounded-lg border border-cream-200 bg-white p-3">
+                    <div key={f.q} className="rounded-lg border border-line bg-white p-3">
                       <div className="font-semibold">{f.q}</div>
                       <p className="mt-1 text-muted-foreground">{f.a}</p>
                     </div>
@@ -203,12 +203,12 @@ function Studio() {
                       <span className="inline-flex items-center gap-1 text-ok"><CheckCircle2 className="size-4" /> Sintaks JSON-LD valid (Product, FAQPage, Organization)</span>
                     )}
                   </div>
-                  <pre className="scrollbar-thin max-h-96 overflow-auto rounded-lg bg-emerald-950 p-4 font-mono text-[12px] leading-[18px] text-mint-glow">
+                  <pre className="scrollbar-thin max-h-96 overflow-auto rounded-lg bg-navy-950 p-4 font-mono text-[12px] leading-[18px] text-blue-300">
                     {JSON.stringify(draft.json_ld, null, 2)}
                   </pre>
                 </TabsContent>
                 <TabsContent value="meta" className="space-y-3 pt-3">
-                  <div className="rounded-lg border border-cream-200 bg-white p-4">
+                  <div className="rounded-lg border border-line bg-white p-4">
                     <div className="text-[12px] text-subtle-foreground">Pratinjau hasil pencarian</div>
                     <div className="mt-1 text-[17px] text-info">{draft.meta?.title}</div>
                     <div className="text-[13px] text-ok">arbain.co.id › produk</div>
@@ -222,7 +222,7 @@ function Studio() {
                   {report && <ClaimHighlight text={fullText} result={report} />}
                 </TabsContent>
               </Tabs>
-              <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-cream-200 pt-4">
+              <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-line pt-4">
                 {draft.status !== "disetujui" ? (
                   <AButton onClick={approve} disabled={draft.claim_verdict === "blocked"}>
                     <Check className="size-4" /> Setujui konten
@@ -240,26 +240,28 @@ function Studio() {
                       : "Ekspor hanya setelah staf menyetujui."}
                 </span>
               </div>
-            </GlassCard>
+            </Panel>
           </motion.div>
         )}
       </div>
       <aside>
-        <SectionTitle>Draf terbaru</SectionTitle>
-        <ul className="space-y-2">
-          {list?.items.slice(0, 10).map((d) => (
-            <li key={d.id}>
-              <button onClick={() => open(d.id)} className="w-full rounded-lg border bg-card p-3 text-left text-[13px] shadow-xs hover:border-emerald-500/40">
-                <div className="line-clamp-1 font-medium">{d.judul}</div>
-                <div className="mt-1 flex items-center gap-2">
-                  <VerdictBadge verdict={d.claim_verdict as Verdict} />
-                  <span className="text-[11px] text-subtle-foreground">{d.status} · {formatDateTime(d.dibuat_pada)}</span>
-                </div>
-              </button>
-            </li>
-          ))}
-          {list?.items.length === 0 && <li className="text-[13px] text-muted-foreground">Belum ada draf.</li>}
-        </ul>
+        <Panel className="overflow-hidden">
+          <div className="border-b border-line px-4 py-3.5 text-[14.5px] font-semibold">Draf terbaru</div>
+          <ul className="divide-y divide-line">
+            {list?.items.slice(0, 10).map((d) => (
+              <li key={d.id}>
+                <button onClick={() => open(d.id)} className={cn("w-full px-4 py-3 text-left text-[13px] hover:bg-blue-50", draft?.id === d.id && "bg-blue-50")}>
+                  <div className="line-clamp-1 font-medium">{d.judul}</div>
+                  <div className="mt-1 flex items-center gap-2">
+                    <VerdictBadge verdict={d.claim_verdict as Verdict} />
+                    <span className="text-[11.5px] text-subtle-foreground">{d.status} · {formatDateTime(d.dibuat_pada)}</span>
+                  </div>
+                </button>
+              </li>
+            ))}
+            {list?.items.length === 0 && <li className="px-4 py-3 text-[13px] text-muted-foreground">Belum ada draf.</li>}
+          </ul>
+        </Panel>
       </aside>
     </div>
   )
@@ -298,7 +300,7 @@ function Audit() {
   }
   return (
     <div className="space-y-4">
-      <GlassCard className="flex flex-wrap items-end gap-3 p-5">
+      <Panel className="flex flex-wrap items-end gap-3 p-5">
         <label className="grid min-w-64 flex-1 gap-1 text-[12px] text-muted-foreground">
           URL halaman situs mitra
           <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" className={field} />
@@ -309,34 +311,34 @@ function Audit() {
         <AButton variant="outline" onClick={() => run(true)} disabled={loading}>
           Pakai halaman contoh
         </AButton>
-      </GlassCard>
+      </Panel>
       {loading && <ScanningBadge />}
       {!rep && !loading && <Surface><EmptyState title="Belum ada audit" description="Masukkan URL (dengan izin mitra) atau pakai halaman contoh untuk demo." /></Surface>}
       {rep && (
         <>
           <div className="grid gap-4 md:grid-cols-2">
-            <GlassCard className="p-5">
+            <Panel className="p-5">
               <div className="text-[12px] font-medium text-muted-foreground">Sebelum</div>
               <div className="tabular text-[40px] leading-[48px] font-[650] text-blocked">{rep.skor_sebelum}</div>
               <p className="text-[13px] text-muted-foreground">
                 {rep.ringkasan.berisiko} dari {rep.ringkasan.kalimat} kalimat berisiko · {rep.ringkasan.diblokir} diblokir ·{" "}
                 {rep.ringkasan.statistik_tanpa_sumber} statistik tanpa sumber
               </p>
-            </GlassCard>
-            <GlassCard className="p-5">
+            </Panel>
+            <Panel className="p-5">
               <div className="text-[12px] font-medium text-muted-foreground">Sesudah (saran diterapkan)</div>
               <div className="tabular text-[40px] leading-[48px] font-[650] text-ok">{rep.skor_sesudah}</div>
               <p className="text-[13px] text-muted-foreground">Kalimat diganti klaim disetujui + meta, heading, FAQ, dan JSON-LD dari Studio.</p>
-            </GlassCard>
+            </Panel>
           </div>
-          <Surface className="divide-y divide-cream-200">
+          <Surface className="divide-y divide-line">
             {rep.cek.map((c) => (
               <div key={c.id} className="flex items-start gap-3 p-4">
                 {c.status === "lulus" ? <CheckCircle2 className="mt-0.5 size-5 text-ok" /> : <XCircle className="mt-0.5 size-5 text-blocked" />}
                 <div className="min-w-0 flex-1">
                   <div className="font-medium">{c.label} <span className="text-[12px] font-normal text-subtle-foreground">· bobot {c.bobot}</span></div>
                   <div className="text-[13px] text-muted-foreground">{c.detail}</div>
-                  {c.status === "gagal" && <div className="text-[13px] text-emerald-700">Saran: {c.saran}</div>}
+                  {c.status === "gagal" && <div className="text-[13px] text-navy-700">Saran: {c.saran}</div>}
                 </div>
               </div>
             ))}

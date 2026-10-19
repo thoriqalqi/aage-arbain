@@ -14,7 +14,7 @@ import { Suspense, useMemo, useState } from "react"
 import useSWR from "swr"
 
 import { EmptyState, SkeletonRows } from "@/components/aage/empty-state"
-import { GlassCard, PageHeader, Surface } from "@/components/aage/glass-card"
+import { Panel, PageHeader, Surface } from "@/components/aage/panel"
 import { EVENT_META, LedgerTimeline, actorLabel } from "@/components/aage/ledger-timeline"
 import { CostChip, Pill, VerdictBadge } from "@/components/aage/status"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
@@ -37,7 +37,7 @@ type Trace = {
   disetujui_oleh: string | null
 }
 
-const selectCls = "h-9 rounded-md border border-cream-200 bg-white px-2.5 text-[13px] outline-none focus:border-emerald-500"
+const selectCls = "h-9 rounded-md border border-line bg-white px-2.5 text-[13px] outline-none focus:border-blue-500"
 
 function TraceSheet({ id, onClose }: { id: number | null; onClose: () => void }) {
   const { data } = useSWR<Trace>(id ? `/api/ledger/${id}/trace` : null, fetcher)
@@ -57,15 +57,15 @@ function TraceSheet({ id, onClose }: { id: number | null; onClose: () => void })
         {data && (
           <div className="space-y-6 px-4 pb-8">
             <div className="grid grid-cols-2 gap-3 text-[13px]">
-              <div className="rounded-lg bg-cream-100 p-3">
+              <div className="rounded-lg bg-soft p-3">
                 <div className="text-[12px] text-muted-foreground">Total biaya rantai</div>
                 <div className="tabular text-lg font-semibold">{formatRp(data.biaya_total_rp, { decimals: true })}</div>
               </div>
-              <div className="rounded-lg bg-cream-100 p-3">
+              <div className="rounded-lg bg-soft p-3">
                 <div className="text-[12px] text-muted-foreground">Disetujui oleh</div>
                 <div className="font-semibold">{data.disetujui_oleh ? actorLabel(data.disetujui_oleh) : "Otomatis (AI)"}</div>
               </div>
-              <div className="col-span-2 rounded-lg bg-cream-100 p-3">
+              <div className="col-span-2 rounded-lg bg-soft p-3">
                 <div className="text-[12px] text-muted-foreground">Model</div>
                 <div className="font-mono text-[12px]">{data.model.join(", ") || "—"}</div>
               </div>
@@ -81,9 +81,9 @@ function TraceSheet({ id, onClose }: { id: number | null; onClose: () => void })
               ) : (
                 <ul className="space-y-3">
                   {data.sumber.map((s) => (
-                    <li key={s.chunk_id} className="rounded-lg border border-cream-200 p-3">
+                    <li key={s.chunk_id} className="rounded-lg border border-line p-3">
                       <div className="flex flex-wrap items-center gap-2 text-[13px]">
-                        <FileText className="size-4 text-emerald-700" />
+                        <FileText className="size-4 text-navy-700" />
                         <span className="font-semibold">{s.dokumen.judul}</span>
                         <Pill>versi {s.versi}</Pill>
                         {!s.aktif && <Pill className="bg-review-bg text-review">versi lama</Pill>}
@@ -138,7 +138,7 @@ function LedgerInner() {
           const Icon = m?.icon
           return (
             <span className="inline-flex items-center gap-1.5 whitespace-nowrap font-medium">
-              {Icon && <Icon className="size-3.5 text-emerald-700" />} {m?.label ?? c.getValue<string>()}
+              {Icon && <Icon className="size-3.5 text-navy-700" />} {m?.label ?? c.getValue<string>()}
             </span>
           )
         },
@@ -172,7 +172,7 @@ function LedgerInner() {
           </span>
         }
       />
-      <GlassCard className="mb-4 flex flex-wrap items-end gap-3 p-4">
+      <Panel className="mb-4 flex flex-wrap items-end gap-3 p-4">
         <label className="grid gap-1 text-[12px] text-muted-foreground">
           Tipe event
           <select value={tipe} onChange={(e) => setTipe(e.target.value)} className={selectCls}>
@@ -207,7 +207,7 @@ function LedgerInner() {
           <input type="date" value={dari} onChange={(e) => setDari(e.target.value)} className={selectCls} />
         </label>
         {convId && <Pill className="mb-1.5">Percakapan #{convId}</Pill>}
-      </GlassCard>
+      </Panel>
 
       <Surface className="overflow-x-auto">
         {!data ? (
@@ -216,11 +216,11 @@ function LedgerInner() {
           <EmptyState title="Tidak ada event" description="Ubah filter untuk melihat event lain." />
         ) : (
           <table className="w-full text-[13px]">
-            <thead className="sticky top-0 bg-cream-100 text-left text-[12px] tracking-[0.02em] text-muted-foreground">
+            <thead className="sticky top-0 bg-soft text-left text-[12px] tracking-[0.02em] text-muted-foreground">
               {table.getHeaderGroups().map((hg) => (
                 <tr key={hg.id}>
                   {hg.headers.map((h) => (
-                    <th key={h.id} className="px-3 py-2.5 font-medium first:sticky first:left-0 first:bg-cream-100">
+                    <th key={h.id} className="px-3 py-2.5 font-medium first:sticky first:left-0 first:bg-soft">
                       {h.column.getCanSort() ? (
                         <button className="inline-flex items-center gap-1" onClick={h.column.getToggleSortingHandler()}>
                           {flexRender(h.column.columnDef.header, h.getContext())}
@@ -239,10 +239,10 @@ function LedgerInner() {
                 <tr
                   key={row.id}
                   onClick={() => setOpen(row.original.id)}
-                  className={`cursor-pointer border-t border-cream-200 hover:bg-emerald-100/40 ${i % 2 ? "bg-cream-50" : "bg-white"}`}
+                  className={`cursor-pointer border-t border-line hover:bg-blue-50 ${i % 2 ? "bg-canvas" : "bg-white"}`}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className={`px-3 py-2 align-middle first:sticky first:left-0 ${i % 2 ? "first:bg-cream-50" : "first:bg-white"}`}>
+                    <td key={cell.id} className={`px-3 py-2 align-middle first:sticky first:left-0 ${i % 2 ? "first:bg-canvas" : "first:bg-white"}`}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}
@@ -254,7 +254,7 @@ function LedgerInner() {
       </Surface>
       {data && data.total > data.items.length && (
         <div className="mt-4 flex justify-center">
-          <button onClick={() => setLimit((l) => Math.min(500, l + 100))} className="h-9 rounded-md px-4 text-[13px] font-medium text-emerald-700 hover:bg-cream-100">
+          <button onClick={() => setLimit((l) => Math.min(500, l + 100))} className="h-9 rounded-md px-4 text-[13px] font-medium text-navy-700 hover:bg-soft">
             Muat lebih banyak ({data.items.length} dari {data.total})
           </button>
         </div>

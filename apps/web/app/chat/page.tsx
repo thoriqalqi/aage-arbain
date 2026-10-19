@@ -44,7 +44,9 @@ export default function WebChatPage() {
   const lastId = useRef(0)
   const loaded = useRef(false)
 
-  useEffect(() => setSession(sessionId()), [])
+  useEffect(() => {
+    setSession(sessionId())
+  }, [])
 
   const poll = useCallback(async () => {
     if (!session) return
@@ -98,23 +100,21 @@ export default function WebChatPage() {
   }
 
   return (
-    <div className="flex min-h-dvh justify-center bg-cream-100">
-      <div className="flex h-dvh w-full max-w-[480px] flex-col bg-[linear-gradient(180deg,var(--cream-50),var(--cream-100))] shadow-lg">
-        <header className="dark-anchor flex h-16 shrink-0 items-center gap-3 px-3">
-          <ArrowLeft className="size-5 text-sidebar-foreground/70" aria-hidden />
-          <span className="flex size-10 items-center justify-center rounded-full bg-[radial-gradient(circle_at_30%_25%,var(--mint-glow),var(--emerald-500)_55%,var(--emerald-900))]">
-            <span className="font-display text-emerald-950 italic">a</span>
-          </span>
+    <div className="flex min-h-dvh justify-center bg-soft">
+      <div className="flex h-dvh w-full max-w-[480px] flex-col bg-canvas shadow-lg">
+        <header className="brand-gradient flex h-16 shrink-0 items-center gap-3 px-3">
+          <ArrowLeft className="size-5 text-white/70" aria-hidden />
+          <span className="glass-on-dark flex size-10 items-center justify-center rounded-full text-[15px] font-bold">A</span>
           <div className="min-w-0 flex-1">
             <div className="truncate font-semibold text-white">CV Arba&apos;in · Penjualan</div>
-            <div className="flex items-center gap-1 text-[12px] text-sidebar-foreground/70">
-              <ShieldCheck className="size-3.5 text-mint-glow" aria-hidden /> Asisten AI 24 jam · diperiksa ClaimGuard
+            <div className="flex items-center gap-1 text-[12px] text-white/70">
+              <ShieldCheck className="size-3.5 text-blue-200" aria-hidden /> Asisten AI 24 jam · diperiksa ClaimGuard
             </div>
           </div>
           <button
             type="button"
             onClick={() => setEvidence((v) => !v)}
-            className="flex size-11 items-center justify-center rounded-full text-sidebar-foreground/80 hover:bg-white/10"
+            className="flex size-11 items-center justify-center rounded-full text-white/80 hover:bg-white/10"
             aria-label={evidence ? "Sembunyikan bukti" : "Tampilkan bukti (mode demo)"}
             title="Mode demo: tampilkan verdict ClaimGuard & sumber"
           >
@@ -142,7 +142,7 @@ export default function WebChatPage() {
                 key={s}
                 type="button"
                 onClick={() => send(s)}
-                className="h-9 shrink-0 rounded-full border border-emerald-500/30 bg-white px-3 text-[13px] text-emerald-900 hover:bg-emerald-100"
+                className="btn-glass h-9 shrink-0 rounded-full px-3 text-[13px] text-navy-900"
               >
                 {s}
               </button>
@@ -168,7 +168,7 @@ export default function WebChatPage() {
             type="submit"
             disabled={!text.trim() || sending}
             className={cn(
-              "flex size-11 items-center justify-center rounded-full bg-primary text-primary-foreground transition-opacity",
+              "btn-liquid flex size-11 items-center justify-center rounded-full transition-opacity",
               (!text.trim() || sending) && "opacity-50",
             )}
             aria-label="Kirim"

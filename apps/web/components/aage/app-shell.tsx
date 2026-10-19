@@ -1,7 +1,9 @@
 "use client"
 
 import {
+  Bell,
   BookOpen,
+  ChevronsUpDown,
   ClipboardCheck,
   Inbox,
   LayoutDashboard,
@@ -9,6 +11,8 @@ import {
   MapPinned,
   Menu,
   MessageCircle,
+  PanelLeftClose,
+  PanelLeftOpen,
   PenLine,
   ScrollText,
   Search,
@@ -35,18 +39,33 @@ import { formatRp } from "@/lib/format"
 import type { Status } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
-type NavItem = { href: string; label: string; icon: LucideIcon; count?: "inbox" | "approval" }
+type NavItem = { href: string; label: string; icon: LucideIcon; count?: "inbox" | "approval"; external?: boolean }
 
-export const NAV: NavItem[] = [
-  { href: "/", label: "Ringkasan", icon: LayoutDashboard },
-  { href: "/inbox", label: "Inbox", icon: Inbox, count: "inbox" },
-  { href: "/approval", label: "Approval", icon: ClipboardCheck, count: "approval" },
-  { href: "/ledger", label: "Ledger", icon: ScrollText },
-  { href: "/konten", label: "Konten", icon: PenLine },
-  { href: "/prospek", label: "Prospek", icon: MapPinned },
-  { href: "/claimguard", label: "ClaimGuard", icon: ShieldHalf },
-  { href: "/katalog", label: "Katalog", icon: BookOpen },
+export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
+  {
+    label: "Umum",
+    items: [
+      { href: "/", label: "Ringkasan", icon: LayoutDashboard },
+      { href: "/inbox", label: "Inbox", icon: Inbox, count: "inbox" },
+      { href: "/approval", label: "Approval", icon: ClipboardCheck, count: "approval" },
+      { href: "/ledger", label: "Ledger", icon: ScrollText },
+    ],
+  },
+  {
+    label: "Alat",
+    items: [
+      { href: "/konten", label: "Konten & GEO", icon: PenLine },
+      { href: "/prospek", label: "Prospek", icon: MapPinned },
+      { href: "/claimguard", label: "ClaimGuard", icon: ShieldHalf },
+      { href: "/katalog", label: "Katalog", icon: BookOpen },
+    ],
+  },
+  {
+    label: "Dukungan",
+    items: [{ href: "/chat", label: "Web chat demo", icon: MessageCircle, external: true }],
+  },
 ]
+export const NAV = NAV_GROUPS.flatMap((g) => g.items)
 
 function useCounts() {
   const { data: ap } = useSWR<{ items: unknown[] }>("/api/approvals?status=menunggu", fetcher, { refreshInterval: 8000 })
@@ -57,7 +76,7 @@ function useCounts() {
   }
 }
 
-function CountBadge({ value }: { value: number }) {
+function CountBadge({ value, collapsed }: { value: number; collapsed: boolean }) {
   const prev = useRef(value)
   const [pulse, setPulse] = useState(0)
   useEffect(() => {
@@ -69,7 +88,8 @@ function CountBadge({ value }: { value: number }) {
     <span
       key={pulse}
       className={cn(
-        "ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-mint-glow/90 px-1.5 text-[11px] font-semibold text-emerald-950",
+        "inline-flex h-5 min-w-5 items-center justify-center rounded-md border border-line bg-white px-1.5 text-[11px] font-semibold text-navy-900",
+        collapsed && "absolute -top-1 -right-1 h-4 min-w-4 rounded-full border-0 bg-navy-900 px-1 text-[10px] text-white",
         pulse > 0 && "pulse-once",
       )}
     >
@@ -78,147 +98,202 @@ function CountBadge({ value }: { value: number }) {
   )
 }
 
-function NavLinks({ collapsedBelowXl = true, onNavigate }: { collapsedBelowXl?: boolean; onNavigate?: () => void }) {
+function NavLinks({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
   const pathname = usePathname()
   const counts = useCounts()
   return (
-    <nav className="flex flex-col gap-1" aria-label="Navigasi utama">
-      {NAV.map((item) => {
-        const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
-        const Icon = item.icon
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={onNavigate}
-            title={item.label}
-            className={cn(
-              "relative flex h-10 items-center gap-3 rounded-md px-3 text-[14px] text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-white",
-              active && "bg-mint-glow/12 font-semibold text-white before:absolute before:top-2 before:bottom-2 before:left-0 before:w-0.5 before:rounded-full before:bg-mint-glow",
-              collapsedBelowXl && "max-xl:justify-center max-xl:px-0",
-            )}
-          >
-            <Icon className="size-5 shrink-0" strokeWidth={1.75} aria-hidden />
-            <span className={cn(collapsedBelowXl && "max-xl:sr-only")}>{item.label}</span>
-            {item.count && (
-              <span className={cn("ml-auto", collapsedBelowXl && "max-xl:absolute max-xl:-top-0.5 max-xl:right-1")}>
-                <CountBadge value={counts[item.count]} />
-              </span>
-            )}
-          </Link>
-        )
-      })}
+    <nav className="flex flex-col gap-5" aria-label="Navigasi utama">
+      {NAV_GROUPS.map((group) => (
+        <div key={group.label}>
+          {collapsed ? (
+            <div className="mx-auto mb-2 h-px w-6 bg-line" aria-hidden />
+          ) : (
+            <div className="mb-1.5 px-3 text-[11px] font-medium tracking-[0.06em] text-subtle-foreground uppercase">{group.label}</div>
+          )}
+          <ul className="flex flex-col gap-0.5">
+            {group.items.map((item) => {
+              const active = !item.external && (item.href === "/" ? pathname === "/" : pathname.startsWith(item.href))
+              const Icon = item.icon
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    target={item.external ? "_blank" : undefined}
+                    onClick={onNavigate}
+                    title={collapsed ? item.label : undefined}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "relative flex h-9 items-center gap-3 rounded-[10px] px-3 text-[13.5px] text-sidebar-foreground transition-colors hover:bg-soft",
+                      active && "bg-blue-50 font-semibold text-navy-900 ring-1 ring-blue-100 hover:bg-blue-50",
+                      collapsed && "justify-center px-0",
+                    )}
+                  >
+                    <Icon className={cn("size-[18px] shrink-0", active ? "text-navy-900" : "text-muted-foreground")} strokeWidth={1.8} aria-hidden />
+                    {!collapsed && <span className="truncate">{item.label}</span>}
+                    {item.count && (
+                      <span className={cn(!collapsed && "ml-auto")}>
+                        <CountBadge value={counts[item.count]} collapsed={collapsed} />
+                      </span>
+                    )}
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      ))}
     </nav>
   )
 }
 
-function CostCard({ collapsedBelowXl = true }: { collapsedBelowXl?: boolean }) {
+function Logo() {
+  return (
+    <span className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-[linear-gradient(145deg,var(--blue-500),var(--navy-900))] text-[15px] font-bold text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.3)]">
+      A
+    </span>
+  )
+}
+
+function WorkspaceCard({ collapsed }: { collapsed: boolean }) {
   const { data } = useSWR<Status>("/api/status", fetcher, { refreshInterval: 30000 })
   const spent = data?.anggaran.terpakai_bulan_ini_rp ?? 0
   const cap = data?.anggaran.bulanan_rp ?? 1
-  return (
-    <div className={cn("glass-dark !rounded-lg p-3", collapsedBelowXl && "max-xl:hidden")}>
-      <div className="text-[11px] tracking-[0.02em] text-sidebar-foreground/70">Biaya AI bulan ini</div>
-      <div className="tabular mt-0.5 text-lg font-semibold text-white">{formatRp(spent, { decimals: true })}</div>
-      <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/10">
-        <div className="h-full rounded-full bg-mint-glow" style={{ width: `${Math.min(100, (spent / cap) * 100)}%` }} />
+  if (collapsed) {
+    return (
+      <div className="flex justify-center" title={`Biaya AI bulan ini ${formatRp(spent, { decimals: true })}`}>
+        <span className="flex size-9 items-center justify-center rounded-[10px] bg-blue-50 text-[12px] font-semibold text-navy-900">CV</span>
       </div>
-      <div className="mt-1 text-[11px] text-sidebar-foreground/60">
-        dari batas {formatRp(cap)} · {data?.llm.aktif ? data.llm.model.replace("gemini/", "") : "mode offline"}
+    )
+  }
+  return (
+    <div className="space-y-3">
+      <div className="rounded-xl border border-line bg-soft/60 p-3">
+        <div className="flex items-center justify-between text-[12px]">
+          <span className="text-muted-foreground">Biaya AI bulan ini</span>
+          <span className="tabular font-semibold text-foreground">{formatRp(spent, { decimals: true })}</span>
+        </div>
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-line">
+          <div className="h-full rounded-full bg-[linear-gradient(90deg,var(--blue-400),var(--navy-900))]" style={{ width: `${Math.max(2, Math.min(100, (spent / cap) * 100))}%` }} />
+        </div>
+        <div className="mt-1.5 text-[11px] text-subtle-foreground">
+          batas {formatRp(cap)} · {data?.llm.aktif ? data.llm.model.replace("gemini/", "") : "mode offline"}
+        </div>
+      </div>
+      <div className="flex items-center gap-3 rounded-xl border border-line bg-white p-2.5">
+        <span className="flex size-9 items-center justify-center rounded-[10px] bg-[linear-gradient(145deg,var(--blue-400),var(--navy-800))] text-[12px] font-semibold text-white">CV</span>
+        <div className="min-w-0 flex-1 leading-tight">
+          <div className="text-[11px] text-subtle-foreground">Tim</div>
+          <div className="truncate text-[13px] font-semibold">CV Arba&apos;in · Penjualan</div>
+        </div>
+        <ChevronsUpDown className="size-4 text-subtle-foreground" aria-hidden />
       </div>
     </div>
   )
 }
 
-function Brand({ collapsedBelowXl = true }: { collapsedBelowXl?: boolean }) {
+function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   return (
-    <Link href="/" className={cn("flex items-center gap-2.5 px-2", collapsedBelowXl && "max-xl:justify-center max-xl:px-0")}>
-      <span className="relative flex size-9 shrink-0 items-center justify-center rounded-xl bg-[radial-gradient(circle_at_30%_25%,var(--mint-glow),var(--emerald-500)_55%,var(--emerald-900))] shadow-[0_0_24px_-4px_rgb(167_243_208/0.6)]">
-        <span className="font-display text-[17px] text-emerald-950 italic">a</span>
-      </span>
-      <span className={cn("leading-tight", collapsedBelowXl && "max-xl:sr-only")}>
-        <span className="block font-display text-[19px] text-white">AAGE</span>
-        <span className="block text-[11px] text-sidebar-foreground/60">CV Arba&apos;in · Growth Engine</span>
-      </span>
-    </Link>
-  )
-}
-
-function Sidebar() {
-  return (
-    <aside className="dark-anchor sticky top-0 hidden h-dvh w-[72px] shrink-0 flex-col gap-6 border-r border-sidebar-border px-3 py-5 lg:flex xl:w-[248px] xl:px-4">
-      <Brand />
-      <NavLinks />
-      <div className="mt-auto">
-        <CostCard />
+    <aside
+      className={cn(
+        "sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-200 lg:flex",
+        collapsed ? "w-[76px]" : "w-[252px]",
+      )}
+    >
+      <div className={cn("flex h-16 items-center gap-2.5 border-b border-line", collapsed ? "justify-center px-2" : "px-5")}>
+        <Link href="/" className="flex items-center gap-2.5">
+          <Logo />
+          {!collapsed && <span className="text-[17px] font-bold tracking-tight text-navy-900">AAGE</span>}
+        </Link>
+        {!collapsed && (
+          <button
+            type="button"
+            onClick={onToggle}
+            className="ml-auto flex size-8 items-center justify-center rounded-lg border border-line text-muted-foreground hover:bg-soft"
+            aria-label="Ciutkan sidebar"
+          >
+            <PanelLeftClose className="size-4" />
+          </button>
+        )}
+      </div>
+      <div className={cn("scrollbar-thin flex-1 overflow-y-auto py-5", collapsed ? "px-3" : "px-4")}>
+        {collapsed && (
+          <button
+            type="button"
+            onClick={onToggle}
+            className="mx-auto mb-4 flex size-9 items-center justify-center rounded-lg border border-line text-muted-foreground hover:bg-soft"
+            aria-label="Lebarkan sidebar"
+          >
+            <PanelLeftOpen className="size-4" />
+          </button>
+        )}
+        <NavLinks collapsed={collapsed} />
+      </div>
+      <div className={cn("border-t border-line py-4", collapsed ? "px-3" : "px-4")}>
+        <WorkspaceCard collapsed={collapsed} />
       </div>
     </aside>
   )
 }
 
 function Topbar({ user, onOpenCommand, onOpenNav }: { user: SessionUser | null; onOpenCommand: () => void; onOpenNav: () => void }) {
-  const pathname = usePathname()
   const router = useRouter()
   const { data: status } = useSWR<Status>("/api/status", fetcher, { refreshInterval: 30000 })
-  const current = NAV.find((n) => (n.href === "/" ? pathname === "/" : pathname.startsWith(n.href)))
+  const counts = useCounts()
   const [menu, setMenu] = useState(false)
   return (
-    <header className="glass sticky top-3 z-30 mx-4 mt-3 flex h-14 items-center gap-3 !rounded-lg px-3 md:mx-6 md:px-4">
-      <button type="button" onClick={onOpenNav} className="flex size-9 items-center justify-center rounded-md hover:bg-cream-100 lg:hidden" aria-label="Buka navigasi">
-        <Menu className="size-5" />
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-line bg-white/90 px-4 backdrop-blur md:px-8">
+      <button type="button" onClick={onOpenNav} className="flex size-9 items-center justify-center rounded-lg border border-line lg:hidden" aria-label="Buka navigasi">
+        <Menu className="size-4" />
       </button>
-      <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-[13px]">
-        <span className="hidden text-muted-foreground sm:inline">AAGE</span>
-        <span className="hidden text-subtle-foreground sm:inline">/</span>
-        <span className="truncate font-semibold">{current?.label ?? "Dashboard"}</span>
-      </nav>
       <button
         type="button"
         onClick={onOpenCommand}
-        className="ml-auto flex h-9 w-full max-w-72 items-center gap-2 rounded-md border border-cream-200 bg-white/70 px-3 text-[13px] text-subtle-foreground hover:border-emerald-500/30"
+        className="flex h-10 w-full max-w-[360px] items-center gap-2.5 rounded-[10px] border border-line bg-white px-3 text-[13.5px] text-subtle-foreground transition-colors hover:border-blue-300"
       >
         <Search className="size-4" aria-hidden />
-        <span className="truncate">Cari halaman atau aksi…</span>
-        <kbd className="ml-auto hidden rounded border border-cream-200 bg-cream-100 px-1.5 font-mono text-[11px] sm:inline">⌘K</kbd>
+        <span className="truncate">Cari halaman atau aksi</span>
+        <kbd className="ml-auto hidden rounded-md border border-line bg-soft px-1.5 font-mono text-[11px] text-muted-foreground sm:inline">⌘ K</kbd>
       </button>
-      <Link
-        href="/chat"
-        target="_blank"
-        className="hidden h-9 items-center gap-2 rounded-md px-2.5 text-[12.5px] text-muted-foreground hover:bg-cream-100 md:flex"
-        title={status?.whatsapp.aktif ? "WhatsApp Cloud API terhubung" : "WhatsApp belum dikonfigurasi — gunakan web chat cadangan"}
-      >
-        <span className={cn("size-2 rounded-full", status?.whatsapp.aktif ? "bg-emerald-500" : "bg-review")} aria-hidden />
-        <span>{status?.whatsapp.aktif ? "WA aktif" : "WA: web chat"}</span>
-      </Link>
-      <div className="relative">
-        <button
-          type="button"
-          onClick={() => setMenu((v) => !v)}
-          className="flex size-9 items-center justify-center rounded-full bg-emerald-900 text-[13px] font-semibold text-primary-foreground"
-          aria-label="Menu akun"
+
+      <div className="ml-auto flex items-center gap-1.5">
+        <span
+          className="hidden h-8 items-center gap-1.5 rounded-full border border-line px-3 text-[12px] text-muted-foreground md:inline-flex"
+          title={status?.whatsapp.aktif ? "WhatsApp Cloud API terhubung" : "WhatsApp belum dikonfigurasi — gunakan web chat cadangan"}
         >
-          {user?.nama?.slice(0, 1) ?? "?"}
-        </button>
-        {menu && (
-          <div className="glass glass-strong absolute top-11 right-0 w-56 !rounded-lg p-2 text-[13px]" onMouseLeave={() => setMenu(false)}>
-            <div className="px-2 py-1.5">
-              <div className="font-semibold">{user?.nama}</div>
-              <div className="text-muted-foreground">
-                {user?.email} · {user?.role === "admin" ? "Admin" : "Staf"}
-              </div>
+          <span className={cn("size-1.5 rounded-full", status?.whatsapp.aktif ? "bg-ok" : "bg-review")} aria-hidden />
+          {status?.whatsapp.aktif ? "WhatsApp aktif" : "WhatsApp: web chat"}
+        </span>
+        <Link href="/approval" className="relative flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-soft" aria-label="Approval menunggu">
+          <Bell className="size-[18px]" />
+          {counts.approval > 0 && <span className="absolute top-2 right-2 size-2 rounded-full bg-blue-500 ring-2 ring-white" />}
+        </Link>
+        <span className="mx-2 hidden h-6 w-px bg-line sm:block" aria-hidden />
+        <div className="relative">
+          <button type="button" onClick={() => setMenu((v) => !v)} className="flex items-center gap-2.5 rounded-lg py-1 pr-1 pl-1 hover:bg-soft" aria-label="Menu akun">
+            <span className="flex size-8 items-center justify-center rounded-full bg-blue-100 text-[13px] font-semibold text-navy-900">
+              {user?.nama?.slice(0, 1) ?? "?"}
+            </span>
+            <span className="hidden text-left leading-tight sm:block">
+              <span className="block text-[13px] font-semibold">{user?.nama}</span>
+              <span className="block text-[11.5px] text-subtle-foreground">{user?.role === "admin" ? "Admin" : "Staf"}</span>
+            </span>
+          </button>
+          {menu && (
+            <div className="glass glass-strong absolute top-12 right-0 w-56 p-1.5 text-[13px]" onMouseLeave={() => setMenu(false)}>
+              <div className="px-2.5 py-2 text-muted-foreground">{user?.email}</div>
+              <button
+                type="button"
+                onClick={() => {
+                  clearSession()
+                  router.replace("/login")
+                }}
+                className="flex h-9 w-full items-center gap-2 rounded-lg px-2.5 text-left hover:bg-soft"
+              >
+                <LogOut className="size-4" /> Keluar
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                clearSession()
-                router.replace("/login")
-              }}
-              className="flex h-9 w-full items-center gap-2 rounded-md px-2 text-left hover:bg-cream-100"
-            >
-              <LogOut className="size-4" /> Keluar
-            </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </header>
   )
@@ -226,34 +301,31 @@ function Topbar({ user, onOpenCommand, onOpenNav }: { user: SessionUser | null; 
 
 function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const router = useRouter()
-  const go = (href: string) => {
+  const go = (href: string, external?: boolean) => {
     onOpenChange(false)
-    router.push(href)
+    if (external) window.open(href, "_blank")
+    else router.push(href)
   }
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange} title="Palet perintah" description="Cari halaman atau aksi">
       <CommandInput placeholder="Ketik nama halaman atau aksi…" />
       <CommandList>
         <CommandEmpty>Tidak ditemukan.</CommandEmpty>
-        <CommandGroup heading="Halaman">
-          {NAV.map((n) => (
-            <CommandItem key={n.href} onSelect={() => go(n.href)}>
-              <n.icon className="size-4" /> {n.label}
-            </CommandItem>
-          ))}
-        </CommandGroup>
+        {NAV_GROUPS.map((g) => (
+          <CommandGroup key={g.label} heading={g.label}>
+            {g.items.map((n) => (
+              <CommandItem key={n.href} onSelect={() => go(n.href, n.external)}>
+                <n.icon className="size-4" /> {n.label}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        ))}
         <CommandGroup heading="Aksi cepat">
           <CommandItem onSelect={() => go("/approval")}>
             <ClipboardCheck className="size-4" /> Tinjau antrean approval <CommandShortcut>A</CommandShortcut>
           </CommandItem>
-          <CommandItem onSelect={() => go("/claimguard")}>
-            <ShieldHalf className="size-4" /> Periksa teks dengan ClaimGuard
-          </CommandItem>
           <CommandItem onSelect={() => go("/prospek")}>
             <MapPinned className="size-4" /> Petakan prospek wilayah
-          </CommandItem>
-          <CommandItem onSelect={() => window.open("/chat", "_blank")}>
-            <MessageCircle className="size-4" /> Buka web chat cadangan
           </CommandItem>
         </CommandGroup>
       </CommandList>
@@ -261,12 +333,15 @@ function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (
   )
 }
 
+const COLLAPSE_KEY = "aage.sidebar.collapsed"
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const [ready, setReady] = useState(false)
   const [user, setUser] = useState<SessionUser | null>(null)
   const [cmd, setCmd] = useState(false)
   const [nav, setNav] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
 
   useEffect(() => {
     if (!getToken()) {
@@ -274,6 +349,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       return
     }
     setUser(getUser())
+    try {
+      setCollapsed(window.localStorage.getItem(COLLAPSE_KEY) === "1")
+    } catch {
+      /* abaikan */
+    }
     setReady(true)
   }, [router])
 
@@ -288,25 +368,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", onKey)
   }, [])
 
-  if (!ready) return <div className="app-bg min-h-dvh" />
+  const toggle = () =>
+    setCollapsed((v) => {
+      try {
+        window.localStorage.setItem(COLLAPSE_KEY, v ? "0" : "1")
+      } catch {
+        /* abaikan */
+      }
+      return !v
+    })
+
+  if (!ready) return <div className="min-h-dvh bg-background" />
 
   return (
-    <div className="app-bg flex min-h-dvh">
-      <Sidebar />
+    <div className="flex min-h-dvh bg-background">
+      <Sidebar collapsed={collapsed} onToggle={toggle} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar user={user} onOpenCommand={() => setCmd(true)} onOpenNav={() => setNav(true)} />
-        <main className="mx-auto w-full max-w-[1440px] flex-1 px-4 pt-6 pb-10 md:px-6">{children}</main>
+        <main className="mx-auto w-full max-w-[1440px] flex-1 px-4 pt-7 pb-12 md:px-8">{children}</main>
       </div>
       <CommandPalette open={cmd} onOpenChange={setCmd} />
       <Sheet open={nav} onOpenChange={setNav}>
-        <SheetContent side="left" className="dark-anchor w-72 border-sidebar-border p-4" showCloseButton={false}>
+        <SheetContent side="left" className="w-72 bg-white p-0" showCloseButton={false}>
           <SheetTitle className="sr-only">Navigasi</SheetTitle>
-          <div className="flex h-full flex-col gap-6 py-2">
-            <Brand collapsedBelowXl={false} />
-            <NavLinks collapsedBelowXl={false} onNavigate={() => setNav(false)} />
-            <div className="mt-auto">
-              <CostCard collapsedBelowXl={false} />
-            </div>
+          <div className="flex h-16 items-center gap-2.5 border-b border-line px-5">
+            <Logo />
+            <span className="text-[17px] font-bold tracking-tight text-navy-900">AAGE</span>
+          </div>
+          <div className="flex-1 overflow-y-auto px-4 py-5">
+            <NavLinks collapsed={false} onNavigate={() => setNav(false)} />
+          </div>
+          <div className="border-t border-line p-4">
+            <WorkspaceCard collapsed={false} />
           </div>
         </SheetContent>
       </Sheet>

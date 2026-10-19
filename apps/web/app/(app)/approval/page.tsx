@@ -10,7 +10,7 @@ import useSWR from "swr"
 import { AButton } from "@/components/aage/button"
 import { WaText } from "@/components/aage/chat-bubble"
 import { EmptyState, SkeletonRows } from "@/components/aage/empty-state"
-import { GlassCard, PageHeader } from "@/components/aage/glass-card"
+import { Panel, PageHeader } from "@/components/aage/panel"
 import { Pill, VerdictBadge } from "@/components/aage/status"
 import { ApiError, api, fetcher } from "@/lib/api"
 import { contactName, relativeTime } from "@/lib/format"
@@ -57,7 +57,7 @@ function ApprovalCard({
       onClick={onFocus}
       className="mb-4"
     >
-      <GlassCard className={cn("p-5 transition-shadow", focused && "shadow-glow ring-1 ring-emerald-500/40")}>
+      <Panel className={cn("p-5 transition-shadow", focused && "shadow-glow ring-1 ring-blue-500/40")}>
         <div className="flex flex-wrap items-start gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
@@ -74,14 +74,14 @@ function ApprovalCard({
             </p>
           </div>
           {a.conversation_id && (
-            <Link href={`/inbox?id=${a.conversation_id}`} className="text-[13px] font-medium text-emerald-700 hover:underline">
+            <Link href={`/inbox?id=${a.conversation_id}`} className="text-[13px] font-medium text-navy-700 hover:underline">
               Buka chat
             </Link>
           )}
         </div>
 
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
-          <div className="rounded-lg bg-cream-100/80 p-3 text-[13px]">
+          <div className="rounded-lg bg-soft/80 p-3 text-[13px]">
             <div className="mb-1.5 text-[12px] font-medium text-muted-foreground">{head}</div>
             <div className="space-y-1">
               {lines.map((l, i) => (
@@ -103,7 +103,7 @@ function ApprovalCard({
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 rows={6}
-                className="w-full rounded-lg border border-cream-200 bg-white p-3 text-[14px] leading-6 outline-none focus:border-emerald-500"
+                className="w-full rounded-lg border border-line bg-white p-3 text-[14px] leading-6 outline-none focus:border-blue-500"
                 aria-label="Edit draf balasan"
                 onKeyDown={(e) => {
                   if (e.key === "Escape") onEdit(false)
@@ -111,7 +111,7 @@ function ApprovalCard({
                 }}
               />
             ) : (
-              <div className="rounded-lg border border-cream-200 bg-white p-3 leading-6 whitespace-pre-wrap">
+              <div className="rounded-lg border border-line bg-white p-3 leading-6 whitespace-pre-wrap">
                 {a.draf ? <WaText text={a.draf} /> : <span className="text-subtle-foreground">Belum ada draf — tulis balasan lewat Edit.</span>}
               </div>
             )}
@@ -152,7 +152,7 @@ function ApprovalCard({
             </>
           )}
         </div>
-      </GlassCard>
+      </Panel>
     </motion.div>
   )
 }
@@ -237,9 +237,9 @@ export default function ApprovalPage() {
           {!data ? (
             <SkeletonRows rows={4} />
           ) : items.length === 0 ? (
-            <GlassCard>
+            <Panel>
               <EmptyState title="Antrean kosong" description="Tidak ada draf yang menunggu. AI menangani sisanya dalam batas wewenangnya." />
-            </GlassCard>
+            </Panel>
           ) : (
             <AnimatePresence initial={false}>
               {items.map((a, i) => (
@@ -259,23 +259,30 @@ export default function ApprovalPage() {
           )}
         </div>
         <aside>
-          <h2 className="mb-3 text-base font-semibold">Baru diputuskan</h2>
-          <ul className="space-y-2">
-            {decided.map((a) => (
-              <li key={a.id} className="rounded-lg border bg-card p-3 text-[13px] shadow-xs">
-                <div className="flex items-center gap-2">
-                  <span className="truncate font-medium">{contactName(a.contact)}</span>
-                  <span className={cn("ml-auto text-[12px] font-medium", a.status === "disetujui" ? "text-ok" : "text-blocked")}>
-                    {a.status === "disetujui" ? "Disetujui" : "Ditolak"}
-                  </span>
-                </div>
-                <div className="text-[12px] text-subtle-foreground">
-                  oleh {a.ditinjau_oleh} · {relativeTime(a.diputus_pada)}
-                </div>
-              </li>
-            ))}
-            {decided.length === 0 && <li className="text-[13px] text-muted-foreground">Belum ada keputusan.</li>}
-          </ul>
+          <Panel className="overflow-hidden">
+            <div className="border-b border-line px-4 py-3.5 text-[14.5px] font-semibold">Baru diputuskan</div>
+            <ul className="divide-y divide-line">
+              {decided.map((a) => (
+                <li key={a.id} className="px-4 py-3 text-[13px]">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate font-medium">{contactName(a.contact)}</span>
+                    <span
+                      className={cn(
+                        "ml-auto inline-flex h-5 items-center rounded-md px-1.5 text-[11.5px] font-semibold",
+                        a.status === "disetujui" ? "bg-ok-bg text-ok" : "bg-blocked-bg text-blocked",
+                      )}
+                    >
+                      {a.status === "disetujui" ? "Disetujui" : "Ditolak"}
+                    </span>
+                  </div>
+                  <div className="mt-0.5 text-[12px] text-subtle-foreground">
+                    {a.ditinjau_oleh} · {relativeTime(a.diputus_pada)}
+                  </div>
+                </li>
+              ))}
+              {decided.length === 0 && <li className="px-4 py-3 text-[13px] text-muted-foreground">Belum ada keputusan.</li>}
+            </ul>
+          </Panel>
         </aside>
       </div>
     </div>

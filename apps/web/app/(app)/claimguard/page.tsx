@@ -8,7 +8,7 @@ import useSWR from "swr"
 import { AButton } from "@/components/aage/button"
 import { ClaimHighlight } from "@/components/aage/claim-highlight"
 import { EmptyState } from "@/components/aage/empty-state"
-import { GlassCard, PageHeader, SectionTitle } from "@/components/aage/glass-card"
+import { Panel, PageHeader, SectionTitle } from "@/components/aage/panel"
 import { ScanningBadge, VerdictBadge } from "@/components/aage/status"
 import { api, fetcher } from "@/lib/api"
 import { formatDuration } from "@/lib/format"
@@ -53,8 +53,8 @@ export default function ClaimGuardPage() {
         description="Tempel teks atau URL. Setiap kalimat diperiksa 3 tahap: aturan deterministik → pencocokan klaim disetujui → LLM-judge untuk kasus ambigu."
       />
       <div className="grid gap-6 lg:grid-cols-2">
-        <GlassCard className="flex flex-col gap-4 p-5">
-          <div className="flex gap-1 self-start rounded-lg bg-cream-100 p-1" role="tablist">
+        <Panel className="flex flex-col gap-4 p-5">
+          <div className="flex gap-1 self-start rounded-lg bg-soft p-1" role="tablist">
             {(["teks", "url"] as const).map((m) => (
               <button
                 key={m}
@@ -72,7 +72,7 @@ export default function ClaimGuardPage() {
               value={text}
               onChange={(e) => setText(e.target.value)}
               rows={12}
-              className="min-h-64 w-full flex-1 rounded-lg border border-cream-200 bg-white p-3 text-[14px] leading-6 outline-none focus:border-emerald-500"
+              className="min-h-64 w-full flex-1 rounded-lg border border-line bg-white p-3 text-[14px] leading-6 outline-none focus:border-blue-500"
               aria-label="Teks yang diperiksa"
             />
           ) : (
@@ -80,13 +80,13 @@ export default function ClaimGuardPage() {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://situs-mitra.co.id/produk/madu"
-              className="h-11 w-full rounded-lg border border-cream-200 bg-white px-3 outline-none focus:border-emerald-500"
+              className="h-11 w-full rounded-lg border border-line bg-white px-3 outline-none focus:border-blue-500"
               aria-label="URL halaman"
             />
           )}
           <label className="grid gap-1 text-[12px] text-muted-foreground">
             Konteks produk (opsional — untuk mencocokkan klaim disetujui produk tersebut)
-            <select value={productId} onChange={(e) => setProductId(e.target.value)} className="h-9 rounded-md border border-cream-200 bg-white px-2.5 text-[13px] text-foreground">
+            <select value={productId} onChange={(e) => setProductId(e.target.value)} className="h-9 rounded-md border border-line bg-white px-2.5 text-[13px] text-foreground">
               <option value="">Semua produk</option>
               {products?.items.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -98,9 +98,9 @@ export default function ClaimGuardPage() {
           <AButton onClick={check} disabled={loading || (mode === "teks" ? !text.trim() : !url.trim())} className="self-start">
             <ScanSearch className="size-4" /> Periksa
           </AButton>
-        </GlassCard>
+        </Panel>
 
-        <GlassCard strong className="p-5">
+        <Panel className="p-5">
           <SectionTitle aside={loading ? <ScanningBadge /> : result ? <VerdictBadge verdict={result.verdict} rules={result.rules_triggered} size="md" animate /> : null}>
             Hasil
           </SectionTitle>
@@ -122,7 +122,7 @@ export default function ClaimGuardPage() {
                   </div>
                 ))}
               </div>
-              <div className="rounded-lg border border-cream-200 bg-white p-4">
+              <div className="rounded-lg border border-line bg-white p-4">
                 <ClaimHighlight text={result.text ?? text} result={result} />
               </div>
               <p className="text-[12px] text-subtle-foreground">
@@ -147,7 +147,7 @@ export default function ClaimGuardPage() {
               )}
             </div>
           )}
-        </GlassCard>
+        </Panel>
       </div>
     </div>
   )

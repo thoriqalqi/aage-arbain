@@ -11,6 +11,7 @@ import { AButton } from "@/components/aage/button"
 import { ChatBubble } from "@/components/aage/chat-bubble"
 import { EmptyState, SkeletonRows } from "@/components/aage/empty-state"
 import { LedgerTimeline } from "@/components/aage/ledger-timeline"
+import { PageHeader } from "@/components/aage/panel"
 import { ConversationStatus, CostChip, Pill, VerdictBadge } from "@/components/aage/status"
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
@@ -53,7 +54,7 @@ function ConversationList({ selected, onSelect }: { selected: number | null; onS
   return (
     <div className="flex h-full flex-col">
       <div className="space-y-3 border-b p-3">
-        <label className="flex h-9 items-center gap-2 rounded-md border border-cream-200 bg-white px-2.5">
+        <label className="flex h-9 items-center gap-2 rounded-md border border-line bg-white px-2.5">
           <Search className="size-4 text-subtle-foreground" aria-hidden />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari toko atau pesan" className="min-w-0 flex-1 bg-transparent text-[13px] outline-none" aria-label="Cari percakapan" />
         </label>
@@ -66,7 +67,7 @@ function ConversationList({ selected, onSelect }: { selected: number | null; onS
               onClick={() => setFilter(f.key)}
               className={cn(
                 "h-7 rounded-full px-2.5 text-[12px] font-medium transition-colors",
-                filter === f.key ? "bg-primary text-primary-foreground" : "bg-cream-100 text-muted-foreground hover:bg-cream-200",
+                filter === f.key ? "bg-primary text-primary-foreground" : "bg-soft text-muted-foreground hover:bg-line",
               )}
             >
               {f.label}
@@ -87,11 +88,11 @@ function ConversationList({ selected, onSelect }: { selected: number | null; onS
                 <button
                   onClick={() => onSelect(c.id)}
                   className={cn(
-                    "flex w-full gap-3 border-b border-cream-200/70 px-3 py-3 text-left transition-colors hover:bg-cream-100/70",
-                    selected === c.id && "bg-emerald-100/50",
+                    "flex w-full gap-3 border-b border-line/70 px-3 py-3 text-left transition-colors hover:bg-soft/70",
+                    selected === c.id && "bg-blue-50",
                   )}
                 >
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-cream-200 text-[13px] font-semibold text-emerald-900">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-line text-[13px] font-semibold text-navy-900">
                     {(c.contact.nama_toko || "P").slice(0, 1)}
                   </span>
                   <span className="min-w-0 flex-1">
@@ -124,7 +125,7 @@ function ContextPanel({ conv }: { conv: ConversationDetail }) {
         <h3 className="mb-2 text-[12px] font-medium tracking-[0.02em] text-muted-foreground">Profil toko</h3>
         <div className="space-y-1">
           <div className="flex items-center gap-2 font-semibold">
-            <Store className="size-4 text-emerald-700" /> {c.nama_toko || "Belum diketahui"}
+            <Store className="size-4 text-navy-700" /> {c.nama_toko || "Belum diketahui"}
           </div>
           <div className="font-mono text-[12px] text-muted-foreground">{c.wa_number}</div>
           {c.alamat && <div className="text-[13px] text-muted-foreground">{c.alamat}</div>}
@@ -157,7 +158,7 @@ function ContextPanel({ conv }: { conv: ConversationDetail }) {
       <section>
         <h3 className="mb-3 text-[12px] font-medium tracking-[0.02em] text-muted-foreground">Ledger percakapan</h3>
         <LedgerTimeline events={conv.ledger.slice(-24)} dense />
-        <Link href={`/ledger?conversation_id=${conv.id}`} className="text-[13px] font-medium text-emerald-700 hover:underline">
+        <Link href={`/ledger?conversation_id=${conv.id}`} className="text-[13px] font-medium text-navy-700 hover:underline">
           Lihat semua event →
         </Link>
       </section>
@@ -171,7 +172,9 @@ function ChatPanel({ id, onOpenContext, showContextButton }: { id: number; onOpe
   const [sending, setSending] = useState(false)
   const [blocked, setBlocked] = useState<CheckResult | null>(null)
   const bottom = useRef<HTMLDivElement>(null)
-  useEffect(() => bottom.current?.scrollIntoView({ block: "end" }), [data?.pesan.length])
+  useEffect(() => {
+    bottom.current?.scrollIntoView({ block: "end" })
+  }, [data?.pesan.length])
 
   async function send() {
     if (!text.trim()) return
@@ -284,11 +287,13 @@ function InboxInner() {
   )
 
   return (
-    <div className="h-[calc(100dvh-8.5rem)] min-h-[520px] overflow-hidden rounded-lg border bg-card shadow-xs">
+    <>
+    <PageHeader title="Inbox" description="Semua chat WhatsApp & web chat. Bubble AI menampilkan verdict ClaimGuard dan sumbernya." />
+    <div className="panel h-[calc(100dvh-13rem)] min-h-[520px] overflow-hidden">
       {!medium ? (
         selected ? (
           <div className="flex h-full flex-col">
-            <button onClick={() => router.replace("/inbox")} className="border-b px-4 py-2 text-left text-[13px] text-emerald-700">← Semua percakapan</button>
+            <button onClick={() => router.replace("/inbox")} className="border-b px-4 py-2 text-left text-[13px] text-navy-700">← Semua percakapan</button>
             <div className="min-h-0 flex-1">{chat}</div>
           </div>
         ) : (
@@ -320,6 +325,7 @@ function InboxInner() {
         </SheetContent>
       </Sheet>
     </div>
+    </>
   )
 }
 

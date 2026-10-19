@@ -12,7 +12,7 @@ import type { Prospect } from "@/lib/types"
 const token = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim()
 
 export default function ProspectMap({ items, onSelect }: { items: Prospect[]; onSelect: (p: Prospect) => void }) {
-  const c = { stroke: token("--emerald-900"), hi: token("--emerald-500"), mid: token("--champagne-600"), lo: token("--chart-5") }
+  const c = { stroke: token("--navy-900"), hi: token("--blue-500"), mid: token("--blue-400"), lo: token("--chart-5") }
   const pts = items.filter((p) => p.lat != null && p.lng != null)
   const center: [number, number] = pts.length ? [pts[0].lat as number, pts[0].lng as number] : [-6.9932, 110.4203]
   return (

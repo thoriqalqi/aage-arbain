@@ -51,8 +51,8 @@ export function SourceChip({ source, className }: { source: Source; className?: 
         disabled={!clickable}
         onClick={() => setOpen(true)}
         className={cn(
-          "inline-flex h-6 max-w-full items-center gap-1 rounded-full border border-cream-200 bg-white/70 px-2 text-[11.5px] text-muted-foreground transition-colors",
-          clickable ? "cursor-pointer hover:border-emerald-500/40 hover:text-emerald-900" : "cursor-default",
+          "inline-flex h-6 max-w-full items-center gap-1 rounded-full border border-line bg-white/70 px-2 text-[11.5px] text-muted-foreground transition-colors",
+          clickable ? "cursor-pointer hover:border-blue-500/40 hover:text-navy-900" : "cursor-default",
           className,
         )}
         title={sourceLabel(source)}
@@ -73,7 +73,7 @@ export function SourceChip({ source, className }: { source: Source; className?: 
             </SheetHeader>
             <div className="space-y-3 px-4 pb-6">
               <div className="font-mono text-[12px] text-subtle-foreground">chunk #{source.chunk_id}</div>
-              <p className="rounded-lg bg-cream-100 p-4 leading-6 whitespace-pre-wrap">{data?.teks ?? source.kutipan}</p>
+              <p className="rounded-lg bg-soft p-4 leading-6 whitespace-pre-wrap">{data?.teks ?? source.kutipan}</p>
               {source.skor != null && (
                 <p className="text-[12px] text-muted-foreground">Skor relevansi retrieval: {source.skor.toFixed(2)}</p>
               )}

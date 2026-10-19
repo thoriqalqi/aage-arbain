@@ -93,7 +93,7 @@ export function CostChip({ value, className }: { value: number | null | undefine
   const v = value ?? 0
   const text = v === 0 ? "Rp 0" : v < 1 ? `Rp ${v.toLocaleString("id-ID", { maximumFractionDigits: 2 })}` : `Rp ${Math.round(v).toLocaleString("id-ID")}`
   return (
-    <span className={cn("inline-flex h-5 items-center rounded-md bg-cream-100 px-1.5 font-mono text-[11px] text-muted-foreground", className)}>
+    <span className={cn("inline-flex h-5 items-center rounded-md bg-soft px-1.5 font-mono text-[11px] text-muted-foreground", className)}>
       {text}
     </span>
   )
@@ -101,7 +101,7 @@ export function CostChip({ value, className }: { value: number | null | undefine
 
 export function Pill({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <span className={cn("inline-flex h-6 items-center gap-1 rounded-full bg-cream-100 px-2 text-[12px] font-medium text-muted-foreground", className)}>
+    <span className={cn("inline-flex h-6 items-center gap-1 rounded-full bg-soft px-2 text-[12px] font-medium text-muted-foreground", className)}>
       {children}
     </span>
   )

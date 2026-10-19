@@ -7,7 +7,7 @@ import useSWR from "swr"
 
 import { AButton } from "@/components/aage/button"
 import { SkeletonRows } from "@/components/aage/empty-state"
-import { GlassCard, PageHeader, Surface } from "@/components/aage/glass-card"
+import { Panel, PageHeader, Surface } from "@/components/aage/panel"
 import { Pill } from "@/components/aage/status"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { api, fetcher, getUser } from "@/lib/api"
@@ -36,12 +36,12 @@ function Dropzone({ accept, label, onFile, busy }: { accept: string; label: stri
         if (f) onFile(f)
       }}
       className={cn(
-        "glass glass-sheen flex w-full flex-col items-center justify-center gap-2 border-2 border-dashed !border-emerald-500/30 p-6 text-center transition-colors",
-        over && "!border-emerald-500 bg-emerald-100/40",
+        "flex w-full flex-col items-center justify-center gap-2 rounded-[14px] border-2 border-dashed border-blue-200 bg-white p-6 text-center transition-colors hover:border-blue-400 hover:bg-blue-50",
+        over && "!border-blue-500 bg-blue-50",
       )}
       disabled={busy}
     >
-      {busy ? <LoaderCircle className="size-6 animate-spin text-emerald-700" /> : <UploadCloud className="size-6 text-emerald-700" />}
+      {busy ? <LoaderCircle className="size-6 animate-spin text-navy-700" /> : <UploadCloud className="size-6 text-navy-700" />}
       <span className="font-medium">{label}</span>
       <span className="text-[12px] text-muted-foreground">Seret file ke sini atau klik · {accept}</span>
       <input
@@ -123,9 +123,9 @@ export default function KatalogPage() {
               <SkeletonRows className="p-4" rows={8} />
             ) : (
               <table className="w-full text-[13px]">
-                <thead className="bg-cream-100 text-left text-[12px] tracking-[0.02em] text-muted-foreground">
+                <thead className="bg-soft text-left text-[12px] tracking-[0.02em] text-muted-foreground">
                   <tr>
-                    <th className="sticky left-0 bg-cream-100 px-3 py-2.5 font-medium">SKU</th>
+                    <th className="sticky left-0 bg-soft px-3 py-2.5 font-medium">SKU</th>
                     <th className="px-3 py-2.5 font-medium">Produk</th>
                     <th className="px-3 py-2.5 font-medium">Izin edar</th>
                     <th className="px-3 py-2.5 font-medium">Kemasan</th>
@@ -135,8 +135,8 @@ export default function KatalogPage() {
                 </thead>
                 <tbody>
                   {items.map((p, i) => (
-                    <tr key={p.id} className={cn("border-t border-cream-200", i % 2 ? "bg-cream-50" : "bg-white")}>
-                      <td className={cn("sticky left-0 px-3 py-2.5 font-mono text-[12px]", i % 2 ? "bg-cream-50" : "bg-white")}>{p.sku}</td>
+                    <tr key={p.id} className={cn("border-t border-line", i % 2 ? "bg-canvas" : "bg-white")}>
+                      <td className={cn("sticky left-0 px-3 py-2.5 font-mono text-[12px]", i % 2 ? "bg-canvas" : "bg-white")}>{p.sku}</td>
                       <td className="px-3 py-2.5">
                         <div className="font-medium">{p.nama}</div>
                         <div className="line-clamp-1 text-[12px] text-muted-foreground">{p.komposisi}</div>
@@ -167,12 +167,12 @@ export default function KatalogPage() {
                   upload("/api/kb/documents", form, (r) => `${r.judul} v${r.versi} di-ingest`)
                 }}
               />
-              <GlassCard className="flex flex-col justify-center gap-3 p-5">
+              <Panel className="flex flex-col justify-center gap-3 p-5">
                 <div className="flex items-center gap-2 font-medium">
-                  <Link2 className="size-4 text-emerald-700" /> Ingest dari URL
+                  <Link2 className="size-4 text-navy-700" /> Ingest dari URL
                 </div>
-                <input value={docTitle} onChange={(e) => setDocTitle(e.target.value)} placeholder="Judul dokumen" className="h-10 rounded-md border border-cream-200 bg-white px-3 outline-none focus:border-emerald-500" />
-                <input value={docUrl} onChange={(e) => setDocUrl(e.target.value)} placeholder="https://…" className="h-10 rounded-md border border-cream-200 bg-white px-3 outline-none focus:border-emerald-500" />
+                <input value={docTitle} onChange={(e) => setDocTitle(e.target.value)} placeholder="Judul dokumen" className="h-10 rounded-md border border-line bg-white px-3 outline-none focus:border-blue-500" />
+                <input value={docUrl} onChange={(e) => setDocUrl(e.target.value)} placeholder="https://…" className="h-10 rounded-md border border-line bg-white px-3 outline-none focus:border-blue-500" />
                 <AButton
                   className="self-start"
                   disabled={busy || !docUrl || !docTitle}
@@ -185,10 +185,10 @@ export default function KatalogPage() {
                 >
                   <FileUp className="size-4" /> Ingest
                 </AButton>
-              </GlassCard>
+              </Panel>
             </div>
           )}
-          <Surface className="divide-y divide-cream-200">
+          <Surface className="divide-y divide-line">
             {docs?.items.map((d) => (
               <div key={d.id} className="flex flex-wrap items-center gap-3 p-4">
                 <div className="min-w-0 flex-1">
@@ -205,7 +205,7 @@ export default function KatalogPage() {
         </TabsContent>
 
         <TabsContent value="klaim">
-          <Surface className="divide-y divide-cream-200">
+          <Surface className="divide-y divide-line">
             {items.map((p) => (
               <div key={p.id} className="p-4">
                 <div className="mb-2 font-medium">{p.nama}</div>
@@ -235,7 +235,7 @@ export default function KatalogPage() {
         <TabsContent value="tier">
           <Surface className="overflow-x-auto">
             <table className="w-full text-[13px]">
-              <thead className="bg-cream-100 text-left text-[12px] tracking-[0.02em] text-muted-foreground">
+              <thead className="bg-soft text-left text-[12px] tracking-[0.02em] text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2.5 font-medium">Produk</th>
                   <th className="px-3 py-2.5 font-medium">Tier diskon maksimal yang boleh ditawarkan AI</th>
@@ -243,7 +243,7 @@ export default function KatalogPage() {
               </thead>
               <tbody>
                 {items.map((p, i) => (
-                  <tr key={p.id} className={cn("border-t border-cream-200", i % 2 ? "bg-cream-50" : "bg-white")}>
+                  <tr key={p.id} className={cn("border-t border-line", i % 2 ? "bg-canvas" : "bg-white")}>
                     <td className="px-3 py-2.5 font-medium">{p.nama}</td>
                     <td className="px-3 py-2.5">
                       <div className="flex flex-wrap gap-1.5">

@@ -53,7 +53,7 @@ export function actorLabel(aktor: string) {
   return aktor.replace(/^staf:/, "Staf · ")
 }
 
-/** Timeline vertikal event Ledger dengan garis penghubung emerald tipis (design.md §7.2). */
+/** Timeline vertikal event Ledger dengan garis penghubung biru tipis (design.md §7.2). */
 export function LedgerTimeline({
   events,
   onSelect,
@@ -79,11 +79,11 @@ export function LedgerTimeline({
             transition={{ duration: 0.24, delay: Math.min(i, 12) * 0.04, ease: [0.22, 1, 0.36, 1] }}
             className="relative flex gap-3 pb-4"
           >
-            {!last && <span className="absolute top-7 bottom-0 left-[13px] w-px bg-emerald-500/30" aria-hidden />}
+            {!last && <span className="absolute top-7 bottom-0 left-[13px] w-px bg-blue-500/30" aria-hidden />}
             <span
               className={cn(
-                "relative z-10 mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full border bg-white text-emerald-700",
-                highlightId === e.id ? "ring-once border-emerald-500" : "border-cream-200",
+                "relative z-10 mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full border bg-white text-navy-700",
+                highlightId === e.id ? "ring-once border-blue-500" : "border-line",
               )}
             >
               <Icon className="size-3.5" strokeWidth={1.75} aria-hidden />
@@ -93,7 +93,7 @@ export function LedgerTimeline({
               tabIndex={onSelect ? 0 : undefined}
               onClick={onSelect ? () => onSelect(e) : undefined}
               onKeyDown={onSelect ? (ev) => (ev.key === "Enter" || ev.key === " ") && onSelect(e) : undefined}
-              className={cn("min-w-0 flex-1 rounded-md text-left", onSelect && "-mx-2 cursor-pointer px-2 py-0.5 hover:bg-cream-100")}
+              className={cn("min-w-0 flex-1 rounded-md text-left", onSelect && "-mx-2 cursor-pointer px-2 py-0.5 hover:bg-soft")}
             >
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span className="text-[13px] font-semibold">{meta.label}</span>
