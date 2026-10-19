@@ -1,0 +1,57 @@
+{
+  "mode": "offline (deterministik)",
+  "qa": {
+    "n": 150,
+    "akurasi": 100.0,
+    "groundedness": 100.0,
+    "dijawab_otomatis": 150,
+    "contoh_gagal": []
+  },
+  "klaim": {
+    "n": 128,
+    "recall": 98.8,
+    "precision": 100.0,
+    "akurasi_3_kelas": 99.2,
+    "diblokir_lolos": 0,
+    "confusion": {
+      "allowed": {
+        "allowed": 47
+      },
+      "review": {
+        "review": 33,
+        "allowed": 1
+      },
+      "blocked": {
+        "blocked": 47
+      }
+    },
+    "beda_label": [
+      {
+        "kalimat": "Mengandung antioksidan tinggi yang baik untuk tubuh.",
+        "label": "review",
+        "prediksi": "allowed"
+      }
+    ]
+  },
+  "eskalasi": {
+    "n": 30,
+    "ketepatan": 100.0,
+    "gagal": []
+  },
+  "negosiasi": {
+    "n": 12,
+    "sesuai_tier": 100.0
+  },
+  "pesanan": {
+    "n": 9,
+    "lengkap": 100.0
+  },
+  "negosiasi_pesanan_gagal": [],
+  "operasional": {
+    "latensi_rata_ms": 21.7,
+    "latensi_p95_ms": 26.3,
+    "biaya_per_percakapan_rp": 0.0,
+    "selesai_otomatis_persen": 86.0,
+    "pesan": 214
+  }
+}

@@ -1,0 +1,60 @@
+# AAGE — satu perintah untuk VPS:  docker compose up -d --build
+# Seed / reset data demo:           docker compose exec api python -m aage.seed
+# Observability opsional (Langfuse): docker compose --profile observability up -d
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: aage
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aage}
+      POSTGRES_DB: aage
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres-init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aage"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build: ./apps/api
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://aage:${POSTGRES_PASSWORD:-aage}@db:5432/aage
+      CORS_ORIGINS: ${PUBLIC_URL:-http://localhost:3000}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  web:
+    build: ./apps/web
+    environment:
+      API_URL: http://api:8000
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+  langfuse:
+    profiles: ["observability"]
+    image: langfuse/langfuse:2
+    environment:
+      DATABASE_URL: postgresql://aage:${POSTGRES_PASSWORD:-aage}@db:5432/langfuse
+      NEXTAUTH_URL: http://localhost:3001
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:-ganti-saya}
+      SALT: ${LANGFUSE_SALT:-ganti-saya}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3001:3000"
+    restart: unless-stopped
+
+volumes:
+  pgdata:

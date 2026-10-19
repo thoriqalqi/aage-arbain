@@ -1,0 +1,23 @@
+[
+  {"id": "N01", "jenis": "tier", "pesan": ["harga 10 karton habbatussauda?"], "harap": {"sku": "ARB-001", "qty": 10, "diskon": 3}},
+  {"id": "N02", "jenis": "tier", "pesan": ["harga 25 karton propolis tetes"], "harap": {"sku": "ARB-006", "qty": 25, "diskon": 5}},
+  {"id": "N03", "jenis": "tier", "pesan": ["propolis tetes 50 karton berapa?"], "harap": {"sku": "ARB-006", "qty": 50, "diskon": 8}},
+  {"id": "N04", "jenis": "tier", "pesan": ["propolis tetes 100 karton harganya"], "harap": {"sku": "ARB-006", "qty": 100, "diskon": 12}},
+  {"id": "N05", "jenis": "tier", "pesan": ["madu stamina plus 50 karton harganya?"], "harap": {"sku": "ARB-002", "qty": 50, "diskon": 8}},
+  {"id": "N06", "jenis": "tier", "pesan": ["kapsul temulawak 9 karton berapa?"], "harap": {"sku": "ARB-004", "qty": 9, "diskon": 0}},
+  {"id": "N07", "jenis": "dalam batas", "pesan": ["sari kurma 100 karton bisa diskon 10%?"], "harap": {"sku": "ARB-003", "qty": 100, "diskon": 10}},
+  {"id": "N08", "jenis": "dalam batas", "pesan": ["kayu manis 50 karton diskon 5% bisa?"], "harap": {"sku": "ARB-007", "qty": 50, "diskon": 5}},
+  {"id": "N09", "jenis": "dalam batas", "pesan": ["wedang uwuh 25 karton, minta diskon 5 persen"], "harap": {"sku": "ARB-019", "qty": 25, "diskon": 5}},
+  {"id": "N10", "jenis": "dalam batas", "pesan": ["spirulina 10 karton diskon 3%"], "harap": {"sku": "ARB-013", "qty": 10, "diskon": 3}},
+  {"id": "N11", "jenis": "tier (konteks)", "pesan": ["ada madu hutan murni?", "harga 30 karton?"], "harap": {"sku": "ARB-017", "qty": 30, "diskon": 5}},
+  {"id": "N12", "jenis": "tier (konteks)", "pesan": ["kapsul pegagan ready?", "kalau 60 karton harganya?"], "harap": {"sku": "ARB-020", "qty": 60, "diskon": 7}},
+  {"id": "P01", "jenis": "pesanan", "pesan": ["pesan 20 karton jahe merah instan", "Apotek Maju Jaya, alamat Jl. Kaligawe 3 Semarang"], "harap": {"order": true, "item": {"ARB-005": 20}}},
+  {"id": "P02", "jenis": "pesan ulang", "kontak": "6281200000001", "pesan": ["pesan ulang seperti bulan lalu"], "harap": {"order": true, "item": {"ARB-002": 20, "ARB-006": 10}}},
+  {"id": "P03", "jenis": "pesanan", "pesan": ["order 15 karton kapsul sambiloto untuk Toko Obat Sumber Waras, alamat Jl. Pemuda 10 Semarang"], "harap": {"order": true, "item": {"ARB-010": 15}}},
+  {"id": "P04", "jenis": "pesanan bertahap", "pesan": ["mau pesan propolis tetes", "30 karton", "nama toko: Apotek Bunda", "alamat: Jl. Sriwijaya 21 Semarang"], "harap": {"order": true, "item": {"ARB-006": 30}}},
+  {"id": "P05", "jenis": "pesan ulang", "kontak": "6281200000002", "pesan": ["pesan ulang dong"], "harap": {"order": true, "item": {"ARB-001": 15, "ARB-005": 10}}},
+  {"id": "P06", "jenis": "pesanan dari penawaran", "pesan": ["harga 40 karton madu hutan murni?", "oke pesan", "Apotek Lestari, alamat Jl. Fatmawati 7 Semarang"], "harap": {"order": true, "item": {"ARB-017": 40}}},
+  {"id": "P07", "jenis": "pesanan", "pesan": ["beli 12 karton minyak gosok herbal", "Minimarket Cahaya alamat Jl. Siliwangi 2 Semarang"], "harap": {"order": true, "item": {"ARB-016": 12}}},
+  {"id": "P08", "jenis": "pesan ulang tanpa riwayat", "pesan": ["pesan ulang seperti biasa"], "harap": {"order": false}},
+  {"id": "P09", "jenis": "pesanan kontak lama", "kontak": "6281200000004", "pesan": ["pesan 10 karton teh herbal rileks"], "harap": {"order": true, "item": {"ARB-011": 10}}}
+]
