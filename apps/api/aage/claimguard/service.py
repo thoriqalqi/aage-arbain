@@ -3,9 +3,12 @@
 Dipakai oleh Sales Assistant (sebelum kirim), Content Studio (sebelum ekspor), Prospect Mapper
 (draf pesan pembuka), approval staf (teks hasil edit), dan Playground."""
 
+import json
 import re
 import time
 from dataclasses import asdict, dataclass, field
+from functools import lru_cache
+from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -24,6 +27,21 @@ ADVISORY_RE = re.compile(
     re.IGNORECASE,
 )
 MATCH_THRESHOLD = 0.5
+_REGULASI_PATH = Path(__file__).resolve().parents[2] / "config" / "regulasi_bpom.json"
+
+
+@lru_cache
+def regulasi() -> dict:
+    """Rujukan pasal Perban BPOM 30/2023 per aturan (config/regulasi_bpom.json)."""
+    try:
+        return json.loads(_REGULASI_PATH.read_text(encoding="utf-8"))
+    except FileNotFoundError:  # pragma: no cover
+        return {"pasal": {}, "pemetaan_aturan": {}, "peraturan": {"judul": ""}}
+
+
+def pasal_for(rule_id: str) -> list[dict]:
+    reg = regulasi()
+    return [{"kode": k, **reg["pasal"][k]} for k in reg["pemetaan_aturan"].get(rule_id, []) if k in reg["pasal"]]
 
 
 def worst(*verdicts: str) -> str:
@@ -37,6 +55,7 @@ class RuleHit:
     severity: str
     match: str
     alasan: str
+    pasal: list[dict] = field(default_factory=list)
 
 
 @dataclass
@@ -59,6 +78,7 @@ class CheckResult:
     sentences: list[SentenceResult]
     rules_triggered: list[str]
     summary: dict
+    pasal_dilanggar: list[dict]
     safe_text: str
     model: str
     token_in: int = 0
@@ -229,10 +249,24 @@ def check(
     cost = 0.0
 
     name_re = _product_name_re(list(product_names.values()))
+    scope = db.scalars(select(Product).where(Product.id.in_(product_ids))) if product_ids else db.scalars(select(Product))
+    larangan = sorted({ph.lower() for p in scope for ph in (p.larangan or [])}, key=len, reverse=True)
     for sent, start, end in _sentences(text):
         # Nama produk terdaftar (mis. "Jahe Merah Instan") bukan klaim → disamarkan sebelum pemeriksaan.
         masked = name_re.sub(lambda m: "x" * len(m.group(0)), sent) if name_re else sent
         verdict, hits, reasons = _stage1(masked)
+        # R20: frasa larangan overclaim milik produk (kata_kunci_larangan_overclaim di config/mock_products.json)
+        low = sent.lower()
+        for phrase in larangan:
+            idx = low.find(phrase)
+            if idx >= 0 and not is_negated(sent, idx):
+                hits.append(RuleHit("R20", "Frasa larangan overclaim produk", BLOCKED, phrase,
+                                    "Frasa ini tercantum di daftar larangan overclaim produk."))
+                reasons.append(f"R20 Frasa larangan overclaim produk: \"{phrase}\"")
+                verdict = BLOCKED
+                break
+        for h in hits:
+            h.pasal = pasal_for(h.id)
         sr = SentenceResult(sent, start, end, verdict, hits, reasons)
 
         # Tahap 2: kalimat manfaat harus cocok dengan approved_claims.
@@ -276,12 +310,21 @@ def check(
         elif s.suggestion and s.suggestion not in safe_parts:
             safe_parts.append(s.suggestion)
     summary = {v: sum(1 for s in results if s.verdict == v) for v in (ALLOWED, REVIEW, BLOCKED)}
+    pasal_dilanggar: list[dict] = []
+    for s in results:
+        if s.verdict == ALLOWED:
+            continue
+        refs = [ps for h in s.rules for ps in h.pasal] or (pasal_for("KLAIM_TIDAK_TERDAFTAR") if s.stage == "pencocokan" else [])
+        for ps in refs:
+            if ps["kode"] not in {x["kode"] for x in pasal_dilanggar}:
+                pasal_dilanggar.append(ps)
     return CheckResult(
         verdict=overall,
         label=LABELS[overall],
         sentences=results,
         rules_triggered=rules_triggered,
         summary=summary,
+        pasal_dilanggar=pasal_dilanggar,
         safe_text=" ".join(safe_parts),
         model=model,
         token_in=tok_in,

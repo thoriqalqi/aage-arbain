@@ -169,7 +169,7 @@ def draft_harga(db: Session, text: str, conv: Conversation, slots: dict, hits: l
     if not products:
         products = [db.get(Product, h.chunk.product_id) for h in hits[:1] if h.chunk.product_id]
     if not products:
-        return Draft("Produk mana yang ingin Kakak ketahui harganya? Sebutkan nama produk dan jumlah kartonnya ya.",
+        return Draft("Produk mana yang ingin Kakak ketahui harganya? Sebutkan nama produk dan jumlah box-nya ya.",
                      sources=[_template_source("tanya_produk")], template="harga_tanya")
     p = products[0]
     qty = slots.get("qty") or conv.konteks.get("last_qty")
@@ -185,7 +185,7 @@ def draft_harga(db: Session, text: str, conv: Conversation, slots: dict, hits: l
                      konteks={"last_product_ids": [p.id] + [x.id for x in products[1:]], "last_qty": int(qty),
                               "last_quote": {"product_id": p.id, "qty": int(qty), "diskon": q.diskon}})
     body = (f"Harga grosir *{p.nama}*: {rupiah(p.harga_dasar)}/{p.satuan_grosir}, MOQ {p.moq} {p.satuan_grosir}.\n"
-            f"Diskon volume: {sales.tier_table(db, p)}.\nBerapa karton yang Kakak butuhkan?")
+            f"Diskon volume: {sales.tier_table(db, p)}.\nBerapa box yang Kakak butuhkan?")
     return Draft(body, sources=sources, product_ids=[p.id], template="harga_dasar",
                  konteks={"last_product_ids": [p.id]})
 
@@ -193,13 +193,13 @@ def draft_harga(db: Session, text: str, conv: Conversation, slots: dict, hits: l
 def draft_negosiasi(db: Session, text: str, conv: Conversation, slots: dict, hits: list[Hit], **_) -> Draft:
     products = _context_products(db, text, conv)
     if not products:
-        return Draft("Boleh tahu produk dan jumlah karton yang ingin dinegosiasikan, Kak?",
+        return Draft("Boleh tahu produk dan jumlah box yang ingin dinegosiasikan, Kak?",
                      sources=[_template_source("tanya_produk")], template="nego_tanya")
     p = products[0]
     qty = slots.get("qty") or conv.konteks.get("last_qty")
     if not qty:
         return Draft(f"Diskon untuk *{p.nama}* mengikuti volume: {sales.tier_table(db, p)}. "
-                     f"Berapa karton yang Kakak rencanakan?", sources=[_pricing_source(p)],
+                     f"Berapa box yang Kakak rencanakan?", sources=[_pricing_source(p)],
                      product_ids=[p.id], template="nego_tanpa_qty", konteks={"last_product_ids": [p.id]})
     qty = int(qty)
     diminta = slots.get("diskon_diminta")
@@ -268,7 +268,7 @@ def draft_pesan(db: Session, text: str, conv: Conversation, contact: Contact, sl
     if not pending.get("product_ids"):
         missing.append("nama produk")
     if not pending.get("qty"):
-        missing.append("jumlah karton")
+        missing.append("jumlah box")
     if not contact.nama_toko:
         missing.append("nama toko")
     if not contact.alamat:

@@ -49,7 +49,18 @@ def product_chunk_text(p: Product, claims: list[str]) -> str:
         f"Nomor izin edar: {p.no_izin_edar}. "
         f"Harga dasar grosir: {rupiah(p.harga_dasar)} per {p.satuan_grosir}. MOQ: {p.moq} {p.satuan_grosir}. "
         f"Klaim disetujui: {klaim} Kata kunci: {p.kata_kunci}."
+        + _teknis_text(p)
     )
+
+
+def _teknis_text(p: Product) -> str:
+    t = p.data_teknis or {}
+    if not t:
+        return ""
+    bko = t.get("status_bebas_bko", {})
+    halal = t.get("sertifikasi_halal", {})
+    return (f" Sertifikasi halal: {halal.get('status', '-')}. Uji BKO: {bko.get('hasil', '-')} ({bko.get('nomor_laporan_uji', '-')})."
+            f" HET: {rupiah(p.het_per_botol or 0)}/botol.")
 
 
 def _next_version(db: Session, judul: str) -> int:
@@ -83,12 +94,15 @@ def import_catalog(db: Session, rows: list[dict], *, judul: str = "Katalog Produ
         p.kategori = row.get("kategori", "")
         p.komposisi = row.get("komposisi", "")
         p.kemasan = row.get("kemasan", "")
-        p.satuan_grosir = row.get("satuan_grosir") or "karton"
+        p.satuan_grosir = row.get("satuan_grosir") or "box"
         p.no_izin_edar = row.get("no_izin_edar", "")
         p.harga_dasar = float(row.get("harga_dasar") or 0)
         p.moq = int(float(row.get("moq") or 1))
         p.kata_kunci = row.get("kata_kunci", "")
         p.sumber_data = row.get("sumber_data") or "sintetis"
+        p.larangan = list(row.get("larangan") or [])
+        p.data_teknis = dict(row.get("data_teknis") or {})
+        p.het_per_botol = row.get("het_per_botol")
         p.aktif = True
         db.flush()
 
@@ -133,6 +147,26 @@ def import_pricing(db: Session, rows: list[dict]) -> int:
             n += 1
     db.commit()
     return n
+
+
+def rows_from_products_json(data: dict) -> tuple[list[dict], list[dict]]:
+    """Ubah config/mock_products.json → baris katalog + baris tier harga (satuan grosir = box)."""
+    rows, tiers = [], []
+    for p in data["produk"]:
+        m = p["matriks_harga_b2b"]
+        isi = m["isi_per_box_botol"]
+        rows.append({
+            "sku": p["id"], "nama": p["nama_produk"], "kategori": p["kategori"],
+            "komposisi": "; ".join(p["bahan_aktif"]), "kemasan": f"{p['kemasan']}; box isi {isi} botol",
+            "satuan_grosir": "box", "no_izin_edar": p["nomor_izin_edar_bpom"],
+            "harga_dasar": m["harga_dasar_b2b_per_botol"] * isi, "moq": m["moq_minimal_box"],
+            "kata_kunci": p.get("kata_kunci", ""), "klaim_disetujui": "|".join(p["klaim_khasiat_resmi_bpom"]),
+            "sumber_data": "simulasi", "larangan": p["kata_kunci_larangan_overclaim"],
+            "data_teknis": {**p["data_teknis_kefarmasian"], "sertifikasi_halal": p["sertifikasi_halal"]},
+            "het_per_botol": m["harga_eceran_tertinggi_het"],
+        })
+        tiers += [{"sku": p["id"], "min_qty": t["min_box"], "diskon_maks_persen": t["diskon_persen"]} for t in m["skema_diskon"]]
+    return rows, tiers
 
 
 def chunk_text(text: str, size: int = 700, overlap: int = 120) -> list[str]:

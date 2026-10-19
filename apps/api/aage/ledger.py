@@ -28,6 +28,9 @@ EVENT_TYPES = {
     "katalog_diimpor": "Katalog diimpor",
     "dokumen_diingest": "Dokumen di-ingest",
     "claimguard_playground": "Pemeriksaan Playground",
+    "agen_hitl": "Agen: menunggu persetujuan manusia",
+    "agen_claimguard": "Agen ClaimGuard: audit",
+    "invoice_dikirim": "Invoice dikirim",
 }
 
 

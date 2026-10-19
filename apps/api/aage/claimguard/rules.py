@@ -105,7 +105,7 @@ RULES: list[Rule] = [
 ]
 
 STAT_RE = _p(r"\b\d+(?:[.,]\d+)?\s*(?:%|persen|kali lipat|x lipat)|\b\d+\s+dari\s+\d+\b")
-STAT_EXEMPT_RE = _p(r"\b(diskon|potongan|hemat|ppn|pajak|harga|cashback|bunga|dp|uang muka|kadar air|kemasan|isi)\b")
+STAT_EXEMPT_RE = _p(r"\b(diskon|potongan|hemat|ppn|pajak|harga|cashback|bunga|dp|uang muka|kadar air|kemasan|isi|rh|kelembapan|suhu|stabilitas|margin|tempo)\b")
 STAT_HEALTH_RE = _p(r"\b(meningkat\w*|peningkatan|menurun\w*|efektif|pasien|responden|pengguna|pelanggan|dokter|metabolisme|merasakan|tubuh|imun\w*|energi|stamina|sembuh\w*|penelitian|studi|riset|uji|terbukti|khasiat|manfaat|kesehatan|risiko)\b")
 SOURCE_RE = _p(r"(\bsumber\s*:|\bmenurut\b|\bdikutip\b|\bjurnal\b|\(\s*\w[^)]*\d{4}\s*\)|\[\d+\]|https?://)")
 

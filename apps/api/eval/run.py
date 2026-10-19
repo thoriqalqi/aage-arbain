@@ -30,10 +30,11 @@ def _setup_db() -> None:
     os.environ["DATABASE_URL"] = f"sqlite:///{tmp.as_posix()}"
 
 
-def build_qa(catalog_csv: Path) -> list[dict]:
+def build_qa(products_json: Path) -> list[dict]:
+    from aage.kb.ingest import rows_from_products_json
     from aage.textutil import rupiah
 
-    rows = list(csv.DictReader(open(catalog_csv, encoding="utf-8-sig")))
+    rows, _ = rows_from_products_json(json.loads(products_json.read_text(encoding="utf-8")))
     keyword_owner: dict[str, set] = {}
     for r in rows:
         for t in set(r["kata_kunci"].split()):
@@ -54,7 +55,7 @@ def build_qa(catalog_csv: Path) -> list[dict]:
         {"q": "pengiriman ke Solo berapa hari?", "harap": ["1–3 hari kerja"], "sku": None, "gaya": "informal"},
         {"q": "bisa bayar tempo?", "harap": ["tempo pembayaran 14 hari"], "sku": None, "gaya": "informal"},
         {"q": "kalau barang rusak bisa retur?", "harap": ["Retur diterima"], "sku": None, "gaya": "informal"},
-        {"q": "MOQ standar berapa karton?", "harap": ["5 karton"], "sku": None, "gaya": "informal"},
+        {"q": "MOQ standar berapa box?", "harap": ["5 box"], "sku": None, "gaya": "informal"},
         {"q": "Apakah ongkos kirim gratis untuk Kota Semarang?", "harap": ["Ongkos kirim gratis"], "sku": None, "gaya": "formal"},
         {"q": "masa simpan produk kapsul berapa lama?", "harap": ["24 bulan"], "sku": None, "gaya": "informal"},
     ]
@@ -73,7 +74,7 @@ def run(offline: bool, rebuild_qa: bool) -> dict:
 
     qa_path = DATASETS / "qa_katalog.jsonl"
     if rebuild_qa or not qa_path.exists():
-        qa = build_qa(HERE.parent / "data" / "katalog_sintetis.csv")
+        qa = build_qa(HERE.parent / "config" / "mock_products.json")
         qa_path.write_text("\n".join(json.dumps(x, ensure_ascii=False) for x in qa) + "\n", encoding="utf-8")
     qa = [json.loads(line) for line in qa_path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
@@ -220,7 +221,7 @@ def target_line(label: str, value: float, target: float, higher: bool = True, un
 def report(r: dict) -> str:
     lines = [
         "# Hasil uji MVP AAGE", "",
-        f"Mode model: **{r['mode']}** · dataset: katalog & klaim **sintetis berlabel** (ganti dengan data mitra saat tersedia).", "",
+        f"Mode model: **{r['mode']}** · dataset: katalog 50 produk **simulasi** (config/mock_products.json) & klaim berlabel (ganti dengan data mitra saat tersedia).", "",
         "| Metrik | Hasil | Target MVP | Status |", "|---|---|---|---|",
         target_line(f"Akurasi QA katalog (n={r['qa']['n']})", r["qa"]["akurasi"], 90),
         target_line("Groundedness jawaban otomatis", r["qa"]["groundedness"], 98),

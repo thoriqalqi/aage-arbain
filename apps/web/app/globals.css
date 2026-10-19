@@ -358,3 +358,15 @@
   .btn-liquid::after, .btn-glass::after { display: none; }
   *, *::before, *::after { transition-duration: 100ms !important; }
 }
+
+/* ---------- Command Center (/dashboard): tema gelap obsidian + hijau neon herbal ---------- */
+.cc-bg {
+  background:
+    radial-gradient(60rem 30rem at 70% -10%, rgb(16 185 129 / 0.12), transparent 60%),
+    radial-gradient(40rem 30rem at 0% 100%, rgb(16 185 129 / 0.06), transparent 60%),
+    #060607;
+  color-scheme: dark;
+}
+.cc-wa-bg {
+  background: radial-gradient(circle at 20% 10%, rgb(16 185 129 / 0.06), transparent 40%), #0b141a;
+}

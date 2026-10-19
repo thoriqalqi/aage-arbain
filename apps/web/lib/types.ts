@@ -74,7 +74,7 @@ export type LedgerEvent = {
 
 export type Approval = {
   id: number
-  objek_tipe: "balasan" | "order_draft" | "konten"
+  objek_tipe: "balasan" | "order_draft" | "konten" | "agen_negosiasi" | "agen_deal_final" | "agen_konten"
   objek_id: number | null
   conversation_id: number | null
   alasan: string

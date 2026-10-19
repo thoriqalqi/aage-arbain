@@ -56,7 +56,7 @@ def format_quote(q: Quote) -> str:
     if q.diskon > 0:
         lines.append(f"• Diskon volume {q.diskon:g}% → {rupiah(q.harga_satuan)}/{p.satuan_grosir}")
     else:
-        lines.append("• Belum masuk tier diskon (mulai 10 karton)")
+        lines.append(f"• Belum masuk tier diskon (mulai 10 {p.satuan_grosir})")
     lines.append(f"• Total {rupiah(q.total)} (belum termasuk ongkos kirim)")
     if q.di_bawah_moq:
         lines.append(f"Catatan: minimum order {p.moq} {p.satuan_grosir}.")

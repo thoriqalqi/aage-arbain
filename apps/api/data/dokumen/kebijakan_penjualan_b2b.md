@@ -4,15 +4,15 @@ Dokumen ini berisi kebijakan penjualan contoh untuk keperluan demo AAGE. Angka a
 
 ## Minimum order dan satuan
 
-Pembelian grosir dihitung per karton. Minimum order (MOQ) standar adalah 5 karton per produk. Pembelian campuran beberapa produk diperbolehkan selama total minimal 10 karton.
+Pembelian grosir dihitung per box (karton). Minimum order (MOQ) standar adalah 5 box per produk. Pembelian campuran beberapa produk diperbolehkan selama total minimal 10 box.
 
 ## Harga dan diskon volume
 
-Harga yang tercantum di katalog adalah harga dasar per karton, belum termasuk ongkos kirim. Diskon volume berlaku otomatis: mulai 10 karton diskon hingga 3 persen, mulai 25 karton hingga 5 persen, mulai 50 karton hingga 7 persen, dan mulai 100 karton hingga 10 persen. Diskon di luar tabel ini memerlukan persetujuan manajemen penjualan.
+Harga yang tercantum di katalog adalah harga dasar per box, belum termasuk ongkos kirim. Diskon volume berlaku otomatis: mulai 10 box diskon hingga 3 persen, mulai 25 box hingga 5 persen, mulai 50 box hingga 7 persen, dan mulai 100 box hingga 10 persen (beberapa produk memiliki skema khusus). Diskon di luar tabel ini memerlukan persetujuan manajemen penjualan.
 
 ## Pengiriman
 
-Pengiriman dilakukan dari gudang Semarang ke seluruh Jawa Tengah dalam 1–3 hari kerja dan ke luar Jawa Tengah melalui ekspedisi dalam 3–7 hari kerja. Ongkos kirim gratis untuk area Kota Semarang dengan pembelian minimal 25 karton.
+Pengiriman dilakukan dari gudang Semarang ke seluruh Jawa Tengah dalam 1–3 hari kerja dan ke luar Jawa Tengah melalui ekspedisi dalam 3–7 hari kerja. Ongkos kirim gratis untuk area Kota Semarang dengan pembelian minimal 25 box.
 
 ## Pembayaran
 

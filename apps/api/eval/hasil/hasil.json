@@ -1,10 +1,10 @@
 {
   "mode": "offline (deterministik)",
   "qa": {
-    "n": 150,
+    "n": 306,
     "akurasi": 100.0,
     "groundedness": 100.0,
-    "dijawab_otomatis": 150,
+    "dijawab_otomatis": 306,
     "contoh_gagal": []
   },
   "klaim": {
@@ -48,10 +48,10 @@
   },
   "negosiasi_pesanan_gagal": [],
   "operasional": {
-    "latensi_rata_ms": 21.7,
-    "latensi_p95_ms": 26.3,
+    "latensi_rata_ms": 38.2,
+    "latensi_p95_ms": 51.4,
     "biaya_per_percakapan_rp": 0.0,
-    "selesai_otomatis_persen": 86.0,
-    "pesan": 214
+    "selesai_otomatis_persen": 91.9,
+    "pesan": 370
   }
 }

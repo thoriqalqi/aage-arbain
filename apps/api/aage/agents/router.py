@@ -54,7 +54,7 @@ YA = _r(r"^\s*(ya|iya|iyaa|boleh|mau|oke|ok|okay|baik|siap|silakan|yes)\b")
 SALAM = _r(r"^\s*(halo|hallo|hai|hi|assalamu'?alaikum|assalamualaikum|selamat (?:pagi|siang|sore|malam)|pagi|siang|sore|malam|permisi|p)\W*\s*(kak|min|gan|pak|bu)?\W*$")
 
 QTY_RE = _r(r"(\d{1,5})\s*(karton|ktn|dus|dos|box|kardus|ctn|krt|carton)")
-QTY_BARE_RE = _r(r"\b(\d{1,5})\b(?!\s*(?:%|persen|ml|g|gr|gram|kapsul|tablet|sachet|hari|jam|bulan))")
+QTY_BARE_RE = _r(r"(?<![-\w])(\d{1,5})\b(?!\s*(?:%|persen|ml|g|gr|gram|mg|mcg|iu|kapsul|tablet|sachet|hari|jam|bulan))")
 DISC_RE = _r(r"(\d{1,2}(?:[.,]\d+)?)\s*(?:%|persen)")
 STORE_RE = re.compile(r"\b(?:[Aa]potek|[Aa]potik|[Tt]oko [Oo]bat|[Tt]oko|[Mm]inimarket|TO|Apt\.?)\s+([A-Z][\w'&.-]*(?:\s+[A-Z][\w'&.-]*){0,3})")
 STORE_LABEL_RE = _r(r"nama toko\s*[:=]\s*([^\n,]+)")

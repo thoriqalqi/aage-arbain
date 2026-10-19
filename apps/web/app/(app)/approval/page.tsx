@@ -17,6 +17,12 @@ import { contactName, relativeTime } from "@/lib/format"
 import { INTENT_LABEL, type Approval, type CheckResult } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
+const AGENT_LABEL: Record<string, string> = {
+  agen_negosiasi: "Eskalasi negosiasi · Sales Agent",
+  agen_deal_final: "Deal final · Sales Agent",
+  agen_konten: "Konten GEO · GEO Agent",
+}
+
 function ApprovalCard({
   a,
   focused,
@@ -64,7 +70,7 @@ function ApprovalCard({
               <span className="font-semibold">{contactName(a.contact)}</span>
               <Pill>
                 {isOrder ? <ReceiptText className="size-3.5" /> : <MessageSquareText className="size-3.5" />}
-                {isOrder ? `Draf pesanan #${a.objek_id}` : "Balasan chat"}
+                {AGENT_LABEL[a.objek_tipe] ?? (isOrder ? `Draf pesanan #${a.objek_id}` : "Balasan chat")}
               </Pill>
               {a.intent && <Pill>{INTENT_LABEL[a.intent] ?? a.intent}</Pill>}
               <span className="text-[12px] text-subtle-foreground">menunggu {relativeTime(a.dibuat_pada).replace(" lalu", "")}</span>

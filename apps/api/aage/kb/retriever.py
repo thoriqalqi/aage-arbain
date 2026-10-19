@@ -1,5 +1,6 @@
 """Retriever RAG hibrida: kemiripan embedding (pgvector di Postgres) + kecocokan kata kunci produk."""
 
+import re
 from dataclasses import dataclass
 
 from sqlalchemy import select
@@ -60,26 +61,37 @@ def retrieve(db: Session, query: str, *, k: int = 4, product_ids: list[int] | No
     return [h for h in hits[:k] if h.score >= min_score]
 
 
+_UNITS = {"mg", "g", "gr", "ml", "iu", "mcg", "cfu", "kg"}
+_GENERIC = {"kapsul", "madu", "minyak", "teh", "serbuk", "sirup", "susu", "tablet", "herbal", "anak", "sachet", "botol",
+            "instan", "tetes", "kantong", "murni", "plus", "lunak", "isi", "dan"}
+
+
+def _name_tokens(text: str) -> list[str]:
+    # Huruf tunggal dipertahankan (vitamin "c", "d3"), satuan & angka murni dibuang.
+    return [t for t in re.findall(r"[a-z0-9]+", text.lower()) if t not in _UNITS and not t.isdigit()]
+
+
 def find_products(db: Session, text: str, limit: int = 3) -> list[Product]:
-    """Cari produk yang disebut eksplisit (nama/SKU/kata kunci unik)."""
+    """Cari produk yang disebut eksplisit (nama/SKU). Skor = cakupan token khas nama; seri dipecah dengan
+    token umum ("kapsul", "teh", "instan") agar "Kapsul Jahe Merah" ≠ "Jahe Merah Instan"."""
     low = text.lower()
     products = list(db.scalars(select(Product).where(Product.aktif.is_(True))))
+    q_all = {stem(t) for t in _name_tokens(text)}
     scored = []
-    q_terms = {stem(t) for t in content_tokens(text)}
-    generic = {"kapsul", "madu", "minyak", "teh", "serbuk", "sirup", "susu", "tablet", "herbal", "anak",
-               "sachet", "botol", "ml", "instan", "tetes", "kantong", "murni", "plus"}
     for p in products:
         if p.sku.lower() in low:
-            scored.append((10.0, p))
+            scored.append((10.0, 0.0, p))
             continue
-        name_terms = {stem(t) for t in content_tokens(p.nama) if t not in generic and not t.isdigit()}
+        all_terms = {stem(t) for t in _name_tokens(p.nama)}
+        name_terms = {t for t in all_terms if t not in _GENERIC}
         if not name_terms:
             continue
-        overlap = len(q_terms & name_terms) / len(name_terms)
+        overlap = len(q_all & name_terms) / len(name_terms)
         if overlap >= 0.5:
-            scored.append((overlap, p))
-    scored.sort(key=lambda x: x[0], reverse=True)
-    return [p for _, p in scored[:limit]]
+            tie = len(q_all & all_terms) / len(all_terms)
+            scored.append((overlap, tie, p))
+    scored.sort(key=lambda x: (x[0], x[1]), reverse=True)
+    return [p for _, _, p in scored[:limit]]
 
 
 def document_by_id(db: Session, doc_id: int) -> Document | None:

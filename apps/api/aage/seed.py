@@ -1,9 +1,9 @@
 """Seed / reset data demo dengan satu perintah:  python -m aage.seed  (tambahkan --tanpa-riwayat untuk DB kosong).
 
-Seluruh data adalah DATA SINTETIS berlabel, sampai katalog resmi mitra diterima."""
+Katalog: config/mock_products.json (50 produk SIMULASI). Ganti dengan data resmi mitra saat tersedia."""
 
 import argparse
-import csv
+import json
 import random
 from datetime import timedelta
 from pathlib import Path
@@ -12,11 +12,12 @@ from sqlalchemy import select
 
 from . import clock
 from .db import SessionLocal, init_db
-from .kb.ingest import import_catalog, import_pricing, ingest_document
+from .kb.ingest import import_catalog, import_pricing, ingest_document, rows_from_products_json
 from .models import Contact, OrderDraft, Product, User
 from .security import hash_password
 
 DATA = Path(__file__).resolve().parent.parent / "data"
+PRODUCTS_JSON = Path(__file__).resolve().parent.parent / "config" / "mock_products.json"
 
 DEMO_USERS = [
     ("Admin AAGE", "admin@aage.local", "admin123", "admin"),
@@ -59,11 +60,10 @@ def seed_base(db) -> None:
             db.add(User(nama=nama, email=email, password_hash=hash_password(pw), role=role))
     db.commit()
 
-    with open(DATA / "katalog_sintetis.csv", encoding="utf-8-sig") as f:
-        rows = [{k: v for k, v in r.items()} for r in csv.DictReader(f)]
-    import_catalog(db, rows, judul="Katalog Produk (data sintetis)", aktor="seed", verifikator="Tim Djuaraumm (contoh)")
-    with open(DATA / "pricing_rules.csv", encoding="utf-8-sig") as f:
-        import_pricing(db, list(csv.DictReader(f)))
+    data = json.loads(PRODUCTS_JSON.read_text(encoding="utf-8"))
+    rows, tiers = rows_from_products_json(data)
+    import_catalog(db, rows, judul="Katalog Produk (data simulasi)", aktor="seed", verifikator="Tim Djuaraumm (simulasi)")
+    import_pricing(db, tiers)
     for path in sorted((DATA / "dokumen").glob("*.md")):
         title = path.read_text(encoding="utf-8").splitlines()[0].lstrip("# ").strip()
         ingest_document(db, judul=title, text=path.read_text(encoding="utf-8"), tipe="teks", aktor="seed")

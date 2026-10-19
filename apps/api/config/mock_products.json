@@ -1,0 +1,4226 @@
+{
+  "_catatan": "DATA SIMULASI untuk demo AAGE (UMS Health Innovation Hackathon 2026). Nomor izin edar, sertifikat halal, dan laporan uji BKO bukan nomor resmi. Ganti dengan data resmi CV Arba'in sebelum dipakai di produksi.",
+  "versi": 1,
+  "perusahaan": "CV Arba'in",
+  "produk": [
+    {
+      "id": "ARB-001",
+      "nama_produk": "Kapsul Habbatussauda 120",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260001",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260001",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Ekstrak biji jintan hitam (Nigella sativa) 500 mg/kapsul"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Secara tradisional digunakan untuk membantu memelihara daya tahan tubuh."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menyembuhkan segala penyakit",
+        "obat kanker alami",
+        "pengganti kemoterapi",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 81000,
+        "harga_dasar_b2b_per_botol": 60000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 48,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260001",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Rasa tidak nyaman di lambung pada sebagian orang"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 120 kapsul",
+      "kata_kunci": "imunitas daya tahan tubuh jintan hitam habbatussauda"
+    },
+    {
+      "id": "ARB-002",
+      "nama_produk": "Madu Stamina Plus 250 g",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260002",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260002",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Madu hutan 85%",
+        "Ekstrak jahe merah (Zingiber officinale var. rubrum)",
+        "Ekstrak temulawak (Curcuma xanthorrhiza)",
+        "Royal jelly"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Membantu memelihara stamina dan kebugaran tubuh.",
+        "Sumber energi untuk aktivitas sehari-hari."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "obat kuat pria",
+        "menyembuhkan diabetes",
+        "stamina 3 kali lipat dalam sehari",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 88000,
+        "harga_dasar_b2b_per_botol": 65000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 36,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 8
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260002",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Tidak dianjurkan untuk bayi di bawah 1 tahun",
+          "Mengandung gula — penderita diabetes konsultasikan dengan dokter sebelum konsumsi"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 250 g",
+      "kata_kunci": "stamina bugar energi tenaga lelah madu"
+    },
+    {
+      "id": "ARB-003",
+      "nama_produk": "Sari Kurma Ajwa 330 g",
+      "kategori": "Suplemen Kesehatan",
+      "nomor_izin_edar_bpom": "POM SD SIM260003",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260003",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Sari buah kurma ajwa (Phoenix dactylifera)"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Sumber energi alami untuk membantu memelihara stamina."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menyembuhkan demam berdarah",
+        "menaikkan trombosit dalam semalam",
+        "menyembuhkan penyakit",
+        "dijamin sembuh",
+        "obat ajaib",
+        "tanpa efek samping",
+        "pengganti obat resep"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 74000,
+        "harga_dasar_b2b_per_botol": 55000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 24,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida",
+            "Deksametason"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260003",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Mengandung gula — penderita diabetes konsultasikan dengan dokter sebelum konsumsi"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 330 g",
+      "kata_kunci": "kurma energi stamina nafsu makan"
+    },
+    {
+      "id": "ARB-004",
+      "nama_produk": "Kapsul Temulawak 60",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260004",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260004",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Ekstrak rimpang temulawak (Curcuma xanthorrhiza) 400 mg/kapsul"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Secara tradisional digunakan untuk membantu memelihara kesehatan fungsi hati.",
+        "Secara tradisional digunakan untuk membantu memperbaiki nafsu makan."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menyembuhkan hepatitis",
+        "membersihkan liver dari racun total",
+        "obat sirosis",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 44500,
+        "harga_dasar_b2b_per_botol": 33000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 60,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260004",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Hindari pada ibu hamil tanpa saran tenaga kesehatan"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 kapsul",
+      "kata_kunci": "temulawak nafsu makan hati liver"
+    },
+    {
+      "id": "ARB-005",
+      "nama_produk": "Jahe Merah Instan 20 sachet",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260005",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260005",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Ekstrak jahe merah (Zingiber officinale var. rubrum)",
+        "Gula aren",
+        "Serai"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Membantu menghangatkan tubuh.",
+        "Secara tradisional digunakan untuk membantu meredakan masuk angin."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "mencegah covid",
+        "membunuh virus flu",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 54000,
+        "harga_dasar_b2b_per_botol": 40000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 40,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260005",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Rasa panas di lambung pada penderita maag"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Kotak 20 sachet",
+      "kata_kunci": "jahe merah hangat masuk angin meriang"
+    },
+    {
+      "id": "ARB-006",
+      "nama_produk": "Propolis Tetes 30 ml",
+      "kategori": "Suplemen Kesehatan",
+      "nomor_izin_edar_bpom": "POM SD SIM260006",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260006",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Ekstrak propolis lebah (Apis mellifera) 30%"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Membantu memelihara daya tahan tubuh."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "antibiotik alami pengganti obat",
+        "menyembuhkan infeksi",
+        "membunuh bakteri dan virus",
+        "menyembuhkan penyakit",
+        "dijamin sembuh",
+        "obat ajaib",
+        "tanpa efek samping",
+        "pengganti obat resep"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 74000,
+        "harga_dasar_b2b_per_botol": 55000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 72,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 8
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 12
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 12,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida",
+            "Deksametason"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260006",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Reaksi alergi pada individu yang sensitif terhadap produk lebah"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol tetes 30 ml",
+      "kata_kunci": "propolis imunitas daya tahan tubuh imun"
+    },
+    {
+      "id": "ARB-007",
+      "nama_produk": "Kapsul Kayu Manis",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260007",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260007",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Ekstrak kulit kayu manis (Cinnamomum burmannii) 450 mg/kapsul"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Secara tradisional digunakan untuk membantu memelihara kesehatan pencernaan."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menurunkan gula darah",
+        "obat diabetes alami",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 42000,
+        "harga_dasar_b2b_per_botol": 31000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 60,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260007",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Iritasi lambung ringan pada dosis berlebih"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 kapsul",
+      "kata_kunci": "kayu manis pencernaan perut"
+    },
+    {
+      "id": "ARB-008",
+      "nama_produk": "Kapsul Minyak Zaitun Extra Virgin",
+      "kategori": "Suplemen Kesehatan",
+      "nomor_izin_edar_bpom": "POM SD SIM260008",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260008",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Minyak zaitun extra virgin (Olea europaea) 1000 mg/kapsul lunak"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Sumber asam lemak tak jenuh tunggal untuk membantu memelihara kesehatan tubuh."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menurunkan kolesterol drastis",
+        "mencegah stroke",
+        "menyembuhkan penyakit",
+        "dijamin sembuh",
+        "obat ajaib",
+        "tanpa efek samping",
+        "pengganti obat resep"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 61000,
+        "harga_dasar_b2b_per_botol": 45000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 48,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida",
+            "Deksametason"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260008",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Gangguan pencernaan ringan"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 kapsul lunak",
+      "kata_kunci": "zaitun lemak sehat"
+    },
+    {
+      "id": "ARB-009",
+      "nama_produk": "Madu Anak Nafsu Makan 125 g",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260009",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260009",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Madu 80%",
+        "Ekstrak temulawak",
+        "Ekstrak kurma",
+        "Minyak ikan"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Membantu memelihara nafsu makan anak.",
+        "Membantu memelihara daya tahan tubuh anak."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "anak pasti gemuk",
+        "menyembuhkan stunting",
+        "pengganti susu dan makanan",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 56500,
+        "harga_dasar_b2b_per_botol": 42000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 48,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260009",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Tidak untuk bayi di bawah 1 tahun"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 125 g",
+      "kata_kunci": "anak balita nafsu makan madu anak"
+    },
+    {
+      "id": "ARB-010",
+      "nama_produk": "Kapsul Sambiloto",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260010",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260010",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Ekstrak herba sambiloto (Andrographis paniculata) 350 mg/kapsul"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Secara tradisional digunakan untuk membantu memelihara daya tahan tubuh."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "obat tifus",
+        "menyembuhkan malaria",
+        "antivirus alami",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 39000,
+        "harga_dasar_b2b_per_botol": 29000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 60,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260010",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Rasa pahit",
+          "Tidak untuk ibu hamil"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 kapsul",
+      "kata_kunci": "sambiloto daya tahan tubuh imunitas"
+    },
+    {
+      "id": "ARB-011",
+      "nama_produk": "Teh Herbal Rileks 20 kantong",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260011",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260011",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Bunga chamomile (Matricaria chamomilla)",
+        "Daun mint (Mentha piperita)",
+        "Daun pandan"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Membantu memberikan rasa rileks."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "obat insomnia",
+        "menyembuhkan depresi",
+        "pengganti obat tidur",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 40500,
+        "harga_dasar_b2b_per_botol": 30000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 48,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260011",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Reaksi alergi pada individu sensitif terhadap tanaman famili Asteraceae"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Kotak 20 kantong teh",
+      "kata_kunci": "teh rileks tidur tenang chamomile"
+    },
+    {
+      "id": "ARB-012",
+      "nama_produk": "Kapsul Bawang Putih Tunggal",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260012",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260012",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Ekstrak bawang putih tunggal/lanang (Allium sativum) 500 mg/kapsul"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Secara tradisional digunakan untuk membantu memelihara kesehatan tubuh."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menurunkan tekanan darah",
+        "obat hipertensi",
+        "membersihkan pembuluh darah",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 43000,
+        "harga_dasar_b2b_per_botol": 32000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 60,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260012",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Bau mulut",
+          "Hati-hati bila sedang minum obat pengencer darah"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 kapsul",
+      "kata_kunci": "bawang putih lanang tunggal"
+    },
+    {
+      "id": "ARB-013",
+      "nama_produk": "Spirulina Tablet 100",
+      "kategori": "Suplemen Kesehatan",
+      "nomor_izin_edar_bpom": "POM SD SIM260013",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260013",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Spirulina platensis 500 mg/tablet"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Membantu memenuhi kebutuhan nutrisi harian."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "detoks logam berat",
+        "menyembuhkan anemia",
+        "pengganti makan",
+        "menyembuhkan penyakit",
+        "dijamin sembuh",
+        "obat ajaib",
+        "tanpa efek samping",
+        "pengganti obat resep"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 70000,
+        "harga_dasar_b2b_per_botol": 52000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 48,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida",
+            "Deksametason"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260013",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Gangguan pencernaan ringan pada awal konsumsi"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 100 tablet",
+      "kata_kunci": "spirulina nutrisi vitamin protein"
+    },
+    {
+      "id": "ARB-014",
+      "nama_produk": "Minyak Kayu Putih Aromaterapi 60 ml",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260014",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260014",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Minyak kayu putih (Melaleuca leucadendra)",
+        "Minyak lavender",
+        "Minyak serai"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Membantu meredakan perut kembung dan masuk angin.",
+        "Memberikan rasa hangat."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menyembuhkan asma",
+        "melegakan napas penderita paru",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 43000,
+        "harga_dasar_b2b_per_botol": 32000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 72,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260014",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Iritasi kulit pada kulit sensitif",
+          "Hindari kontak dengan mata"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 ml",
+      "kata_kunci": "kayu putih kembung masuk angin hangat"
+    },
+    {
+      "id": "ARB-015",
+      "nama_produk": "Kapsul Kunyit Asam",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260015",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260015",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Ekstrak rimpang kunyit (Curcuma longa) 300 mg",
+        "Ekstrak daging buah asam jawa (Tamarindus indica) 100 mg"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Secara tradisional digunakan untuk membantu meredakan nyeri haid."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menyembuhkan kista",
+        "melangsingkan dalam seminggu",
+        "obat mioma",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 38000,
+        "harga_dasar_b2b_per_botol": 28000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 60,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260015",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Tidak untuk ibu hamil"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 kapsul",
+      "kata_kunci": "kunyit asam wanita haid datang bulan"
+    },
+    {
+      "id": "ARB-016",
+      "nama_produk": "Minyak Gosok Herbal 30 ml",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260016",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260016",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Minyak cengkeh (Syzygium aromaticum)",
+        "Minyak sereh",
+        "Mentol",
+        "Minyak kayu manis"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Membantu meredakan pegal linu dan nyeri otot."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menyembuhkan rematik",
+        "obat asam urat",
+        "menyembuhkan saraf kejepit",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 29500,
+        "harga_dasar_b2b_per_botol": 22000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 96,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260016",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Rasa panas/iritasi pada kulit sensitif"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 30 ml",
+      "kata_kunci": "pegal linu otot sendi gosok balsem"
+    },
+    {
+      "id": "ARB-017",
+      "nama_produk": "Madu Hutan Murni 500 g",
+      "kategori": "Suplemen Kesehatan",
+      "nomor_izin_edar_bpom": "POM SD SIM260017",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260017",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Madu hutan murni"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Sumber energi alami.",
+        "Membantu memelihara daya tahan tubuh."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menyembuhkan luka diabetes",
+        "obat segala penyakit",
+        "menyembuhkan penyakit",
+        "dijamin sembuh",
+        "obat ajaib",
+        "tanpa efek samping",
+        "pengganti obat resep"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 116000,
+        "harga_dasar_b2b_per_botol": 86000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 24,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida",
+            "Deksametason"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260017",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Tidak untuk bayi di bawah 1 tahun"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 500 g",
+      "kata_kunci": "madu hutan energi daya tahan"
+    },
+    {
+      "id": "ARB-018",
+      "nama_produk": "Kapsul Daun Kelor",
+      "kategori": "Suplemen Kesehatan",
+      "nomor_izin_edar_bpom": "POM SD SIM260018",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260018",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Serbuk daun kelor (Moringa oleifera) 500 mg/kapsul"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Membantu memenuhi kebutuhan nutrisi.",
+        "Membantu memelihara stamina."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menyembuhkan 300 penyakit",
+        "obat kanker",
+        "menurunkan gula darah",
+        "menyembuhkan penyakit",
+        "dijamin sembuh",
+        "obat ajaib",
+        "tanpa efek samping",
+        "pengganti obat resep"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 40500,
+        "harga_dasar_b2b_per_botol": 30000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 60,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida",
+            "Deksametason"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260018",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Efek pencahar ringan pada dosis tinggi"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 kapsul",
+      "kata_kunci": "kelor moringa nutrisi stamina"
+    },
+    {
+      "id": "ARB-019",
+      "nama_produk": "Serbuk Wedang Uwuh 10 sachet",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260019",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260019",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Jahe",
+        "Kayu secang (Caesalpinia sappan)",
+        "Cengkeh",
+        "Kayu manis",
+        "Daun pala"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Membantu menghangatkan badan dan menyegarkan tubuh."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "mencegah kanker",
+        "membersihkan darah kotor",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 34000,
+        "harga_dasar_b2b_per_botol": 25000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 60,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260019",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Rasa panas di lambung pada penderita maag"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Kotak 10 sachet",
+      "kata_kunci": "wedang uwuh hangat segar jahe secang"
+    },
+    {
+      "id": "ARB-020",
+      "nama_produk": "Kapsul Pegagan",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260020",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260020",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Ekstrak herba pegagan (Centella asiatica) 400 mg/kapsul"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Secara tradisional digunakan untuk membantu memelihara daya ingat."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menyembuhkan alzheimer",
+        "meningkatkan IQ anak",
+        "obat pikun",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 42000,
+        "harga_dasar_b2b_per_botol": 31000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 60,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260020",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Mengantuk ringan pada sebagian orang"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 kapsul",
+      "kata_kunci": "pegagan daya ingat konsentrasi fokus"
+    },
+    {
+      "id": "ARB-021",
+      "nama_produk": "Susu Kambing Etawa Kapsul",
+      "kategori": "Suplemen Kesehatan",
+      "nomor_izin_edar_bpom": "POM SD SIM260021",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260021",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Serbuk susu kambing etawa 500 mg/kapsul",
+        "Kalsium"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Sumber protein dan kalsium.",
+        "Membantu memelihara kesehatan tulang."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menyembuhkan osteoporosis",
+        "obat sesak napas",
+        "menyembuhkan asma",
+        "menyembuhkan penyakit",
+        "dijamin sembuh",
+        "obat ajaib",
+        "tanpa efek samping",
+        "pengganti obat resep"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 89000,
+        "harga_dasar_b2b_per_botol": 66000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 24,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida",
+            "Deksametason"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260021",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Tidak untuk penderita alergi protein susu"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 kapsul",
+      "kata_kunci": "susu kambing etawa tulang kalsium protein"
+    },
+    {
+      "id": "ARB-022",
+      "nama_produk": "Kapsul Mengkudu",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260022",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260022",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Ekstrak buah mengkudu (Morinda citrifolia) 500 mg/kapsul"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Secara tradisional digunakan untuk membantu memelihara kesehatan tubuh."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menurunkan darah tinggi",
+        "obat hipertensi alami",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 39000,
+        "harga_dasar_b2b_per_botol": 29000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 60,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260022",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Konsultasikan dengan dokter bila memiliki gangguan ginjal (kandungan kalium)"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 kapsul",
+      "kata_kunci": "mengkudu noni kesehatan tubuh"
+    },
+    {
+      "id": "ARB-023",
+      "nama_produk": "Sirup Jahe Madu Anak 100 ml",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260023",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260023",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Ekstrak jahe",
+        "Madu",
+        "Daun mint",
+        "Ekstrak jeruk nipis"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Secara tradisional digunakan untuk membantu meredakan batuk.",
+        "Membantu melegakan tenggorokan."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menyembuhkan pneumonia",
+        "obat TBC anak",
+        "pengganti antibiotik",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 52500,
+        "harga_dasar_b2b_per_botol": 39000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 48,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260023",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Tidak untuk bayi di bawah 1 tahun"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 100 ml",
+      "kata_kunci": "batuk tenggorokan anak sirup"
+    },
+    {
+      "id": "ARB-024",
+      "nama_produk": "Kapsul Gamat Emas",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260024",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260024",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Ekstrak teripang emas (Stichopus hermanii) 500 mg/kapsul"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Secara tradisional digunakan untuk membantu memelihara stamina."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menyembuhkan luka operasi dalam sehari",
+        "obat tumor",
+        "menyambung tulang patah",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 78500,
+        "harga_dasar_b2b_per_botol": 58000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 48,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260024",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Reaksi alergi pada individu sensitif terhadap hasil laut"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 kapsul",
+      "kata_kunci": "gamat teripang pemulihan stamina"
+    },
+    {
+      "id": "ARB-025",
+      "nama_produk": "Kapsul Kunyit Putih",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260025",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260025",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Ekstrak rimpang kunyit putih (Curcuma zedoaria) 400 mg/kapsul"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Secara tradisional digunakan untuk membantu memelihara kesehatan pencernaan."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "membunuh sel kanker",
+        "obat tumor alami",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 40500,
+        "harga_dasar_b2b_per_botol": 30000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 60,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260025",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Rasa tidak nyaman di lambung"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 kapsul",
+      "kata_kunci": "kunyit putih pencernaan lambung"
+    },
+    {
+      "id": "ARB-026",
+      "nama_produk": "Kapsul Jahe Merah",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260026",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260026",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Ekstrak rimpang jahe merah (Zingiber officinale var. rubrum) 450 mg/kapsul"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Membantu menghangatkan tubuh."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menyembuhkan rematik",
+        "obat kolesterol",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 38000,
+        "harga_dasar_b2b_per_botol": 28000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 60,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260026",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Rasa panas di lambung"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 kapsul",
+      "kata_kunci": "jahe merah kapsul hangat"
+    },
+    {
+      "id": "ARB-027",
+      "nama_produk": "Kapsul Sirih Merah",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260027",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260027",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Ekstrak daun sirih merah (Piper crocatum) 400 mg/kapsul"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Secara tradisional digunakan untuk membantu memelihara kesehatan organ kewanitaan."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menyembuhkan keputihan kronis",
+        "obat kanker serviks",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 43000,
+        "harga_dasar_b2b_per_botol": 32000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 60,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260027",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Rasa pahit"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 kapsul",
+      "kata_kunci": "sirih merah kewanitaan"
+    },
+    {
+      "id": "ARB-028",
+      "nama_produk": "Kapsul Daun Salam",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260028",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260028",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Ekstrak daun salam (Syzygium polyanthum) 400 mg/kapsul"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Secara tradisional digunakan untuk membantu memelihara kesehatan tubuh."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menurunkan kolesterol dalam 3 hari",
+        "obat asam urat",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 36500,
+        "harga_dasar_b2b_per_botol": 27000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 60,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260028",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Gangguan pencernaan ringan"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 kapsul",
+      "kata_kunci": "daun salam kesehatan tubuh"
+    },
+    {
+      "id": "ARB-029",
+      "nama_produk": "Kapsul Meniran",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260029",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260029",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Ekstrak herba meniran (Phyllanthus niruri) 350 mg/kapsul"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Secara tradisional digunakan untuk membantu memelihara daya tahan tubuh."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menyembuhkan hepatitis B",
+        "antivirus HIV",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 39000,
+        "harga_dasar_b2b_per_botol": 29000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 60,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260029",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Tidak untuk ibu hamil"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 kapsul",
+      "kata_kunci": "meniran daya tahan tubuh imun"
+    },
+    {
+      "id": "ARB-030",
+      "nama_produk": "Kapsul Kumis Kucing",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260030",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260030",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Ekstrak daun kumis kucing (Orthosiphon aristatus) 400 mg/kapsul"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Secara tradisional digunakan untuk membantu memperlancar buang air kecil."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menghancurkan batu ginjal",
+        "obat gagal ginjal",
+        "pengganti cuci darah",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 38000,
+        "harga_dasar_b2b_per_botol": 28000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 60,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260030",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Frekuensi buang air kecil meningkat"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 kapsul",
+      "kata_kunci": "kumis kucing buang air kecil saluran kemih"
+    },
+    {
+      "id": "ARB-031",
+      "nama_produk": "Kapsul Daun Jambu Biji",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260031",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260031",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Ekstrak daun jambu biji (Psidium guajava) 400 mg/kapsul"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Secara tradisional digunakan untuk membantu meredakan diare."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menaikkan trombosit DBD",
+        "obat demam berdarah",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 36500,
+        "harga_dasar_b2b_per_botol": 27000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 60,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260031",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Sembelit pada dosis berlebih"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 kapsul",
+      "kata_kunci": "jambu biji diare perut"
+    },
+    {
+      "id": "ARB-032",
+      "nama_produk": "Kapsul Tempuyung",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260032",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260032",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Ekstrak daun tempuyung (Sonchus arvensis) 400 mg/kapsul"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Secara tradisional digunakan untuk membantu memelihara kesehatan saluran kemih."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "meluruhkan batu ginjal",
+        "menyembuhkan asam urat",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 38000,
+        "harga_dasar_b2b_per_botol": 28000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 60,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260032",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Frekuensi buang air kecil meningkat"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 kapsul",
+      "kata_kunci": "tempuyung saluran kemih"
+    },
+    {
+      "id": "ARB-033",
+      "nama_produk": "Serbuk Beras Kencur 10 sachet",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260033",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260033",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Beras",
+        "Rimpang kencur (Kaempferia galanga)",
+        "Gula aren"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Membantu menyegarkan badan.",
+        "Secara tradisional digunakan untuk membantu meredakan pegal linu."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menyembuhkan cedera otot",
+        "obat saraf kejepit",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 32500,
+        "harga_dasar_b2b_per_botol": 24000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 60,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260033",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Perhatikan asupan gula"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Kotak 10 sachet",
+      "kata_kunci": "beras kencur segar pegal"
+    },
+    {
+      "id": "ARB-034",
+      "nama_produk": "Kapsul Brotowali",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260034",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260034",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Ekstrak batang brotowali (Tinospora crispa) 300 mg/kapsul"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Secara tradisional digunakan untuk membantu memperbaiki nafsu makan."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "obat diabetes",
+        "menurunkan gula darah cepat",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 36500,
+        "harga_dasar_b2b_per_botol": 27000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 60,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260034",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Rasa sangat pahit",
+          "Tidak untuk ibu hamil"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 kapsul",
+      "kata_kunci": "brotowali nafsu makan pahit"
+    },
+    {
+      "id": "ARB-035",
+      "nama_produk": "Madu Herbal Batuk Dewasa 150 ml",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260035",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260035",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Madu",
+        "Ekstrak jahe",
+        "Ekstrak kencur",
+        "Ekstrak daun saga"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Secara tradisional digunakan untuk membantu meredakan batuk."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "obat TBC",
+        "menyembuhkan bronkitis kronis",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 55500,
+        "harga_dasar_b2b_per_botol": 41000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 48,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260035",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Mengandung gula — penderita diabetes konsultasikan dengan dokter sebelum konsumsi"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 150 ml",
+      "kata_kunci": "madu batuk dewasa tenggorokan"
+    },
+    {
+      "id": "ARB-036",
+      "nama_produk": "Kapsul Kencur",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260036",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260036",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Ekstrak rimpang kencur (Kaempferia galanga) 400 mg/kapsul"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Secara tradisional digunakan untuk membantu meredakan masuk angin."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menyembuhkan radang paru",
+        "pengganti antibiotik",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 35000,
+        "harga_dasar_b2b_per_botol": 26000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 60,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260036",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Rasa panas di lambung"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 kapsul",
+      "kata_kunci": "kencur masuk angin hangat"
+    },
+    {
+      "id": "ARB-037",
+      "nama_produk": "Teh Daun Kelor 20 kantong",
+      "kategori": "Suplemen Kesehatan",
+      "nomor_izin_edar_bpom": "POM SD SIM260037",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260037",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Daun kelor kering (Moringa oleifera)"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Membantu memenuhi kebutuhan nutrisi."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menyembuhkan kanker",
+        "obat darah tinggi",
+        "menyembuhkan penyakit",
+        "dijamin sembuh",
+        "obat ajaib",
+        "tanpa efek samping",
+        "pengganti obat resep"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 36500,
+        "harga_dasar_b2b_per_botol": 27000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 48,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida",
+            "Deksametason"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260037",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Efek pencahar ringan"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Kotak 20 kantong teh",
+      "kata_kunci": "teh kelor nutrisi"
+    },
+    {
+      "id": "ARB-038",
+      "nama_produk": "Kapsul Lidah Buaya",
+      "kategori": "Obat Bahan Alam",
+      "nomor_izin_edar_bpom": "POM TR SIM260038",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260038",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Ekstrak daun lidah buaya (Aloe vera) 400 mg/kapsul"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Secara tradisional digunakan untuk membantu memelihara kesehatan pencernaan."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menyembuhkan maag kronis",
+        "obat wasir",
+        "menyembuhkan total",
+        "100% langsung sembuh",
+        "obat mujarab",
+        "tanpa efek samping",
+        "pengganti obat dokter"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 39000,
+        "harga_dasar_b2b_per_botol": 29000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 60,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Parasetamol",
+            "Fenilbutason",
+            "Deksametason",
+            "Metampiron",
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260038",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Efek pencahar",
+          "Tidak untuk ibu hamil"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 kapsul",
+      "kata_kunci": "lidah buaya pencernaan"
+    },
+    {
+      "id": "ARB-039",
+      "nama_produk": "Vitamin C 500 mg + Zinc",
+      "kategori": "Suplemen Kesehatan",
+      "nomor_izin_edar_bpom": "POM SD SIM260039",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260039",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Asam askorbat 500 mg",
+        "Zinc glukonat setara Zn 10 mg"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Membantu memelihara daya tahan tubuh."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "mencegah covid 100%",
+        "obat flu",
+        "kebal virus",
+        "menyembuhkan penyakit",
+        "dijamin sembuh",
+        "obat ajaib",
+        "tanpa efek samping",
+        "pengganti obat resep"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 48500,
+        "harga_dasar_b2b_per_botol": 36000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 60,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida",
+            "Deksametason"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260039",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Gangguan lambung pada dosis tinggi"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 30 tablet",
+      "kata_kunci": "vitamin c zinc imun daya tahan"
+    },
+    {
+      "id": "ARB-040",
+      "nama_produk": "Vitamin D3 1000 IU",
+      "kategori": "Suplemen Kesehatan",
+      "nomor_izin_edar_bpom": "POM SD SIM260040",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260040",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Kolekalsiferol (vitamin D3) 1000 IU"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Membantu memelihara kesehatan tulang."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menyembuhkan osteoporosis",
+        "mencegah semua penyakit",
+        "menyembuhkan penyakit",
+        "dijamin sembuh",
+        "obat ajaib",
+        "tanpa efek samping",
+        "pengganti obat resep"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 46000,
+        "harga_dasar_b2b_per_botol": 34000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 60,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida",
+            "Deksametason"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260040",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Mual pada dosis berlebih"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 kapsul lunak",
+      "kata_kunci": "vitamin d tulang"
+    },
+    {
+      "id": "ARB-041",
+      "nama_produk": "Kalsium + Magnesium Tablet",
+      "kategori": "Suplemen Kesehatan",
+      "nomor_izin_edar_bpom": "POM SD SIM260041",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260041",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Kalsium karbonat setara Ca 500 mg",
+        "Magnesium oksida setara Mg 100 mg"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Membantu memelihara kesehatan tulang."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menumbuhkan tinggi badan 10 cm",
+        "obat pengeroposan tulang",
+        "menyembuhkan penyakit",
+        "dijamin sembuh",
+        "obat ajaib",
+        "tanpa efek samping",
+        "pengganti obat resep"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 39000,
+        "harga_dasar_b2b_per_botol": 29000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 60,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida",
+            "Deksametason"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260041",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Sembelit"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 tablet",
+      "kata_kunci": "kalsium magnesium tulang"
+    },
+    {
+      "id": "ARB-042",
+      "nama_produk": "Omega-3 Minyak Ikan 1000 mg",
+      "kategori": "Suplemen Kesehatan",
+      "nomor_izin_edar_bpom": "POM SD SIM260042",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260042",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Minyak ikan setara EPA 180 mg dan DHA 120 mg"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Membantu memelihara kesehatan jantung."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "mencegah serangan jantung",
+        "menurunkan kolesterol 50%",
+        "menyembuhkan penyakit",
+        "dijamin sembuh",
+        "obat ajaib",
+        "tanpa efek samping",
+        "pengganti obat resep"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 69000,
+        "harga_dasar_b2b_per_botol": 51000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 48,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida",
+            "Deksametason"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260042",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Bersendawa beraroma ikan",
+          "Hati-hati bila sedang minum obat pengencer darah"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 kapsul lunak",
+      "kata_kunci": "omega 3 minyak ikan jantung"
+    },
+    {
+      "id": "ARB-043",
+      "nama_produk": "Zinc 20 mg Tablet",
+      "kategori": "Suplemen Kesehatan",
+      "nomor_izin_edar_bpom": "POM SD SIM260043",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260043",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Zinc pikolinat setara Zn 20 mg"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Membantu memelihara daya tahan tubuh."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "obat diare anak",
+        "kebal penyakit",
+        "menyembuhkan penyakit",
+        "dijamin sembuh",
+        "obat ajaib",
+        "tanpa efek samping",
+        "pengganti obat resep"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 32500,
+        "harga_dasar_b2b_per_botol": 24000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 72,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida",
+            "Deksametason"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260043",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Mual bila diminum saat perut kosong"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 30 tablet",
+      "kata_kunci": "zinc imun daya tahan"
+    },
+    {
+      "id": "ARB-044",
+      "nama_produk": "Probiotik Sachet",
+      "kategori": "Suplemen Kesehatan",
+      "nomor_izin_edar_bpom": "POM SD SIM260044",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260044",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Lactobacillus acidophilus 1×10⁹ CFU",
+        "Bifidobacterium lactis 1×10⁹ CFU",
+        "Inulin"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Membantu memelihara kesehatan pencernaan."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menyembuhkan radang usus",
+        "obat autisme",
+        "menyembuhkan penyakit",
+        "dijamin sembuh",
+        "obat ajaib",
+        "tanpa efek samping",
+        "pengganti obat resep"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 47000,
+        "harga_dasar_b2b_per_botol": 35000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 60,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida",
+            "Deksametason"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260044",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Perut kembung pada awal konsumsi"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Kotak 10 sachet",
+      "kata_kunci": "probiotik pencernaan usus"
+    },
+    {
+      "id": "ARB-045",
+      "nama_produk": "Multivitamin Anak Sirup 60 ml",
+      "kategori": "Suplemen Kesehatan",
+      "nomor_izin_edar_bpom": "POM SD SIM260045",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260045",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Vitamin A",
+        "Vitamin B kompleks",
+        "Vitamin C",
+        "Vitamin D3",
+        "Zinc"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Membantu memenuhi kebutuhan vitamin dan mineral anak."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "anak pasti tinggi",
+        "obat cerdas",
+        "menyembuhkan stunting",
+        "menyembuhkan penyakit",
+        "dijamin sembuh",
+        "obat ajaib",
+        "tanpa efek samping",
+        "pengganti obat resep"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 46000,
+        "harga_dasar_b2b_per_botol": 34000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 48,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida",
+            "Deksametason"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260045",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Mual bila melebihi dosis"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 ml",
+      "kata_kunci": "multivitamin anak sirup"
+    },
+    {
+      "id": "ARB-046",
+      "nama_produk": "Zat Besi + Asam Folat",
+      "kategori": "Suplemen Kesehatan",
+      "nomor_izin_edar_bpom": "POM SD SIM260046",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260046",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Fero fumarat setara Fe 60 mg",
+        "Asam folat 400 mcg"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Membantu memenuhi kebutuhan zat besi dan asam folat."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menyembuhkan anemia dalam seminggu",
+        "menambah darah instan",
+        "menyembuhkan penyakit",
+        "dijamin sembuh",
+        "obat ajaib",
+        "tanpa efek samping",
+        "pengganti obat resep"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 28500,
+        "harga_dasar_b2b_per_botol": 21000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 72,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida",
+            "Deksametason"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260046",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Feses berwarna gelap",
+          "Sembelit"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 30 tablet",
+      "kata_kunci": "zat besi asam folat ibu"
+    },
+    {
+      "id": "ARB-047",
+      "nama_produk": "Vitamin B Kompleks",
+      "kategori": "Suplemen Kesehatan",
+      "nomor_izin_edar_bpom": "POM SD SIM260047",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260047",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Vitamin B1 10 mg",
+        "Vitamin B2 5 mg",
+        "Vitamin B6 10 mg",
+        "Vitamin B12 10 mcg"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Membantu metabolisme energi."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menyembuhkan saraf",
+        "obat kesemutan permanen",
+        "menyembuhkan penyakit",
+        "dijamin sembuh",
+        "obat ajaib",
+        "tanpa efek samping",
+        "pengganti obat resep"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 27000,
+        "harga_dasar_b2b_per_botol": 20000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 72,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida",
+            "Deksametason"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260047",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Urine berwarna kuning terang"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 30 tablet",
+      "kata_kunci": "vitamin b energi metabolisme"
+    },
+    {
+      "id": "ARB-048",
+      "nama_produk": "Royal Jelly Kapsul",
+      "kategori": "Suplemen Kesehatan",
+      "nomor_izin_edar_bpom": "POM SD SIM260048",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260048",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Royal jelly 500 mg/kapsul"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Membantu memelihara kesehatan tubuh."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "awet muda selamanya",
+        "obat mandul",
+        "menyembuhkan penyakit",
+        "dijamin sembuh",
+        "obat ajaib",
+        "tanpa efek samping",
+        "pengganti obat resep"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 73000,
+        "harga_dasar_b2b_per_botol": 54000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 48,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida",
+            "Deksametason"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260048",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Reaksi alergi pada individu sensitif terhadap produk lebah"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 kapsul",
+      "kata_kunci": "royal jelly kesehatan tubuh"
+    },
+    {
+      "id": "ARB-049",
+      "nama_produk": "Ekstrak Echinacea Kapsul",
+      "kategori": "Suplemen Kesehatan",
+      "nomor_izin_edar_bpom": "POM SD SIM260049",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260049",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Ekstrak herba Echinacea purpurea 400 mg/kapsul"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Membantu memelihara daya tahan tubuh."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "obat flu dan pilek",
+        "menyembuhkan infeksi saluran napas",
+        "menyembuhkan penyakit",
+        "dijamin sembuh",
+        "obat ajaib",
+        "tanpa efek samping",
+        "pengganti obat resep"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 65000,
+        "harga_dasar_b2b_per_botol": 48000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 48,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida",
+            "Deksametason"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260049",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Reaksi alergi pada individu sensitif terhadap famili Asteraceae"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 60 kapsul",
+      "kata_kunci": "echinacea imun daya tahan"
+    },
+    {
+      "id": "ARB-050",
+      "nama_produk": "Lutein Kapsul",
+      "kategori": "Suplemen Kesehatan",
+      "nomor_izin_edar_bpom": "POM SD SIM260050",
+      "sertifikasi_halal": {
+        "status": "Bersertifikat Halal",
+        "nomor_sertifikat": "ID-SIM-HALAL-260050",
+        "lembaga": "BPJPH (simulasi)"
+      },
+      "bahan_aktif": [
+        "Lutein 10 mg",
+        "Zeaksantin 2 mg"
+      ],
+      "klaim_khasiat_resmi_bpom": [
+        "Membantu memelihara kesehatan mata."
+      ],
+      "kata_kunci_larangan_overclaim": [
+        "menyembuhkan katarak",
+        "menghilangkan minus mata",
+        "menyembuhkan penyakit",
+        "dijamin sembuh",
+        "obat ajaib",
+        "tanpa efek samping",
+        "pengganti obat resep"
+      ],
+      "matriks_harga_b2b": {
+        "harga_eceran_tertinggi_het": 48500,
+        "harga_dasar_b2b_per_botol": 36000,
+        "moq_minimal_box": 5,
+        "isi_per_box_botol": 60,
+        "skema_diskon": [
+          {
+            "min_box": 10,
+            "diskon_persen": 3
+          },
+          {
+            "min_box": 25,
+            "diskon_persen": 5
+          },
+          {
+            "min_box": 50,
+            "diskon_persen": 7
+          },
+          {
+            "min_box": 100,
+            "diskon_persen": 10
+          }
+        ],
+        "batas_diskon_maksimal_ai_persen": 10,
+        "tempo_pembayaran_hari": [
+          0,
+          14
+        ],
+        "konsinyasi": "Tidak tersedia untuk pembelian pertama; dapat diajukan staf untuk pelanggan tetap"
+      },
+      "data_teknis_kefarmasian": {
+        "status_bebas_bko": {
+          "hasil": "Negatif — Bahan Kimia Obat tidak terdeteksi",
+          "parameter_uji": [
+            "Sildenafil sitrat",
+            "Sibutramin hidroklorida",
+            "Deksametason"
+          ],
+          "metode": "KLT-Densitometri dan HPLC (simulasi)",
+          "batas_deteksi": "< 1 ppm",
+          "nomor_laporan_uji": "LHU-SIM-BKO-260050",
+          "laboratorium": "Laboratorium Uji Simulasi AAGE (bukan laboratorium nyata)"
+        },
+        "uji_stabilitas": {
+          "kondisi": "Real time 30°C ± 2°C / RH 75% ± 5%",
+          "durasi_bulan": 24,
+          "hasil": "Memenuhi syarat organoleptik, kadar air, dan cemaran mikroba (simulasi)"
+        },
+        "efek_samping": [
+          "Gangguan pencernaan ringan"
+        ],
+        "penyimpanan": "Simpan di tempat sejuk dan kering, terhindar dari sinar matahari langsung."
+      },
+      "kemasan": "Botol 30 kapsul lunak",
+      "kata_kunci": "lutein mata penglihatan"
+    }
+  ]
+}

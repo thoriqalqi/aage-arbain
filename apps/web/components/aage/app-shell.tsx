@@ -2,6 +2,7 @@
 
 import {
   Bell,
+  Boxes,
   BookOpen,
   ChevronsUpDown,
   ClipboardCheck,
@@ -46,6 +47,7 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     label: "Umum",
     items: [
       { href: "/", label: "Ringkasan", icon: LayoutDashboard },
+      { href: "/dashboard", label: "Command Center", icon: Boxes, external: false },
       { href: "/inbox", label: "Inbox", icon: Inbox, count: "inbox" },
       { href: "/approval", label: "Approval", icon: ClipboardCheck, count: "approval" },
       { href: "/ledger", label: "Ledger", icon: ScrollText },

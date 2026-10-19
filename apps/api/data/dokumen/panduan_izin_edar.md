@@ -1,6 +1,6 @@
 # Panduan Izin Edar dan Klaim Produk (ringkasan internal, data contoh)
 
-Seluruh produk dalam katalog demo memakai nomor izin edar contoh dengan format POM TR-CONTOH, POM MD-CONTOH, POM SD-CONTOH, atau POM NA-CONTOH. Nomor resmi akan dimuat setelah data katalog mitra diterima.
+Seluruh produk dalam katalog demo memakai nomor izin edar simulasi dengan format POM TR SIM… (obat bahan alam) atau POM SD SIM… (suplemen kesehatan). Nomor resmi akan dimuat setelah data katalog mitra diterima.
 
 ## Arti kode izin edar
 

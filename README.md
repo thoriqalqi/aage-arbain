@@ -4,8 +4,26 @@ Agen penjualan & pemasaran AI untuk **CV Arba'in** (tantangan ARB-01, UMS Health
 AAGE menjawab pembeli B2B 24 jam lewat WhatsApp, menulis konten SEO/GEO, dan memetakan prospek apotek —
 setiap kalimat diperiksa **ClaimGuard** agar tidak overclaim, dan setiap aksi tercatat di **Evidence-to-Action Ledger**.
 
-> Data katalog, harga, klaim, dan prospek di repo ini adalah **data sintetis berlabel** (nomor izin edar berformat
-> `POM TR-CONTOH-…`). Ganti dengan katalog resmi mitra lewat menu Katalog → Unggah katalog.
+> Data katalog di repo ini adalah **50 produk simulasi** di [`apps/api/config/mock_products.json`](apps/api/config/mock_products.json)
+> (izin edar `POM TR SIM…`/`POM SD SIM…`, sertifikat halal & uji BKO fiktif). Ganti dengan katalog resmi mitra sebelum produksi.
+
+## Multi-agent (CrewAI) & Command Center
+
+Empat agen — **B2B Procurement Specialist**, **Lead Finder**, **GEO Content Specialist**, **ClaimGuard Watchdog** — ada di
+[`apps/api/src/agents_crew.py`](apps/api/src/agents_crew.py). Alur, aturan HITL, dan format stream log: [`docs/WORKFLOW.md`](docs/WORKFLOW.md).
+
+```bash
+cd apps/api
+.venv/Scripts/python -m src.agents_crew workday            # hari kerja otonom di terminal
+.venv/Scripts/python -m src.agents_crew nego --produk propolis --box 50 --diskon 15
+.venv/Scripts/python -m src.agents_crew audit --teks "Madu ini menyembuhkan diabetes"
+```
+
+Dashboard **Command Center** (`/dashboard`, tema gelap): kantor AI 3D isometrik (React Three Fiber), terminal log live dari
+crew, meja intervensi ClaimGuard dengan rujukan pasal Perban BPOM 30/2023, dan mockup negosiasi WhatsApp + approve invoice
+via Fonnte. Tanpa `ANTHROPIC_API_KEY` crew berjalan dalam **mode simulasi** (tool deterministik, tanpa LLM).
+
+![Command Center](docs/screenshots/command-center-done.png)
 
 Dokumen acuan: [`docs/PRD.md`](docs/PRD.md) (fungsi) · [`docs/design.md`](docs/design.md) (tampilan) · [`docs/PANDUAN.md`](docs/PANDUAN.md) (panduan staf 1 halaman).
 
@@ -83,14 +101,14 @@ Postgres 16 + pgvector, API FastAPI (:8000), dashboard Next.js (:3000). Langfuse
 ```bash
 cd apps/api
 .venv/Scripts/python -m eval.run --offline   # hasil: eval/hasil/laporan.md + hasil.json
-.venv/Scripts/python -m pytest -q tests      # 22 tes acceptance criteria
+.venv/Scripts/python -m pytest -q tests      # 29 tes (acceptance criteria + multi-agen)
 ```
 
 Hasil terakhir (mode offline, dataset di `apps/api/eval/datasets/`):
 
 | Metrik | Hasil | Target MVP |
 |---|---|---|
-| Akurasi QA katalog (150 pertanyaan) | 100% | ≥90% |
+| Akurasi QA katalog (306 pertanyaan, 50 produk) | 100% | ≥90% |
 | Groundedness jawaban otomatis | 100% | ≥98% |
 | Recall / precision ClaimGuard (128 kalimat) | 98,8% / 100% | ≥90% / ≥80% |
 | Kalimat "Diblokir" lolos sebagai "Diizinkan" | 0 | 0 |
@@ -121,6 +139,8 @@ infra/               init Postgres
 
 ## Status & batasan yang diketahui
 
+- Mode LLM CrewAI (`anthropic/claude-sonnet-5-5`) sudah dirakit dan objek Agent/Task/Crew tervalidasi, tetapi belum
+  dijalankan dengan API key nyata. Rujukan Lampiran Perban BPOM 30/2023 perlu diverifikasi dosen.
 - Diuji end-to-end di **SQLite + mode offline**. Jalur **Postgres/pgvector**, **Gemini via LiteLLM**, dan
   **WhatsApp Cloud API** sudah ditulis tetapi belum diuji dengan kredensial/instans nyata di mesin pengembang.
 - Overpass (OSM) publik sering penuh; Prospect Mapper mencoba 3 mirror dengan backoff lalu jatuh ke data sintetis

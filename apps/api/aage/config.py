@@ -43,6 +43,14 @@ class Settings(BaseSettings):
     wa_graph_version: str = "v21.0"
     wa_reminder_template: str = ""
 
+    # Fonnte (gateway WhatsApp lokal) untuk kirim invoice yang disetujui staf
+    fonnte_token: str = ""
+
+    # Multi-agent CrewAI (src/agents_crew.py)
+    agent_model: str = "anthropic/claude-sonnet-5-5"
+    anthropic_api_key: str = ""
+    agent_mode: str = "auto"  # auto | llm | simulasi
+
     # Prospect Mapper
     google_places_api_key: str = ""
     prospect_allow_network: bool = True

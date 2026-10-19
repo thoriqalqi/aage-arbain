@@ -61,13 +61,17 @@ class Product(Base):
     kategori: Mapped[str] = mapped_column(String(80), default="")
     komposisi: Mapped[str] = mapped_column(Text, default="")
     kemasan: Mapped[str] = mapped_column(String(160), default="")
-    satuan_grosir: Mapped[str] = mapped_column(String(40), default="karton")
+    satuan_grosir: Mapped[str] = mapped_column(String(40), default="box")
     no_izin_edar: Mapped[str] = mapped_column(String(60), default="")
     harga_dasar: Mapped[float] = mapped_column(Float, default=0)  # per satuan grosir
     moq: Mapped[int] = mapped_column(Integer, default=1)
     kata_kunci: Mapped[str] = mapped_column(Text, default="")
     sumber_data: Mapped[str] = mapped_column(String(20), default="sintetis")
     aktif: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Dari config/mock_products.json (RAG): frasa terlarang per produk + data teknis kefarmasian
+    larangan: Mapped[list] = mapped_column(JSON, default=list)
+    data_teknis: Mapped[dict] = mapped_column(JSON, default=dict)
+    het_per_botol: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     claims: Mapped[list["ApprovedClaim"]] = relationship(back_populates="product")
     pricing: Mapped[list["PricingRule"]] = relationship(back_populates="product", order_by="PricingRule.min_qty")
