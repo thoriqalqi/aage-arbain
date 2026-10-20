@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     agent_mode: str = "auto"  # auto | llm | simulasi
 
     # Prospek: Live Lead Scouting (OpenStreetMap Overpass, tanpa API key) + Opportunity Score
+    serper_api_key: str = ""  # Live AI Search Audit (google.serper.dev); kosong = tidak terhubung
     overpass_urls: str = "https://overpass-api.de/api/interpreter,https://overpass.private.coffee/api/interpreter"
     overpass_timeout_s: float = 25.0
     prospek_max_results: int = 100

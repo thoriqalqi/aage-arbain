@@ -1,6 +1,6 @@
 "use client"
 
-import { AlertTriangle, Clock, Copy, Download, LoaderCircle, MapPin, MapPinned, Phone, Radar } from "lucide-react"
+import { AlertTriangle, Clock, Download, LoaderCircle, MapPinned, Phone, Radar } from "lucide-react"
 import dynamic from "next/dynamic"
 import { useMemo, useState } from "react"
 import { toast } from "sonner"
@@ -10,9 +10,8 @@ import { AButton } from "@/components/aage/button"
 import { ScoreBar } from "@/components/aage/charts"
 import { EmptyState } from "@/components/aage/empty-state"
 import { CardHeader, PageHeader, Panel, Surface } from "@/components/aage/panel"
-import { Pill, VerdictBadge } from "@/components/aage/status"
+import { ProspectDrawer, STATUS } from "@/components/aage/prospect-drawer"
 import type { Gudang } from "@/components/aage/prospect-map"
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { ApiError, api, fetcher, getToken } from "@/lib/api"
 import { formatDateTime } from "@/lib/format"
 import type { Prospect } from "@/lib/types"
@@ -24,12 +23,6 @@ const ProspectMap = dynamic(() => import("@/components/aage/prospect-map"), {
 })
 
 const JENIS = ["Apotek", "Toko Obat", "Minimarket"] as const
-const STATUS: Record<Prospect["status"], { label: string; cls: string }> = {
-  baru: { label: "Baru", cls: "bg-soft text-muted-foreground" },
-  dihubungi: { label: "Dihubungi", cls: "bg-info-bg text-info" },
-  merespons: { label: "Merespons", cls: "bg-ok-bg text-ok" },
-  menolak: { label: "Menolak", cls: "bg-blocked-bg text-blocked" },
-}
 const field = "h-10 rounded-[10px] border border-line bg-white px-3 text-[14px] outline-none focus:border-blue-500"
 const DEFAULT_GUDANG: Gudang = { nama: "Pusat Logistik CV Arba'in — Semarang", lat: -6.9932, lng: 110.4203 }
 
@@ -46,94 +39,6 @@ type ScoutResponse = {
   peringatan: string | null
   gudang: Gudang
   items: Prospect[]
-}
-
-function DetailSheet({ p, onClose, onStatus }: { p: Prospect | null; onClose: () => void; onStatus: (p: Prospect, s: Prospect["status"]) => void }) {
-  return (
-    <Sheet open={p != null} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent side="right" className="w-full overflow-y-auto bg-card sm:max-w-md">
-        {p && (
-          <>
-            <SheetHeader>
-              <SheetTitle>{p.nama}</SheetTitle>
-              <SheetDescription>{p.alamat}</SheetDescription>
-            </SheetHeader>
-            <div className="space-y-6 px-4 pb-8">
-              <div className="flex flex-wrap gap-1.5">
-                <Pill>{p.tipe}</Pill>
-                {p.osm_id && (
-                  <a
-                    href={`https://www.openstreetmap.org/${p.osm_id.replace("osm:", "")}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex h-6 items-center gap-1 rounded-full bg-blue-50 px-2 text-[12px] font-medium text-navy-700 hover:underline"
-                  >
-                    <MapPin className="size-3" /> {p.osm_id.replace("osm:", "OSM ")}
-                  </a>
-                )}
-                {p.sudah_pelanggan && <Pill className="bg-ok-bg text-ok">Sudah pelanggan</Pill>}
-              </div>
-              <section>
-                <div className="mb-2 flex items-end justify-between">
-                  <h3 className="text-[13px] font-semibold">Opportunity Score</h3>
-                  <span className="tabular text-[28px] leading-none font-semibold text-navy-900">{p.skor}</span>
-                </div>
-                <ul className="space-y-2.5">
-                  {p.alasan_skor.map((r) => (
-                    <li key={r.faktor} className="text-[13px]">
-                      <div className="flex justify-between">
-                        <span>{r.faktor}</span>
-                        <span className="tabular font-medium">
-                          +{r.poin.toLocaleString("id-ID")}/{r.maks}
-                        </span>
-                      </div>
-                      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-line">
-                        <div className="h-full rounded-full bg-[linear-gradient(90deg,var(--blue-400),var(--navy-900))]" style={{ width: `${(r.poin / r.maks) * 100}%` }} />
-                      </div>
-                      <div className="mt-0.5 text-[12px] text-muted-foreground">{r.keterangan}</div>
-                    </li>
-                  ))}
-                </ul>
-                <p className="mt-3 text-[12px] text-subtle-foreground">
-                  Dipindai {formatDateTime(p.terakhir_dipindai)} · data OpenStreetMap apa adanya (tidak dilengkapi tebakan).
-                </p>
-              </section>
-              <section>
-                <div className="mb-2 flex items-center justify-between">
-                  <h3 className="text-[13px] font-semibold">Draf pesan pembuka</h3>
-                  <VerdictBadge verdict={p.draf_verdict} />
-                </div>
-                <p className="rounded-lg bg-blue-50 p-3 text-[13px] leading-6">{p.draf_pesan}</p>
-                <AButton
-                  variant="outline"
-                  size="sm"
-                  className="mt-2"
-                  onClick={() => navigator.clipboard.writeText(p.draf_pesan).then(() => toast.success("Draf disalin — kirim manual oleh staf"))}
-                >
-                  <Copy className="size-3.5" /> Salin draf
-                </AButton>
-              </section>
-              <section>
-                <h3 className="mb-2 text-[13px] font-semibold">Status tindak lanjut</h3>
-                <div className="flex flex-wrap gap-2">
-                  {(Object.keys(STATUS) as Prospect["status"][]).map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => onStatus(p, s)}
-                      className={cn("h-9 rounded-full px-3 text-[13px] font-medium", p.status === s && "ring-2 ring-blue-500", STATUS[s].cls)}
-                    >
-                      {STATUS[s].label}
-                    </button>
-                  ))}
-                </div>
-                <p className="mt-2 text-[12px] text-subtle-foreground">Perubahan status tercatat di Ledger dan masuk funnel KPI.</p>
-              </section>
-            </div>
-          </>
-        )}
-      </SheetContent>
-    </Sheet>
-  )
 }
 
 export default function ProspekPage() {
@@ -274,7 +179,7 @@ export default function ProspekPage() {
       )}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <Panel className="relative h-[520px] overflow-hidden p-0">
+        <Panel className="relative isolate z-0 h-[520px] overflow-hidden p-0">
           <ProspectMap items={shown} gudang={gudang} scanId={scanId} onSelect={setSelected} />
           {(loading || waitingBg) && (
             <div className="absolute inset-0 z-[500] flex flex-col items-center justify-center gap-3 bg-white/60 backdrop-blur-[2px]">
@@ -377,7 +282,15 @@ export default function ProspekPage() {
       <p className="text-[11.5px] text-subtle-foreground">
         Data © OpenStreetMap contributors (ODbL). AAGE tidak mengirim pesan massal — staf yang menghubungi prospek.
       </p>
-      <DetailSheet p={selected} onClose={() => setSelected(null)} onStatus={setStatus} />
+      <ProspectDrawer
+        p={selected}
+        onClose={() => setSelected(null)}
+        onStatus={setStatus}
+        onUpdated={(u) => {
+          setSelected(u)
+          setItems(shown.map((x) => (x.id === u.id ? u : x)))
+        }}
+      />
     </div>
   )
 }

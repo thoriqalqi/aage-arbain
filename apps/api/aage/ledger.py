@@ -24,6 +24,7 @@ EVENT_TYPES = {
     "audit_halaman": "Audit halaman",
     "prospek_dibuat": "Prospek dibuat",
     "prospek_status": "Status prospek berubah",
+    "prospek_riset": "Riset pasar & Next Best Action prospek",
     "pengingat_repeat_order": "Pengingat repeat order",
     "katalog_diimpor": "Katalog diimpor",
     "dokumen_diingest": "Dokumen di-ingest",

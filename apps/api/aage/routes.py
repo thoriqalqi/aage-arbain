@@ -596,6 +596,17 @@ def prospects_patch(prospect_id: int, body: ProspectPatch, user: User = Depends(
     return ser.prospect(p)
 
 
+@router.post("/prospects/{prospect_id}/riset")
+def prospects_research(prospect_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Live AI Search Audit (Serper/Google News) + Next Best Action untuk satu prospek."""
+    from .prospects import market_service
+
+    p = db.get(Prospect, prospect_id)
+    if p is None:
+        raise HTTPException(404, "Prospek tidak ditemukan")
+    return ser.prospect(market_service.research(db, p, f"staf:{user.nama}"))
+
+
 @router.get("/prospects/export.csv")
 def prospects_export(wilayah: str | None = None, tipe: str | None = None, user: User = Depends(current_user),
                      db: Session = Depends(get_db)):

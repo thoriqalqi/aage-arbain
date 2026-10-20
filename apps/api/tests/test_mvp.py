@@ -201,3 +201,31 @@ def test_opportunity_score_math():
     assert sc.data_completeness("024-1", "Mo-Su 08:00-21:00", True) == 30
     assert sc.data_completeness(None, None, False) == 0
     assert round(sc.haversine_km(-6.9932, 110.4203, -7.5695, 110.8290), 0) == 78  # Semarang → Solo ±78 km
+
+
+def test_prospek_riset_tanpa_key_dan_dengan_serper(client, auth, monkeypatch):
+    from aage.prospects import market_service
+
+    pid = client.get("/api/prospects", headers=auth, params={"wilayah": "Kota Semarang", "tipe": "Apotek"}).json()["items"][0]["id"]
+
+    # Tanpa SERPER_API_KEY: tidak ada data pasar karangan, NBA tetap dari data internal
+    monkeypatch.setattr(market_service.settings, "serper_api_key", "")
+    p = client.post(f"/api/prospects/{pid}/riset", headers=auth).json()
+    assert p["market_analysis"]["status"] == "tidak_terhubung" and p["market_analysis"]["topik"] == []
+    assert p["nba"]["verdict"] == "allowed" and p["nba"]["produk"]
+
+    # Dengan Serper: hitungan = jumlah artikel yang dikembalikan, tautan asli diteruskan
+    monkeypatch.setattr(market_service.settings, "serper_api_key", "kunci-uji")
+    def fake_news(query):
+        if "maag" in query:
+            return [{"judul": f"Berita {i}", "tautan": f"https://contoh.id/{i}", "cuplikan": "", "sumber": "Contoh", "tanggal": "1 hari lalu"} for i in range(3)]
+        return []
+    monkeypatch.setattr(market_service, "_serper_news", fake_news)
+    p = client.post(f"/api/prospects/{pid}/riset", headers=auth).json()
+    m = p["market_analysis"]
+    assert m["status"] == "ok" and m["topik_utama"] == "pencernaan"
+    assert next(t for t in m["topik"] if t["id"] == "pencernaan")["jumlah_artikel"] == 3
+    nba = p["nba"]
+    assert nba["topik"] == "kesehatan pencernaan" and nba["verdict"] == "allowed"
+    assert all("pencernaan" in x["klaim_resmi"].lower() or "kembung" in x["klaim_resmi"].lower() or "diare" in x["klaim_resmi"].lower() for x in nba["produk"])
+    assert "%" not in m["ringkasan"]  # tidak ada persentase tren karangan

@@ -201,6 +201,36 @@ export type Prospect = {
   skor_geo: number
   skor_data: number
   terakhir_dipindai: string | null
+  market_analysis: MarketAnalysis | null
+  nba: NextBestAction | null
+}
+
+export type MarketArticle = { judul: string; tautan: string; cuplikan: string; sumber: string; tanggal: string }
+
+export type MarketAnalysis = {
+  status: "ok" | "tidak_terhubung" | "gagal"
+  sumber: string
+  periode: string
+  wilayah: string
+  dipindai: string
+  ringkasan: string
+  topik_utama: string | null
+  topik: { id: string; label: string; kueri: string; jumlah_artikel: number; artikel: MarketArticle[] }[]
+}
+
+export type NextBestAction = {
+  prioritas: "TINGGI" | "SEDANG" | "RENDAH"
+  langkah: string
+  topik: string
+  teks: string
+  produk: { sku: string; nama: string; izin_edar: string; klaim_resmi: string }[]
+  penawaran: { bundling_box: number; diskon_persen: number; ongkir: string }
+  kanal: string
+  dasar: string[]
+  verdict: Verdict
+  aturan: string[]
+  dirumuskan: string
+  metode: string
 }
 
 export type Kpi = {

@@ -246,6 +246,8 @@ class Prospect(Base):
     skor_geo: Mapped[float] = mapped_column(Float, default=0)  # Geographic Fit (maks 70)
     skor_data: Mapped[float] = mapped_column(Float, default=0)  # Data Completeness (maks 30)
     terakhir_dipindai: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    market_analysis: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # hasil Live AI Search Audit
+    nba: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # Next Best Action
     dibuat_pada: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 

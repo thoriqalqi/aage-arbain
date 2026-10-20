@@ -92,4 +92,4 @@ def prospect(p: Prospect) -> dict:
             "skor": p.skor, "alasan_skor": p.alasan_skor, "draf_pesan": p.draf_pesan, "draf_verdict": p.draf_verdict,
             "status": p.status, "sumber": p.sumber, "osm_id": p.eksternal_id, "jam_buka": p.jam_buka,
             "alamat_jalan_ada": p.alamat_jalan_ada, "skor_geo": p.skor_geo, "skor_data": p.skor_data,
-            "terakhir_dipindai": ts(p.terakhir_dipindai)}
+            "terakhir_dipindai": ts(p.terakhir_dipindai), "market_analysis": p.market_analysis, "nba": p.nba}
