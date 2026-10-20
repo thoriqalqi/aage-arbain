@@ -1,6 +1,6 @@
 "use client"
 
-import { Copy, Download, Globe, LoaderCircle, Map, MapPinned, Phone, Star, Table2 } from "lucide-react"
+import { AlertTriangle, Clock, Copy, Download, LoaderCircle, MapPin, MapPinned, Phone, Radar } from "lucide-react"
 import dynamic from "next/dynamic"
 import { useMemo, useState } from "react"
 import { toast } from "sonner"
@@ -8,27 +8,45 @@ import useSWR from "swr"
 
 import { AButton } from "@/components/aage/button"
 import { ScoreBar } from "@/components/aage/charts"
-import { EmptyState, SkeletonRows } from "@/components/aage/empty-state"
-import { Panel, PageHeader, Surface } from "@/components/aage/panel"
+import { EmptyState } from "@/components/aage/empty-state"
+import { CardHeader, PageHeader, Panel, Surface } from "@/components/aage/panel"
 import { Pill, VerdictBadge } from "@/components/aage/status"
+import type { Gudang } from "@/components/aage/prospect-map"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { api, fetcher, getToken } from "@/lib/api"
+import { ApiError, api, fetcher, getToken } from "@/lib/api"
+import { formatDateTime } from "@/lib/format"
 import type { Prospect } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 const ProspectMap = dynamic(() => import("@/components/aage/prospect-map"), {
   ssr: false,
-  loading: () => <div className="shimmer h-[560px] rounded-lg" />,
+  loading: () => <div className="shimmer h-full w-full" />,
 })
 
+const JENIS = ["Apotek", "Toko Obat", "Minimarket"] as const
 const STATUS: Record<Prospect["status"], { label: string; cls: string }> = {
   baru: { label: "Baru", cls: "bg-soft text-muted-foreground" },
   dihubungi: { label: "Dihubungi", cls: "bg-info-bg text-info" },
   merespons: { label: "Merespons", cls: "bg-ok-bg text-ok" },
   menolak: { label: "Menolak", cls: "bg-blocked-bg text-blocked" },
 }
-const SOURCE: Record<string, string> = { google_places: "Google Places", osm: "OpenStreetMap", sintetis: "Data sintetis" }
-const field = "h-10 rounded-md border border-line bg-white px-3 text-[14px] outline-none focus:border-blue-500"
+const field = "h-10 rounded-[10px] border border-line bg-white px-3 text-[14px] outline-none focus:border-blue-500"
+const DEFAULT_GUDANG: Gudang = { nama: "Pusat Logistik CV Arba'in — Semarang", lat: -6.9932, lng: 110.4203 }
+
+type ScoutResponse = {
+  wilayah: string
+  jenis_toko: string
+  sumber: "osm_live" | "cache" | "diproses"
+  area_osm?: string
+  jumlah: number
+  baru?: number
+  dilewati_tanpa_nama?: number
+  durasi_ms: number
+  terakhir_dipindai: string | null
+  peringatan: string | null
+  gudang: Gudang
+  items: Prospect[]
+}
 
 function DetailSheet({ p, onClose, onStatus }: { p: Prospect | null; onClose: () => void; onStatus: (p: Prospect, s: Prospect["status"]) => void }) {
   return (
@@ -42,30 +60,43 @@ function DetailSheet({ p, onClose, onStatus }: { p: Prospect | null; onClose: ()
             </SheetHeader>
             <div className="space-y-6 px-4 pb-8">
               <div className="flex flex-wrap gap-1.5">
-                <Pill>{SOURCE[p.sumber] ?? p.sumber}</Pill>
-                {p.telepon && <Pill><Phone className="size-3" /> {p.telepon}</Pill>}
-                {p.website && <Pill><Globe className="size-3" /> situs</Pill>}
+                <Pill>{p.tipe}</Pill>
+                {p.osm_id && (
+                  <a
+                    href={`https://www.openstreetmap.org/${p.osm_id.replace("osm:", "")}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex h-6 items-center gap-1 rounded-full bg-blue-50 px-2 text-[12px] font-medium text-navy-700 hover:underline"
+                  >
+                    <MapPin className="size-3" /> {p.osm_id.replace("osm:", "OSM ")}
+                  </a>
+                )}
                 {p.sudah_pelanggan && <Pill className="bg-ok-bg text-ok">Sudah pelanggan</Pill>}
               </div>
               <section>
-                <div className="mb-2 flex items-center justify-between">
-                  <h3 className="text-[13px] font-semibold">Alasan skor</h3>
-                  <span className="tabular text-2xl font-[650]">{p.skor}</span>
+                <div className="mb-2 flex items-end justify-between">
+                  <h3 className="text-[13px] font-semibold">Opportunity Score</h3>
+                  <span className="tabular text-[28px] leading-none font-semibold text-navy-900">{p.skor}</span>
                 </div>
-                <ul className="space-y-2">
+                <ul className="space-y-2.5">
                   {p.alasan_skor.map((r) => (
                     <li key={r.faktor} className="text-[13px]">
                       <div className="flex justify-between">
                         <span>{r.faktor}</span>
-                        <span className="tabular font-medium">+{r.poin}/{r.maks}</span>
+                        <span className="tabular font-medium">
+                          +{r.poin.toLocaleString("id-ID")}/{r.maks}
+                        </span>
                       </div>
                       <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-line">
-                        <div className="h-full rounded-full bg-blue-500" style={{ width: `${(r.poin / r.maks) * 100}%` }} />
+                        <div className="h-full rounded-full bg-[linear-gradient(90deg,var(--blue-400),var(--navy-900))]" style={{ width: `${(r.poin / r.maks) * 100}%` }} />
                       </div>
                       <div className="mt-0.5 text-[12px] text-muted-foreground">{r.keterangan}</div>
                     </li>
                   ))}
                 </ul>
+                <p className="mt-3 text-[12px] text-subtle-foreground">
+                  Dipindai {formatDateTime(p.terakhir_dipindai)} · data OpenStreetMap apa adanya (tidak dilengkapi tebakan).
+                </p>
               </section>
               <section>
                 <div className="mb-2 flex items-center justify-between">
@@ -81,7 +112,6 @@ function DetailSheet({ p, onClose, onStatus }: { p: Prospect | null; onClose: ()
                 >
                   <Copy className="size-3.5" /> Salin draf
                 </AButton>
-                <p className="mt-2 text-[12px] text-subtle-foreground">AAGE tidak mengirim pesan massal; staf yang menghubungi prospek.</p>
               </section>
               <section>
                 <h3 className="mb-2 text-[13px] font-semibold">Status tindak lanjut</h3>
@@ -90,7 +120,7 @@ function DetailSheet({ p, onClose, onStatus }: { p: Prospect | null; onClose: ()
                     <button
                       key={s}
                       onClick={() => onStatus(p, s)}
-                      className={cn("h-9 rounded-full px-3 text-[13px] font-medium", p.status === s ? "ring-2 ring-blue-500" : "", STATUS[s].cls)}
+                      className={cn("h-9 rounded-full px-3 text-[13px] font-medium", p.status === s && "ring-2 ring-blue-500", STATUS[s].cls)}
                     >
                       {STATUS[s].label}
                     </button>
@@ -107,166 +137,246 @@ function DetailSheet({ p, onClose, onStatus }: { p: Prospect | null; onClose: ()
 }
 
 export default function ProspekPage() {
+  const { data: initial } = useSWR<{ items: Prospect[]; wilayah: string[]; gudang: Gudang }>("/api/prospects?wilayah=Kota%20Semarang&tipe=Apotek", fetcher)
   const [wilayah, setWilayah] = useState("Kota Semarang")
-  const [tipe, setTipe] = useState("apotek")
-  const [query, setQuery] = useState({ wilayah: "Kota Semarang", tipe: "apotek" })
-  const [view, setView] = useState<"tabel" | "peta">("tabel")
+  const [jenis, setJenis] = useState<(typeof JENIS)[number]>("Apotek")
+  const [result, setResult] = useState<ScoutResponse | null>(null)
+  const [items, setItems] = useState<Prospect[] | null>(null)
+  const [scanId, setScanId] = useState(0)
   const [loading, setLoading] = useState(false)
-  const [meta, setMeta] = useState<{ sumber: string; durasi_ms: number; cache: boolean } | null>(null)
+  const [waitingBg, setWaitingBg] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<Prospect | null>(null)
-  const key = `/api/prospects?wilayah=${encodeURIComponent(query.wilayah)}&tipe=${encodeURIComponent(query.tipe)}`
-  const { data, mutate } = useSWR<{ items: Prospect[]; wilayah: string[] }>(key, fetcher)
-  const items = useMemo(() => data?.items ?? [], [data])
 
-  async function map() {
+  const shown = useMemo(() => items ?? initial?.items ?? [], [items, initial])
+  const gudang = result?.gudang ?? initial?.gudang ?? DEFAULT_GUDANG
+
+  async function petakan() {
     setLoading(true)
+    setError(null)
+    setItems([]) // bersihkan semua pin lama sebelum memuat hasil baru
+    setScanId((n) => n + 1)
     try {
-      const res = await api<{ items: Prospect[]; sumber: string; durasi_ms: number; cache: boolean; jumlah: number }>("/api/prospects/search", {
-        method: "POST",
-        json: { wilayah, tipe },
-      })
-      setMeta(res)
-      setQuery({ wilayah, tipe })
-      await mutate({ items: res.items, wilayah: data?.wilayah ?? [] }, { revalidate: false })
-      toast.success(`${res.jumlah} prospek dipetakan dari ${SOURCE[res.sumber] ?? res.sumber}`)
+      const res = await api<ScoutResponse>("/api/prospek/scout", { method: "POST", json: { wilayah, jenis_toko: jenis } })
+      setResult(res)
+      if (res.sumber === "diproses") {
+        await waitForBackground(res.wilayah, res.jenis_toko)
+        return
+      }
+      setItems(res.items)
+      setScanId((n) => n + 1)
+      if (res.sumber === "cache") toast.warning("Overpass sedang penuh — menampilkan hasil pindaian terakhir")
+      else toast.success(`${res.jumlah} ${jenis.toLowerCase()} dari OpenStreetMap (${res.baru ?? 0} baru)`)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Gagal memetakan prospek")
+      setError(err instanceof ApiError ? err.message : "Gagal memindai wilayah")
+      setItems(null)
     } finally {
       setLoading(false)
+    }
+  }
+
+  /** Server OSM lambat: backend melanjutkan pindaian di latar; pantau tiap 5 detik (maks ±2,5 menit). */
+  async function waitForBackground(w: string, t: string) {
+    setWaitingBg(true)
+    try {
+      for (let i = 0; i < 30; i++) {
+        await new Promise((r) => setTimeout(r, 5000))
+        const res = await api<{ items: Prospect[]; pindaian_latar: boolean }>(
+          `/api/prospects?wilayah=${encodeURIComponent(w)}&tipe=${encodeURIComponent(t)}`,
+        )
+        if (res.items.length || !res.pindaian_latar) {
+          setItems(res.items)
+          setScanId((n) => n + 1)
+          setResult((r) => (r ? { ...r, sumber: "osm_live", jumlah: res.items.length, peringatan: null, terakhir_dipindai: res.items[0]?.terakhir_dipindai ?? null } : r))
+          if (res.items.length) toast.success(`${res.items.length} ${t.toLowerCase()} dari OpenStreetMap`)
+          else setError("Pindaian latar selesai tanpa hasil — server OSM mungkin masih penuh. Coba Petakan lagi.")
+          return
+        }
+      }
+      setError("Server OSM belum menjawab dalam 2,5 menit. Coba Petakan lagi nanti.")
+    } finally {
+      setWaitingBg(false)
     }
   }
 
   async function setStatus(p: Prospect, status: Prospect["status"]) {
     const updated = await api<Prospect>(`/api/prospects/${p.id}`, { method: "PATCH", json: { status } })
     setSelected(updated)
-    mutate({ items: items.map((x) => (x.id === p.id ? updated : x)), wilayah: data?.wilayah ?? [] }, { revalidate: false })
+    setItems(shown.map((x) => (x.id === p.id ? updated : x)))
   }
 
   async function exportCsv() {
-    const res = await fetch(`/api/prospects/export.csv?wilayah=${encodeURIComponent(query.wilayah)}&tipe=${encodeURIComponent(query.tipe)}`, {
+    const w = result?.wilayah ?? wilayah
+    const t = result?.jenis_toko ?? jenis
+    const res = await fetch(`/api/prospects/export.csv?wilayah=${encodeURIComponent(w)}&tipe=${encodeURIComponent(t)}`, {
       headers: { Authorization: `Bearer ${getToken()}` },
     })
-    const blob = await res.blob()
     const a = document.createElement("a")
-    a.href = URL.createObjectURL(blob)
-    a.download = `prospek-${query.wilayah.replace(/\s+/g, "-").toLowerCase()}.csv`
+    a.href = URL.createObjectURL(await res.blob())
+    a.download = `prospek-${w.replace(/\s+/g, "-").toLowerCase()}-${t.replace(/\s+/g, "-").toLowerCase()}.csv`
     a.click()
     URL.revokeObjectURL(a.href)
   }
 
+  const zonaEmas = shown.filter((p) => p.skor_geo === 70).length
+
   return (
-    <div>
+    <div className="space-y-5">
       <PageHeader
         title="Prospek"
-        description="Petakan apotek, toko obat, dan minimarket per wilayah. Skor 0–100 dihitung dari aturan transparan; draf pesan pembuka sudah lolos ClaimGuard."
+        description="Live Lead Scouting dari OpenStreetMap (tanpa API key) dalam batas wilayah administratif, lalu Opportunity Score 0–100 yang dihitung deterministik: kecocokan geografis 70 + kelengkapan data 30."
       />
-      <Panel className="mb-4 flex flex-wrap items-end gap-3 p-4">
+
+      <Panel className="flex flex-wrap items-end gap-3 p-4">
         <label className="grid gap-1 text-[12px] text-muted-foreground">
-          Wilayah (kota/kecamatan)
-          <input list="wilayah-list" value={wilayah} onChange={(e) => setWilayah(e.target.value)} className={cn(field, "w-64")} />
+          Wilayah administratif (nama di OSM)
+          <input
+            list="wilayah-list"
+            value={wilayah}
+            onChange={(e) => setWilayah(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && !loading && petakan()}
+            className={cn(field, "w-64")}
+          />
           <datalist id="wilayah-list">
-            {[...new Set(["Kota Semarang", "Kabupaten Semarang", "Surakarta", "Kudus", "Salatiga", "Demak", "Kendal", ...(data?.wilayah ?? [])])].map((w) => (
+            {[...new Set(["Kota Semarang", "Kabupaten Semarang", "Kota Surakarta", "Kota Salatiga", "Kabupaten Kudus", "Kabupaten Demak", "Kabupaten Kendal", ...(initial?.wilayah ?? [])])].map((w) => (
               <option key={w} value={w} />
             ))}
           </datalist>
         </label>
         <label className="grid gap-1 text-[12px] text-muted-foreground">
           Jenis toko
-          <select value={tipe} onChange={(e) => setTipe(e.target.value)} className={field}>
-            <option value="apotek">Apotek</option>
-            <option value="toko obat">Toko obat</option>
-            <option value="minimarket">Minimarket</option>
+          <select value={jenis} onChange={(e) => setJenis(e.target.value as (typeof JENIS)[number])} className={field}>
+            {JENIS.map((j) => (
+              <option key={j}>{j}</option>
+            ))}
           </select>
         </label>
-        <AButton onClick={map} disabled={loading || !wilayah.trim()}>
-          {loading ? <LoaderCircle className="size-4 animate-spin" /> : <MapPinned className="size-4" />} Petakan
+        <AButton onClick={petakan} disabled={loading || waitingBg || wilayah.trim().length < 2}>
+          {loading || waitingBg ? <LoaderCircle className="size-4 animate-spin" /> : <MapPinned className="size-4" />} Petakan
         </AButton>
         <div className="ml-auto flex items-center gap-2">
-          {meta && (
+          {result && (
             <span className="text-[12px] text-muted-foreground">
-              {SOURCE[meta.sumber]} · {(meta.durasi_ms / 1000).toFixed(1).replace(".", ",")} dtk{meta.cache ? " · cache" : ""}
+              {result.sumber === "osm_live" ? "OSM live" : result.sumber === "cache" ? "Cache pindaian terakhir" : "Diproses di latar"} · {(result.durasi_ms / 1000).toFixed(1).replace(".", ",")} dtk ·{" "}
+              {formatDateTime(result.terakhir_dipindai)}
             </span>
           )}
-          <div className="flex rounded-lg bg-soft p-1" role="radiogroup" aria-label="Tampilan">
-            {(
-              [
-                ["tabel", Table2, "Tabel"],
-                ["peta", Map, "Peta"],
-              ] as const
-            ).map(([v, Icon, label]) => (
-              <button
-                key={v}
-                role="radio"
-                aria-checked={view === v}
-                onClick={() => setView(v)}
-                className={cn("inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[13px] font-medium", view === v ? "bg-white shadow-xs" : "text-muted-foreground")}
-              >
-                <Icon className="size-3.5" /> {label}
-              </button>
-            ))}
-          </div>
-          <AButton variant="outline" onClick={exportCsv} disabled={!items.length}>
+          <AButton variant="outline" onClick={exportCsv} disabled={!shown.length}>
             <Download className="size-4" /> CSV
           </AButton>
         </div>
       </Panel>
 
-      {!data ? (
-        <SkeletonRows rows={10} />
-      ) : items.length === 0 ? (
-        <Surface>
-          <EmptyState title="Belum ada prospek di wilayah ini" description="Klik Petakan untuk mencari dari Google Places / OpenStreetMap." />
-        </Surface>
-      ) : view === "peta" ? (
-        <Surface className="p-2">
-          <ProspectMap items={items} onSelect={setSelected} />
-        </Surface>
-      ) : (
-        <Surface className="overflow-x-auto">
+      {(error || (result?.peringatan && !waitingBg)) && (
+        <div className={cn("flex items-start gap-2 rounded-[12px] border px-4 py-3 text-[13px]", error ? "border-blocked/30 bg-blocked-bg text-blocked" : "border-review/30 bg-review-bg text-review")}>
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" /> {error ?? result?.peringatan}
+        </div>
+      )}
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <Panel className="relative h-[520px] overflow-hidden p-0">
+          <ProspectMap items={shown} gudang={gudang} scanId={scanId} onSelect={setSelected} />
+          {(loading || waitingBg) && (
+            <div className="absolute inset-0 z-[500] flex flex-col items-center justify-center gap-3 bg-white/60 backdrop-blur-[2px]">
+              <span className="btn-glass flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-medium text-navy-900">
+                <Radar className="size-4 animate-spin" /> Memindai {jenis.toLowerCase()} di {wilayah}…
+              </span>
+              <span className="max-w-sm text-center text-[12px] text-muted-foreground">
+                {waitingBg
+                  ? "Server OpenStreetMap sedang lambat — pindaian dilanjutkan di latar, hasil muncul otomatis."
+                  : "OpenStreetMap Overpass · batas waktu 25 detik"}
+              </span>
+            </div>
+          )}
+        </Panel>
+        <Panel className="p-5">
+          <CardHeader icon={<Radar />} title="Ringkasan pindaian" />
+          <dl className="mt-4 grid grid-cols-2 gap-3 text-[13px]">
+            <div className="rounded-xl bg-soft p-3">
+              <dt className="text-muted-foreground">Toko ditemukan</dt>
+              <dd className="tabular text-[24px] font-semibold">{shown.length}</dd>
+            </div>
+            <div className="rounded-xl bg-soft p-3">
+              <dt className="text-muted-foreground">Zona emas 2–8 km</dt>
+              <dd className="tabular text-[24px] font-semibold">{zonaEmas}</dd>
+            </div>
+            <div className="rounded-xl bg-soft p-3">
+              <dt className="text-muted-foreground">Ada telepon</dt>
+              <dd className="tabular text-[24px] font-semibold">{shown.filter((p) => p.telepon).length}</dd>
+            </div>
+            <div className="rounded-xl bg-soft p-3">
+              <dt className="text-muted-foreground">Ada jam buka</dt>
+              <dd className="tabular text-[24px] font-semibold">{shown.filter((p) => p.jam_buka).length}</dd>
+            </div>
+          </dl>
+          {result?.dilewati_tanpa_nama ? (
+            <p className="mt-3 text-[12px] text-subtle-foreground">{result.dilewati_tanpa_nama} titik tanpa nama di OSM tidak dimasukkan.</p>
+          ) : null}
+          <div className="mt-4 space-y-1.5 text-[12px] text-muted-foreground">
+            <div className="flex items-center gap-2"><span className="size-3 rounded-full bg-navy-700" /> Skor ≥ 70</div>
+            <div className="flex items-center gap-2"><span className="size-3 rounded-full bg-blue-500" /> Skor 45–69</div>
+            <div className="flex items-center gap-2"><span className="size-3 rounded-full bg-blue-300" /> Skor &lt; 45</div>
+            <div className="flex items-center gap-2"><span className="size-3 rounded-full border-2 border-white bg-ok shadow" /> {gudang.nama}</div>
+          </div>
+        </Panel>
+      </div>
+
+      <Surface className="overflow-x-auto">
+        {shown.length === 0 ? (
+          <EmptyState
+            icon={<MapPinned />}
+            title={loading ? "Memindai…" : "Belum ada prospek"}
+            description="Pilih wilayah dan jenis toko, lalu klik Petakan untuk memindai toko nyata dari OpenStreetMap."
+          />
+        ) : (
           <table className="w-full text-[13px]">
-            <thead className="bg-soft text-left text-[12px] tracking-[0.02em] text-muted-foreground">
+            <thead className="bg-soft text-left text-[11.5px] tracking-[0.04em] text-muted-foreground uppercase">
               <tr>
-                <th className="sticky left-0 bg-soft px-3 py-2.5 font-medium">Skor</th>
-                <th className="px-3 py-2.5 font-medium">Nama</th>
+                <th className="sticky left-0 bg-soft px-4 py-2.5 font-medium">Skor</th>
+                <th className="px-3 py-2.5 font-medium">Nama & alamat</th>
                 <th className="px-3 py-2.5 font-medium">Jarak</th>
-                <th className="px-3 py-2.5 font-medium">Rating</th>
-                <th className="px-3 py-2.5 font-medium">Kontak</th>
+                <th className="px-3 py-2.5 font-medium">Telepon</th>
+                <th className="px-3 py-2.5 font-medium">Jam buka</th>
                 <th className="px-3 py-2.5 font-medium">Status</th>
-                <th className="px-3 py-2.5 font-medium">Sumber</th>
               </tr>
             </thead>
             <tbody>
-              {items.map((p, i) => (
-                <tr key={p.id} onClick={() => setSelected(p)} className={cn("cursor-pointer border-t border-line hover:bg-blue-50", i % 2 ? "bg-canvas" : "bg-white")}>
-                  <td className={cn("sticky left-0 px-3 py-2.5", i % 2 ? "bg-canvas" : "bg-white")}>
+              {shown.map((p) => (
+                <tr key={p.id} onClick={() => setSelected(p)} className="cursor-pointer border-t border-line bg-white hover:bg-blue-50">
+                  <td className="sticky left-0 bg-inherit px-4 py-2.5">
                     <ScoreBar score={p.skor} reasons={p.alasan_skor} />
                   </td>
                   <td className="px-3 py-2.5">
                     <div className="font-medium">{p.nama}</div>
-                    <div className="line-clamp-1 text-[12px] text-muted-foreground">{p.alamat}</div>
+                    <div className={cn("line-clamp-1 text-[12px]", p.alamat_jalan_ada ? "text-muted-foreground" : "text-subtle-foreground italic")}>{p.alamat}</div>
                   </td>
                   <td className="tabular px-3 py-2.5 whitespace-nowrap">{p.jarak_km != null ? `${p.jarak_km.toLocaleString("id-ID")} km` : "—"}</td>
-                  <td className="px-3 py-2.5 whitespace-nowrap">
-                    {p.rating != null ? (
-                      <span className="inline-flex items-center gap-1">
-                        <Star className="size-3.5 fill-blue-400 text-blue-400" /> {p.rating.toLocaleString("id-ID")}
-                        <span className="text-subtle-foreground">({p.jumlah_ulasan})</span>
-                      </span>
+                  <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">
+                    {p.telepon ? (
+                      <span className="inline-flex items-center gap-1"><Phone className="size-3.5" /> {p.telepon}</span>
                     ) : (
-                      <span className="text-subtle-foreground">—</span>
+                      "—"
                     )}
                   </td>
-                  <td className="px-3 py-2.5 text-muted-foreground">{p.telepon ?? "—"}</td>
+                  <td className="max-w-[12rem] px-3 py-2.5 text-muted-foreground">
+                    {p.jam_buka ? (
+                      <span className="inline-flex items-center gap-1"><Clock className="size-3.5 shrink-0" /> <span className="truncate">{p.jam_buka}</span></span>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td className="px-3 py-2.5">
                     <span className={cn("inline-flex h-6 items-center rounded-full px-2 text-[12px] font-medium", STATUS[p.status].cls)}>{STATUS[p.status].label}</span>
                   </td>
-                  <td className="px-3 py-2.5 text-[12px] whitespace-nowrap text-muted-foreground">{SOURCE[p.sumber] ?? p.sumber}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </Surface>
-      )}
+        )}
+      </Surface>
+      <p className="text-[11.5px] text-subtle-foreground">
+        Data © OpenStreetMap contributors (ODbL). AAGE tidak mengirim pesan massal — staf yang menghubungi prospek.
+      </p>
       <DetailSheet p={selected} onClose={() => setSelected(null)} onStatus={setStatus} />
     </div>
   )

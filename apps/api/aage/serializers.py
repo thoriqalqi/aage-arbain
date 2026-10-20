@@ -90,4 +90,6 @@ def prospect(p: Prospect) -> dict:
             "tipe": p.tipe, "telepon": p.telepon, "website": p.website, "rating": p.rating,
             "jumlah_ulasan": p.jumlah_ulasan, "jarak_km": p.jarak_km, "sudah_pelanggan": p.sudah_pelanggan,
             "skor": p.skor, "alasan_skor": p.alasan_skor, "draf_pesan": p.draf_pesan, "draf_verdict": p.draf_verdict,
-            "status": p.status, "sumber": p.sumber}
+            "status": p.status, "sumber": p.sumber, "osm_id": p.eksternal_id, "jam_buka": p.jam_buka,
+            "alamat_jalan_ada": p.alamat_jalan_ada, "skor_geo": p.skor_geo, "skor_data": p.skor_data,
+            "terakhir_dipindai": ts(p.terakhir_dipindai)}

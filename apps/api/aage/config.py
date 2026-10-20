@@ -51,12 +51,17 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     agent_mode: str = "auto"  # auto | llm | simulasi
 
-    # Prospect Mapper
-    google_places_api_key: str = ""
-    prospect_allow_network: bool = True
-    gudang_nama: str = "Gudang contoh — Semarang"
+    # Prospek: Live Lead Scouting (OpenStreetMap Overpass, tanpa API key) + Opportunity Score
+    overpass_urls: str = "https://overpass-api.de/api/interpreter,https://overpass.private.coffee/api/interpreter"
+    overpass_timeout_s: float = 25.0
+    prospek_max_results: int = 100
+    gudang_nama: str = "Pusat Logistik CV Arba'in — Semarang"
     gudang_lat: float = -6.9932
     gudang_lng: float = 110.4203
+    skor_zona_emas_min_km: float = 2.0
+    skor_zona_emas_max_km: float = 8.0
+    skor_jarak_nol_km: float = 30.0  # di atas jarak ini Geographic Fit = 0
+    skor_geo_di_gudang: float = 35.0  # nilai Geographic Fit pada jarak 0 km (naik linear ke 70 di 2 km)
 
     # CORS untuk dashboard
     cors_origins: str = "http://localhost:3000"

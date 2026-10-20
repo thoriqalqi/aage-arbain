@@ -37,7 +37,7 @@ Dokumen acuan: [`docs/PRD.md`](docs/PRD.md) (fungsi) · [`docs/design.md`](docs/
 | M4 | Evidence-to-Action Ledger (append-only: listener ORM + trigger Postgres) | `apps/api/aage/ledger.py` |
 | M5 | Dashboard: Ringkasan KPI, Inbox, Approval, Ledger, Playground, login admin/staf | `apps/web/app/(app)/` |
 | M6 | Content & GEO Studio: artikel + FAQ + meta + JSON-LD, audit halaman sebelum/sesudah | `apps/api/aage/content/`, `apps/web/app/(app)/konten` |
-| M7 | Prospect Mapper: Google Places → OpenStreetMap → sintetis, skor 0–100 transparan, ekspor CSV | `apps/api/aage/prospects/` |
+| M7 | Prospek: Live Lead Scouting OpenStreetMap Overpass (batas wilayah administratif, tanpa API key), Opportunity Score deterministik (Geographic Fit 70 + Data Completeness 30), peta Leaflet + tabel, ekspor CSV | `apps/api/aage/prospects/` (`lead_service.py`, `scoring_service.py`) |
 
 ### Pipeline agen (graf LangGraph terkendali)
 
@@ -143,7 +143,8 @@ infra/               init Postgres
   dijalankan dengan API key nyata. Rujukan Lampiran Perban BPOM 30/2023 perlu diverifikasi dosen.
 - Diuji end-to-end di **SQLite + mode offline**. Jalur **Postgres/pgvector**, **Gemini via LiteLLM**, dan
   **WhatsApp Cloud API** sudah ditulis tetapi belum diuji dengan kredensial/instans nyata di mesin pengembang.
-- Overpass (OSM) publik sering penuh; Prospect Mapper mencoba 3 mirror dengan backoff lalu jatuh ke data sintetis
-  berlabel. Untuk demo, isi `GOOGLE_PLACES_API_KEY` atau jalankan pemetaan lebih awal agar hasilnya ter-cache.
+- Overpass (OSM) publik sering penuh/lambat (±35 detik saat diuji). `POST /api/prospek/scout` dibatasi 25 detik; bila
+  habis, pindaian dilanjutkan di latar (maks 2 menit) dan halaman Prospek memantau otomatis. Bila Overpass tidak
+  terjangkau, ditampilkan hasil pindaian nyata terakhir dari database. Tidak ada data prospek tiruan.
 - Skema dibuat dengan `create_all` (belum Alembic). Pengingat repeat order dipicu manual (P1 terjadwal belum).
 - Biaya AI di KPI = Rp 0 pada mode offline; angka biaya nyata muncul setelah API key diisi.

@@ -195,6 +195,12 @@ export type Prospect = {
   draf_verdict: Verdict | null
   status: "baru" | "dihubungi" | "merespons" | "menolak"
   sumber: string
+  osm_id: string | null
+  jam_buka: string | null
+  alamat_jalan_ada: boolean
+  skor_geo: number
+  skor_data: number
+  terakhir_dipindai: string | null
 }
 
 export type Kpi = {

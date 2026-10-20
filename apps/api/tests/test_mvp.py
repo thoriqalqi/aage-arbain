@@ -151,11 +151,53 @@ def test_content_generate_approve_export(client, auth):
     assert "application/ld+json" in exp["html"]
 
 
-def test_prospects_offline(client, auth, monkeypatch):
-    from aage.prospects import mapper
+def test_prospek_scout_osm(client, auth, monkeypatch):
+    """Scouting memakai respons Overpass NYATA (fixture Kota Semarang) — tanpa jaringan saat tes."""
+    import json
+    from pathlib import Path
 
-    monkeypatch.setattr(mapper.settings, "prospect_allow_network", False)
-    r = client.post("/api/prospects/search", headers=auth, json={"wilayah": "Kota Semarang", "tipe": "apotek"}).json()
-    assert r["jumlah"] >= 30 and r["items"][0]["alasan_skor"]
-    pid = r["items"][0]["id"]
+    from aage.prospects import lead_service
+
+    fixture = json.loads((Path(__file__).parent / "fixtures" / "overpass_kota_semarang_apotek.json").read_text(encoding="utf-8"))
+    calls = []
+
+    def fake_post(url, query, timeout_s):
+        calls.append(query)
+        return fixture
+
+    monkeypatch.setattr(lead_service, "_post", fake_post)
+    r = client.post("/api/prospek/scout", headers=auth, json={"wilayah": "Kota Semarang", "jenis_toko": "Apotek"})
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert 'area["name"="Kota Semarang"]["boundary"="administrative"]' in calls[0] and 'node["amenity"="pharmacy"]' in calls[0]
+    assert data["sumber"] == "osm_live" and 0 < data["jumlah"] <= 100
+    for it in data["items"]:
+        assert 0 <= it["skor"] <= 100 and it["osm_id"].startswith("osm:")
+        assert it["alamat"]  # nyata atau "Alamat tidak spesifik"
+    assert any(it["alamat"] == "Alamat tidak spesifik" for it in data["items"])
+    # Pindai ulang tidak menggandakan data
+    again = client.post("/api/prospek/scout", headers=auth, json={"wilayah": "Kota Semarang", "jenis_toko": "Apotek"}).json()
+    assert again["baru"] == 0 and again["jumlah"] == data["jumlah"]
+    pid = data["items"][0]["id"]
     assert client.patch(f"/api/prospects/{pid}", headers=auth, json={"status": "dihubungi"}).json()["status"] == "dihubungi"
+
+    # Overpass penuh → kembali ke hasil pindaian nyata terakhir (cache), bukan data tiruan
+    def busy(url, query, timeout_s):
+        raise lead_service.ScoutError("Overpass penuh (504)")
+
+    monkeypatch.setattr(lead_service, "_post", busy)
+    cached = client.post("/api/prospek/scout", headers=auth, json={"wilayah": "Kota Semarang", "jenis_toko": "Apotek"}).json()
+    assert cached["sumber"] == "cache" and cached["jumlah"] == data["jumlah"] and cached["peringatan"]
+    fresh = client.post("/api/prospek/scout", headers=auth, json={"wilayah": "Kota Salatiga", "jenis_toko": "Minimarket"})
+    assert fresh.status_code == 503
+
+
+def test_opportunity_score_math():
+    from aage.prospects import scoring_service as sc
+
+    assert sc.geographic_fit(5) == 70 and sc.geographic_fit(2) == 70 and sc.geographic_fit(8) == 70
+    assert sc.geographic_fit(0) == 35 and sc.geographic_fit(1) == 52.5
+    assert sc.geographic_fit(19) == 35 and sc.geographic_fit(30) == 0 and sc.geographic_fit(50) == 0
+    assert sc.data_completeness("024-1", "Mo-Su 08:00-21:00", True) == 30
+    assert sc.data_completeness(None, None, False) == 0
+    assert round(sc.haversine_km(-6.9932, 110.4203, -7.5695, 110.8290), 0) == 78  # Semarang → Solo ±78 km

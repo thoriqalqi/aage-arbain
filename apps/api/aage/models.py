@@ -239,8 +239,13 @@ class Prospect(Base):
     draf_pesan: Mapped[str] = mapped_column(Text, default="")
     draf_verdict: Mapped[str | None] = mapped_column(String(16), nullable=True)
     status: Mapped[str] = mapped_column(String(16), default="baru")  # baru | dihubungi | merespons | menolak
-    sumber: Mapped[str] = mapped_column(String(24))  # google_places | osm | sintetis
-    eksternal_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    sumber: Mapped[str] = mapped_column(String(24))  # osm (OpenStreetMap Overpass, data nyata)
+    eksternal_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)  # mis. "osm:node/123"
+    jam_buka: Mapped[str | None] = mapped_column(String(200), nullable=True)  # tag opening_hours
+    alamat_jalan_ada: Mapped[bool] = mapped_column(Boolean, default=False)  # tag addr:street tersedia
+    skor_geo: Mapped[float] = mapped_column(Float, default=0)  # Geographic Fit (maks 70)
+    skor_data: Mapped[float] = mapped_column(Float, default=0)  # Data Completeness (maks 30)
+    terakhir_dipindai: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     dibuat_pada: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 

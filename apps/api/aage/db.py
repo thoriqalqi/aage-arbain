@@ -48,6 +48,23 @@ CREATE TRIGGER ledger_no_update BEFORE UPDATE OR DELETE ON ledger_events
 """
 
 
+def _add_missing_columns() -> None:
+    """Migrasi ringan: tambahkan kolom baru pada tabel yang sudah ada (create_all tidak mengubah tabel lama)."""
+    from sqlalchemy import inspect
+
+    insp = inspect(engine)
+    with engine.begin() as conn:
+        for table in Base.metadata.sorted_tables:
+            if not insp.has_table(table.name):
+                continue
+            existing = {c["name"] for c in insp.get_columns(table.name)}
+            for col in table.columns:
+                if col.name in existing:
+                    continue
+                ddl = col.type.compile(dialect=engine.dialect)
+                conn.execute(text(f'ALTER TABLE {table.name} ADD COLUMN "{col.name}" {ddl}'))
+
+
 def init_db(drop: bool = False) -> None:
     from . import models  # noqa: F401  (registrasi tabel)
 
@@ -57,6 +74,7 @@ def init_db(drop: bool = False) -> None:
     if drop:
         Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
+    _add_missing_columns()
     if IS_POSTGRES:
         with engine.begin() as conn:
             conn.execute(text(LEDGER_GUARD_SQL))

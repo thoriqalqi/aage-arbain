@@ -71,7 +71,8 @@ def status():
         "llm": {"aktif": settings.llm_enabled, "model": settings.llm_model if settings.llm_enabled else llm.OFFLINE_MODEL,
                 "judge": settings.llm_judge_model if settings.llm_enabled else None},
         "whatsapp": {"aktif": settings.wa_enabled, "kanal_cadangan": "webchat"},
-        "prospek": {"google_places": bool(settings.google_places_api_key), "osm": settings.prospect_allow_network},
+        "prospek": {"sumber": "OpenStreetMap Overpass (tanpa API key)", "timeout_s": settings.overpass_timeout_s,
+                    "maks_hasil": settings.prospek_max_results},
         "anggaran": {"harian_rp": settings.budget_daily_rp, "bulanan_rp": settings.budget_monthly_rp,
                      "terpakai_hari_ini_rp": round(llm.spent_rp(days=1), 2),
                      "terpakai_bulan_ini_rp": round(llm.spent_rp(month=True), 2)},
@@ -525,22 +526,42 @@ def content_audit(body: AuditIn, user: User = Depends(current_user), db: Session
 # ------------------------------------------------------------------ Prospek
 
 
+class ScoutIn(BaseModel):
+    wilayah: str = Field(..., min_length=2, max_length=120, description="Nama area administratif OSM, mis. Kota Semarang")
+    jenis_toko: str = Field("Apotek", description="Apotek | Toko Obat | Minimarket")
+
+
+def _scout_response(res: dict) -> dict:
+    meta = {k: (ser.ts(v) if k == "terakhir_dipindai" else v) for k, v in res.items() if k != "prospects"}
+    return {**meta, "gudang": {"nama": settings.gudang_nama, "lat": settings.gudang_lat, "lng": settings.gudang_lng},
+            "items": [ser.prospect(p) for p in res["prospects"]]}
+
+
+@router.post("/prospek/scout")
+def prospek_scout(body: ScoutIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Live Lead Scouting OSM Overpass → Opportunity Score → simpan ke database tanpa duplikat."""
+    try:
+        res = mapper.scout_and_store(db, wilayah=body.wilayah, jenis_toko=body.jenis_toko, aktor=f"staf:{user.nama}")
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from None
+    except mapper.ScoutError as exc:
+        raise HTTPException(503, str(exc)) from None
+    return _scout_response(res)
+
+
 class ProspectSearchIn(BaseModel):
     wilayah: str = Field(..., min_length=2)
-    tipe: str = "apotek"
+    tipe: str = "Apotek"
 
 
 @router.post("/prospects/search")
 def prospects_search(body: ProspectSearchIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    try:
-        res = mapper.search_prospects(db, wilayah=body.wilayah.strip(), tipe=body.tipe, aktor=f"staf:{user.nama}")
-    except ValueError as exc:
-        raise HTTPException(400, str(exc)) from None
-    return {**{k: v for k, v in res.items() if k != "prospects"}, "items": [ser.prospect(p) for p in res["prospects"]]}
+    """Alias lama — memakai mesin scouting yang sama dengan /api/prospek/scout."""
+    return prospek_scout(ScoutIn(wilayah=body.wilayah, jenis_toko=body.tipe), user, db)
 
 
 def _prospect_query(wilayah: str | None, tipe: str | None, status: str | None):
-    stmt = select(Prospect).order_by(Prospect.skor.desc())
+    stmt = select(Prospect).where(Prospect.sumber == "osm").order_by(Prospect.skor.desc())
     if wilayah:
         stmt = stmt.where(func.lower(Prospect.wilayah) == wilayah.lower())
     if tipe:
@@ -553,12 +574,11 @@ def _prospect_query(wilayah: str | None, tipe: str | None, status: str | None):
 @router.get("/prospects")
 def prospects_list(wilayah: str | None = None, tipe: str | None = None, status: str | None = None,
                    user: User = Depends(current_user), db: Session = Depends(get_db)):
-    rows = list(db.scalars(_prospect_query(wilayah, tipe, status)))
-    if any(p.sumber != "sintetis" for p in rows):
-        rows = [p for p in rows if p.sumber != "sintetis"]  # data nyata menggantikan data sintetis
-    items = [ser.prospect(p) for p in rows]
-    wilayah_list = [w for (w,) in db.execute(select(Prospect.wilayah).distinct())]
-    return {"items": items, "wilayah": wilayah_list}
+    items = [ser.prospect(p) for p in db.scalars(_prospect_query(wilayah, tipe, status))]
+    sedang = bool(wilayah and tipe and tipe in mapper.JENIS_TOKO and mapper.background_running(" ".join(wilayah.split()), tipe))
+    wilayah_list = [w for (w,) in db.execute(select(Prospect.wilayah).where(Prospect.sumber == "osm").distinct())]
+    return {"items": items, "wilayah": wilayah_list, "jenis_toko": list(mapper.JENIS_TOKO), "pindaian_latar": sedang,
+            "gudang": {"nama": settings.gudang_nama, "lat": settings.gudang_lat, "lng": settings.gudang_lng}}
 
 
 class ProspectPatch(BaseModel):

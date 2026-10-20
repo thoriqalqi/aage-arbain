@@ -1,0 +1,818 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-10-20T07:11:06Z",
+    "timestamp_areas_base": "2026-10-20T01:00:51Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "node",
+  "id": 5028299083,
+  "lat": -6.9944502,
+  "lon": 110.4061151,
+  "tags": {
+    "amenity": "pharmacy",
+    "healthcare": "pharmacy",
+    "name": "Apotek Vita"
+  }
+},
+{
+  "type": "node",
+  "id": 5028299084,
+  "lat": -6.9956052,
+  "lon": 110.4028067,
+  "tags": {
+    "amenity": "pharmacy",
+    "name": "Apotik Fajar Farmatama PT"
+  }
+},
+{
+  "type": "node",
+  "id": 5028657169,
+  "lat": -6.9890629,
+  "lon": 110.4047383,
+  "tags": {
+    "amenity": "pharmacy",
+    "healthcare": "pharmacy",
+    "name": "Borimex. PT"
+  }
+},
+{
+  "type": "node",
+  "id": 5028657180,
+  "lat": -6.9893785,
+  "lon": 110.4061735,
+  "tags": {
+    "amenity": "pharmacy",
+    "healthcare": "pharmacy",
+    "name": "Ratu Utama Apotik"
+  }
+},
+{
+  "type": "node",
+  "id": 5030920975,
+  "lat": -7.0122247,
+  "lon": 110.3908790,
+  "tags": {
+    "amenity": "pharmacy",
+    "name": "Apotek Viva Generik"
+  }
+},
+{
+  "type": "node",
+  "id": 5036038999,
+  "lat": -6.9742799,
+  "lon": 110.4049534,
+  "tags": {
+    "amenity": "pharmacy",
+    "name": "Viva Generic Drug Store"
+  }
+},
+{
+  "type": "node",
+  "id": 5069283780,
+  "lat": -7.0085380,
+  "lon": 110.3859673,
+  "tags": {
+    "amenity": "pharmacy",
+    "name": "Apotek Viva Generik"
+  }
+},
+{
+  "type": "node",
+  "id": 7451377571,
+  "lat": -6.9553688,
+  "lon": 110.4616258,
+  "tags": {
+    "amenity": "pharmacy"
+  }
+},
+{
+  "type": "node",
+  "id": 9765817005,
+  "lat": -7.0493186,
+  "lon": 110.4808043,
+  "tags": {
+    "amenity": "pharmacy",
+    "dispensing": "yes",
+    "healthcare": "pharmacy",
+    "name": "apotek harmoni"
+  }
+},
+{
+  "type": "node",
+  "id": 9765817006,
+  "lat": -7.0479531,
+  "lon": 110.4809924,
+  "tags": {
+    "amenity": "pharmacy",
+    "dispensing": "yes",
+    "healthcare": "pharmacy",
+    "name": "Apotek Adi mulya farma"
+  }
+},
+{
+  "type": "node",
+  "id": 9765817007,
+  "lat": -7.0548067,
+  "lon": 110.4714952,
+  "tags": {
+    "amenity": "pharmacy",
+    "dispensing": "yes",
+    "healthcare": "pharmacy",
+    "name": "Apotek Sumber waras"
+  }
+},
+{
+  "type": "node",
+  "id": 9765817008,
+  "lat": -7.0376783,
+  "lon": 110.4762708,
+  "tags": {
+    "amenity": "pharmacy",
+    "dispensing": "yes",
+    "healthcare": "pharmacy",
+    "name": "Apotek Subur Sehat"
+  }
+},
+{
+  "type": "node",
+  "id": 9765817009,
+  "lat": -7.0374240,
+  "lon": 110.4733792,
+  "tags": {
+    "amenity": "pharmacy",
+    "dispensing": "yes",
+    "healthcare": "pharmacy",
+    "name": "Apotek Klipang Sehat"
+  }
+},
+{
+  "type": "node",
+  "id": 9765817010,
+  "lat": -7.0373746,
+  "lon": 110.4724000,
+  "tags": {
+    "amenity": "pharmacy",
+    "dispensing": "yes",
+    "healthcare": "pharmacy",
+    "name": "Apotek Tulus Harapan"
+  }
+},
+{
+  "type": "node",
+  "id": 9780653357,
+  "lat": -7.0325090,
+  "lon": 110.4580363,
+  "tags": {
+    "amenity": "pharmacy",
+    "brand": "Apotek K-24",
+    "brand:wikidata": "Q56390232",
+    "dispensing": "yes",
+    "healthcare": "pharmacy",
+    "name": "Apotek K-24"
+  }
+},
+{
+  "type": "node",
+  "id": 9789337407,
+  "lat": -7.0264287,
+  "lon": 110.4682577,
+  "tags": {
+    "amenity": "pharmacy",
+    "dispensing": "yes",
+    "healthcare": "pharmacy",
+    "name": "Viva Apotek Ketileng"
+  }
+},
+{
+  "type": "node",
+  "id": 9789343285,
+  "lat": -7.0253708,
+  "lon": 110.4681721,
+  "tags": {
+    "amenity": "pharmacy",
+    "dispensing": "yes",
+    "healthcare": "pharmacy",
+    "name": "Apotek Ajron Farma"
+  }
+},
+{
+  "type": "node",
+  "id": 11757249769,
+  "lat": -6.9829237,
+  "lon": 110.4057192,
+  "tags": {
+    "amenity": "pharmacy",
+    "healthcare": "pharmacy",
+    "name": "Apotik 24"
+  }
+},
+{
+  "type": "node",
+  "id": 12155487481,
+  "lat": -6.9827560,
+  "lon": 110.4570062,
+  "tags": {
+    "addr:city": "Semarang",
+    "addr:district": "Pedurungan",
+    "addr:housename": "Apotek Satrio Wibowo",
+    "addr:neighbourhood": "Ruko New Graha Kusuma Square",
+    "addr:postcode": "50196",
+    "addr:province": "Jawa Tengah",
+    "addr:street": "Jalan Satrio Wibowo III",
+    "addr:subdistrict": "Tlogosari Kulon",
+    "addr:unit": "B-5",
+    "amenity": "pharmacy",
+    "dispensing": "yes",
+    "drive_through": "no",
+    "email": "apt.satrio.wibowo@gmail.com",
+    "healthcare": "pharmacy",
+    "name": "Apotek Satrio Wibowo",
+    "opening_hours": "Mo-Sa 08:00-21:00"
+  }
+},
+{
+  "type": "node",
+  "id": 12991023400,
+  "lat": -6.9782601,
+  "lon": 110.4262764,
+  "tags": {
+    "addr:city": "Semarang",
+    "addr:district": "Semarang Tengah",
+    "addr:housenumber": "8",
+    "addr:postcode": "50139",
+    "addr:province": "Jawa Tengah",
+    "addr:street": "Jalan Wotgandul Timur",
+    "addr:subdistrict": "Kranggan",
+    "amenity": "pharmacy",
+    "healthcare": "pharmacy",
+    "name": "Apotek Kharisma"
+  }
+},
+{
+  "type": "node",
+  "id": 13864527001,
+  "lat": -7.0037761,
+  "lon": 110.3162162,
+  "tags": {
+    "amenity": "pharmacy",
+    "healthcare": "pharmacy",
+    "name": "Apotek AVICENNA"
+  }
+},
+{
+  "type": "way",
+  "id": 285326729,
+  "center": {
+    "lat": -6.9798177,
+    "lon": 110.4135019
+  },
+  "nodes": [
+    2889935514,
+    5065401768,
+    14091129122,
+    5065401769,
+    2889924689,
+    2889924686,
+    14091129120,
+    14091129121,
+    2889924696,
+    14091129126,
+    14091129125,
+    14091129124,
+    14091129123,
+    2889935514
+  ],
+  "tags": {
+    "addr:street": "Jalan Pemuda",
+    "amenity": "pharmacy",
+    "brand": "Kimia Farma",
+    "brand:wikidata": "Q11264892",
+    "building": "pharmacy",
+    "healthcare": "pharmacy",
+    "name": "Kimia Farma"
+  }
+},
+{
+  "type": "way",
+  "id": 337286034,
+  "center": {
+    "lat": -6.9814500,
+    "lon": 110.3911987
+  },
+  "nodes": [
+    3443974447,
+    3443974422,
+    3443974470,
+    3443974494,
+    3443974447
+  ],
+  "tags": {
+    "amenity": "pharmacy",
+    "brand": "Kimia Farma",
+    "brand:wikidata": "Q11264892",
+    "building": "yes",
+    "healthcare": "pharmacy",
+    "name": "Kimia Farma"
+  }
+},
+{
+  "type": "way",
+  "id": 338475307,
+  "center": {
+    "lat": -6.9859691,
+    "lon": 110.3670963
+  },
+  "nodes": [
+    3455561687,
+    3455561666,
+    3455561588,
+    3455561608,
+    3455561687
+  ],
+  "tags": {
+    "amenity": "pharmacy",
+    "building": "yes",
+    "dispensing": "yes",
+    "healthcare": "pharmacy",
+    "name": "apotek Rizky Farma"
+  }
+},
+{
+  "type": "way",
+  "id": 338475369,
+  "center": {
+    "lat": -6.9863079,
+    "lon": 110.3684524
+  },
+  "nodes": [
+    3455561925,
+    3455561929,
+    3455561767,
+    3455561766,
+    3455561925
+  ],
+  "tags": {
+    "amenity": "pharmacy",
+    "building": "yes",
+    "dispensing": "yes",
+    "healthcare": "pharmacy",
+    "name": "apotik sapta jaya"
+  }
+},
+{
+  "type": "way",
+  "id": 339297063,
+  "center": {
+    "lat": -6.9854511,
+    "lon": 110.4086977
+  },
+  "nodes": [
+    3464830847,
+    3464830777,
+    3464830789,
+    3464830872,
+    3464830847
+  ],
+  "tags": {
+    "amenity": "pharmacy",
+    "branch": "Dr Sutomo Semarang",
+    "brand": "Kimia Farma",
+    "brand:wikidata": "Q11264892",
+    "building": "yes",
+    "dispensing": "yes",
+    "healthcare": "pharmacy",
+    "name": "Kimia Farma"
+  }
+},
+{
+  "type": "way",
+  "id": 340573962,
+  "center": {
+    "lat": -6.9708290,
+    "lon": 110.4285998
+  },
+  "nodes": [
+    3478166413,
+    3478166411,
+    3478166436,
+    3478166444,
+    3478166413
+  ],
+  "tags": {
+    "addr:housenumber": "Blok B.5",
+    "addr:street": "Jl. K.H. Agus Salim Ruko THD",
+    "amenity": "pharmacy",
+    "building": "commercial",
+    "building:levels": "4",
+    "healthcare": "pharmacy",
+    "name": "SMC"
+  }
+},
+{
+  "type": "way",
+  "id": 340806021,
+  "center": {
+    "lat": -6.9736962,
+    "lon": 110.4309359
+  },
+  "nodes": [
+    3480560730,
+    3480560729,
+    3480560750,
+    3480560751,
+    3480560730
+  ],
+  "tags": {
+    "amenity": "pharmacy",
+    "building": "yes",
+    "building:levels": "3",
+    "name": "Apotek K-24 MT Haryono Semarang"
+  }
+},
+{
+  "type": "way",
+  "id": 341115321,
+  "center": {
+    "lat": -6.9986182,
+    "lon": 110.3798386
+  },
+  "nodes": [
+    3483394034,
+    3483394036,
+    3483394057,
+    3483394055,
+    3483394034
+  ],
+  "tags": {
+    "amenity": "pharmacy",
+    "building": "yes",
+    "name": "Apotik Borobudur"
+  }
+},
+{
+  "type": "way",
+  "id": 341120748,
+  "center": {
+    "lat": -6.9978066,
+    "lon": 110.3827151
+  },
+  "nodes": [
+    3483427806,
+    5575503789,
+    5575503788,
+    5575503787,
+    5575503785,
+    5575503784,
+    5575503786,
+    3483427842,
+    3483428007,
+    3483427876,
+    5575503791,
+    5575503790,
+    3483427806
+  ],
+  "tags": {
+    "amenity": "pharmacy",
+    "building": "yes",
+    "healthcare": "pharmacy",
+    "name": "Apotik K-24"
+  }
+},
+{
+  "type": "way",
+  "id": 341545705,
+  "center": {
+    "lat": -6.9807902,
+    "lon": 110.3982263
+  },
+  "nodes": [
+    3487077854,
+    3487077851,
+    3487077865,
+    3487077868,
+    3487077854
+  ],
+  "tags": {
+    "amenity": "pharmacy",
+    "building": "yes",
+    "healthcare": "pharmacy",
+    "name": "Apotek Kartika"
+  }
+},
+{
+  "type": "way",
+  "id": 342474379,
+  "center": {
+    "lat": -7.0089869,
+    "lon": 110.4339208
+  },
+  "nodes": [
+    3494733776,
+    3494733903,
+    3494734042,
+    3494734024,
+    3494733776
+  ],
+  "tags": {
+    "amenity": "pharmacy",
+    "building": "pharmacy",
+    "name": "Kimia Farma",
+    "operator:type": "private"
+  }
+},
+{
+  "type": "way",
+  "id": 413780071,
+  "center": {
+    "lat": -6.9950293,
+    "lon": 110.4089013
+  },
+  "nodes": [
+    4150373481,
+    4150373482,
+    4150373483,
+    4150373484,
+    4150373481
+  ],
+  "tags": {
+    "access:roof": "yes",
+    "addr:city": "Semarang",
+    "addr:full": "Jalan Dr Sutomo",
+    "amenity": "pharmacy",
+    "backup_generator": "yes",
+    "building": "yes",
+    "building:condition": "good",
+    "building:floor": "ceramics",
+    "building:levels": "3",
+    "building:material": "concrete",
+    "building:roof": "concrete",
+    "building:structure": "confined_masonry",
+    "capacity:persons": ">500",
+    "name": "Farmasi",
+    "operator:type": "government",
+    "source": "HOT_InAWARESurvey_2018"
+  }
+},
+{
+  "type": "way",
+  "id": 505897659,
+  "center": {
+    "lat": -7.0028901,
+    "lon": 110.3934370
+  },
+  "nodes": [
+    4957267315,
+    4957267314,
+    4957267313,
+    4957267312,
+    4957267315
+  ],
+  "tags": {
+    "amenity": "pharmacy",
+    "building": "yes",
+    "name": "Apotek Duwa Farma",
+    "shop": "convenience"
+  }
+},
+{
+  "type": "way",
+  "id": 510474064,
+  "center": {
+    "lat": -6.9736265,
+    "lon": 110.3968417
+  },
+  "nodes": [
+    4994748876,
+    4994748877,
+    4994748878,
+    4994748879,
+    4994748876
+  ],
+  "tags": {
+    "amenity": "pharmacy",
+    "building": "yes",
+    "name": "Viva Generik"
+  }
+},
+{
+  "type": "way",
+  "id": 521868629,
+  "center": {
+    "lat": -6.9796189,
+    "lon": 110.4040366
+  },
+  "nodes": [
+    5084218287,
+    5084218286,
+    5084218285,
+    5084218283,
+    5084218287
+  ],
+  "tags": {
+    "amenity": "pharmacy",
+    "building": "yes",
+    "healthcare": "pharmacy",
+    "name": "Apotek Indrapasta"
+  }
+},
+{
+  "type": "way",
+  "id": 568039576,
+  "center": {
+    "lat": -6.9699610,
+    "lon": 110.4263894
+  },
+  "nodes": [
+    5466022677,
+    5466022676,
+    5466022675,
+    12278126931,
+    12278126932,
+    5466022677
+  ],
+  "tags": {
+    "amenity": "pharmacy",
+    "building": "yes",
+    "building:levels": "3",
+    "name": "Apotek Kotalama Indofarma",
+    "roof:angle": "30",
+    "roof:shape": "hipped"
+  }
+},
+{
+  "type": "way",
+  "id": 585588394,
+  "center": {
+    "lat": -7.0720409,
+    "lon": 110.4212922
+  },
+  "nodes": [
+    5595806392,
+    5595806391,
+    5595806390,
+    5595806389,
+    5595806392
+  ],
+  "tags": {
+    "amenity": "pharmacy",
+    "building": "pharmacy",
+    "name": "Apotek Meranti",
+    "operator:type": "private"
+  }
+},
+{
+  "type": "way",
+  "id": 588531165,
+  "center": {
+    "lat": -6.9825026,
+    "lon": 110.4562663
+  },
+  "nodes": [
+    5621076464,
+    5621076463,
+    5621076462,
+    5621076461,
+    5621076464
+  ],
+  "tags": {
+    "addr:city": "Semarang",
+    "addr:full": "Jalan Satrio Wibowo I",
+    "amenity": "pharmacy",
+    "evacuation_center": "no",
+    "healthcare": "pharmacy",
+    "name": "SMK Yayasan Pharmasi Semarang",
+    "operator:type": "private",
+    "school:type_idn": "sma",
+    "source": "HOT_InAWARESurvey_2018"
+  }
+},
+{
+  "type": "way",
+  "id": 997439094,
+  "center": {
+    "lat": -7.0710973,
+    "lon": 110.4275515
+  },
+  "nodes": [
+    9210004890,
+    9210004891,
+    9210004892,
+    9210004893,
+    9210004890
+  ],
+  "tags": {
+    "amenity": "pharmacy",
+    "building": "yes",
+    "dispensing": "yes",
+    "healthcare": "pharmacy",
+    "name": "Viva Apotik"
+  }
+},
+{
+  "type": "way",
+  "id": 1333661953,
+  "center": {
+    "lat": -6.9743390,
+    "lon": 110.4281166
+  },
+  "nodes": [
+    12338794316,
+    12338794315,
+    12338794319,
+    12338794321,
+    12338794320,
+    12338794316
+  ],
+  "tags": {
+    "addr:city": "Semarang",
+    "addr:street": "Jalan Pekojan",
+    "amenity": "pharmacy",
+    "building": "yes",
+    "building:levels": "2",
+    "healthcare": "pharmacy",
+    "name": "Toko Obat Cipta Jaya",
+    "roof:angle": "30",
+    "roof:shape": "hipped"
+  }
+},
+{
+  "type": "way",
+  "id": 1333661955,
+  "center": {
+    "lat": -6.9742418,
+    "lon": 110.4281845
+  },
+  "nodes": [
+    12338794322,
+    12338794324,
+    12338794325,
+    5463881888,
+    12338794322
+  ],
+  "tags": {
+    "addr:city": "Semarang",
+    "addr:street": "Jalan Pekojan",
+    "amenity": "pharmacy",
+    "building": "yes",
+    "building:levels": "2",
+    "healthcare": "pharmacy",
+    "name": "Toko Obat Taurus",
+    "roof:angle": "30",
+    "roof:shape": "hipped"
+  }
+},
+{
+  "type": "way",
+  "id": 1333661959,
+  "center": {
+    "lat": -6.9740400,
+    "lon": 110.4281595
+  },
+  "nodes": [
+    12338794329,
+    12338794331,
+    12338794332,
+    12338794330,
+    12338794329
+  ],
+  "tags": {
+    "addr:city": "Semarang",
+    "addr:street": "Jalan Pekojan",
+    "amenity": "pharmacy",
+    "building": "yes",
+    "building:levels": "2",
+    "healthcare": "pharmacy",
+    "name": "Toko Obat Tunggal Jaya",
+    "roof:angle": "30",
+    "roof:shape": "hipped"
+  }
+},
+{
+  "type": "way",
+  "id": 1462043928,
+  "center": {
+    "lat": -7.0486444,
+    "lon": 110.3941325
+  },
+  "nodes": [
+    13410508611,
+    13410508612,
+    13410508613,
+    13410508614,
+    13410508611
+  ],
+  "tags": {
+    "amenity": "pharmacy",
+    "building": "yes",
+    "healthcare": "pharmacy",
+    "name": "Apotek UNNES"
+  }
+}
+
+  ]
+}

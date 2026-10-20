@@ -117,18 +117,6 @@ def seed_history(db, days: int = 14) -> None:
                             db.rollback()
 
 
-def seed_prospect_funnel(db, prospects) -> None:
-    """Simulasi tindak lanjut staf atas prospek teratas (dicatat di Ledger sebagai aktor seed-demo)."""
-    from .prospects.mapper import update_status
-
-    for i, p in enumerate(prospects[:18]):
-        update_status(db, p.id, "dihubungi", "staf:seed-demo")
-        if i < 10:
-            update_status(db, p.id, "merespons", "staf:seed-demo")
-        elif i < 12:
-            update_status(db, p.id, "menolak", "staf:seed-demo")
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Reset & seed data demo AAGE")
     parser.add_argument("--tanpa-riwayat", action="store_true", help="hanya data dasar, tanpa percakapan historis")
@@ -138,10 +126,7 @@ def main() -> None:
         seed_base(db)
         if not args.tanpa_riwayat:
             seed_history(db)
-            from .prospects.mapper import search_prospects
-
-            res = search_prospects(db, wilayah="Kota Semarang", tipe="apotek", aktor="seed", allow_network=False)
-            seed_prospect_funnel(db, res["prospects"])
+    # Prospek tidak di-seed (tanpa data tiruan): jalankan "Petakan" di halaman Prospek untuk memindai OSM.
     print("Seed selesai. Login: admin@aage.local / admin123 · staf@aage.local / staf123")
 
 
