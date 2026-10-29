@@ -79,7 +79,11 @@ def spent_rp(days: int | None = None, month: bool = False) -> float:
 
 def budget_ok() -> bool:
     try:
-        return spent_rp(days=1) < settings.budget_daily_rp and spent_rp(month=True) < settings.budget_monthly_rp
+        from . import settings_store
+        from .db import SessionLocal
+
+        with SessionLocal() as db:
+            return not settings_store.budget_exceeded(db)  # batas bisa diubah dari dashboard Pengaturan
     except Exception:  # pragma: no cover - DB belum siap
         return True
 

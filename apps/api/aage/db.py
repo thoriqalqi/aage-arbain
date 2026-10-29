@@ -66,7 +66,7 @@ def _add_missing_columns() -> None:
 
 
 def init_db(drop: bool = False) -> None:
-    from . import models  # noqa: F401  (registrasi tabel)
+    from . import models, settings_store  # noqa: F401  (registrasi tabel)
 
     if IS_POSTGRES:
         with engine.begin() as conn:

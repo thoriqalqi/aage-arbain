@@ -2,6 +2,7 @@
 
 import { Lock, UserRoundCheck } from "lucide-react"
 import { Suspense, useState } from "react"
+import { toast } from "sonner"
 import useSWR from "swr"
 
 import { AButton } from "@/components/aage/button"
@@ -9,11 +10,14 @@ import { AutonomyPicker } from "@/components/aage/autonomy-picker"
 import { SkeletonRows } from "@/components/aage/empty-state"
 import { KatalogManager } from "@/components/aage/katalog-manager"
 import { PageTabs, usePageTab } from "@/components/aage/page-tabs"
-import { PageHeader, Panel, SampleNote } from "@/components/aage/panel"
+import { PageHeader, Panel } from "@/components/aage/panel"
+import { Input } from "@/components/ui/input"
 import { AGENTS, AUTONOMY_HINT, type AutonomyMode } from "@/lib/agents"
 import { fetcher } from "@/lib/api"
 import { formatRp } from "@/lib/format"
+import { useRole } from "@/lib/rbac"
 import type { Status } from "@/lib/types"
+import { saveSettings, type AgentsStatus, type SettingsSnapshot } from "@/lib/use-agent-status"
 import { cn } from "@/lib/utils"
 
 const TABS = ["kebijakan", "otonomi", "anggaran", "katalog"] as const
@@ -78,13 +82,35 @@ function Kebijakan() {
 }
 
 function Otonomi() {
-  const [modes, setModes] = useState<Record<string, AutonomyMode>>(() => Object.fromEntries(AGENTS.map((a) => [a.id, a.mode])))
-  const changed = AGENTS.some((a) => modes[a.id] !== a.mode)
+  const { role } = useRole()
+  const isAdmin = role === "admin"
+  const { data, mutate } = useSWR<SettingsSnapshot>("/api/settings", fetcher)
+  const [draft, setDraft] = useState<Record<string, AutonomyMode> | null>(null)
+  const [saving, setSaving] = useState(false)
+  if (!data) return <SkeletonRows rows={6} />
+  const modes = draft ?? data.otonomi
+  const changed = AGENTS.some((a) => modes[a.id] !== data.otonomi[a.id])
+
+  async function save() {
+    setSaving(true)
+    try {
+      await mutate(await saveSettings({ otonomi: modes }), { revalidate: false })
+      setDraft(null)
+      toast.success("Mode otonomi tersimpan dan tercatat di Ledger")
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
-      <SampleNote>
-        Pilot dimulai dari <b>Setujui dulu</b>. Perubahan di sini belum tersimpan ke server sampai endpoint <code className="font-mono">/api/v1/settings</code> siap.
-      </SampleNote>
+      {data.budget_terlampaui && (
+        <p className="rounded-2xl border border-gold-500/40 bg-gold-100/60 px-4 py-3 text-[13px]">
+          <b className="font-medium">Budget AI terlampaui.</b> Agen bermode Otonom sementara berjalan sebagai <b className="font-medium">Setujui dulu</b>.
+        </p>
+      )}
       <Panel className="divide-y divide-line">
         {AGENTS.map((a) => (
           <div key={a.id} className="flex flex-wrap items-center gap-4 px-5 py-4">
@@ -95,20 +121,32 @@ function Otonomi() {
               </div>
               <div className="mt-0.5 text-[13px] text-muted-foreground">{AUTONOMY_HINT[modes[a.id]]}</div>
             </div>
-            <AutonomyPicker value={modes[a.id]} onChange={(m) => setModes((s) => ({ ...s, [a.id]: m }))} allowOtonom={a.bolehOtonom} label={`Mode otonomi ${a.nama}`} />
+            <AutonomyPicker
+              value={modes[a.id]}
+              readOnly={!isAdmin}
+              onChange={(m) => setDraft({ ...modes, [a.id]: m })}
+              allowOtonom={data.boleh_otonom.includes(a.id)}
+              label={`Mode otonomi ${a.nama}`}
+            />
           </div>
         ))}
       </Panel>
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[12.5px] text-muted-foreground">Otonom hanya untuk jawaban katalog berisiko rendah setelah akurasi ≥95% tercapai.</p>
-        <div className="flex gap-2">
-          <AButton variant="glass" size="sm" disabled={!changed} onClick={() => setModes(Object.fromEntries(AGENTS.map((a) => [a.id, a.mode])))}>
-            Batalkan
-          </AButton>
-          <AButton size="sm" disabled title="Menunggu endpoint settings">
-            Simpan
-          </AButton>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[12.5px] text-muted-foreground">
+          Brief pilot: mulai dari <b className="font-medium text-foreground">Setujui dulu</b>. Otonom hanya untuk jawaban katalog berisiko rendah, tetap lewat ClaimGuard.
+        </p>
+        {isAdmin ? (
+          <div className="flex gap-2">
+            <AButton variant="glass" size="sm" disabled={!changed || saving} onClick={() => setDraft(null)}>
+              Batalkan
+            </AButton>
+            <AButton size="sm" disabled={!changed || saving} onClick={save}>
+              Simpan
+            </AButton>
+          </div>
+        ) : (
+          <span className="text-[12.5px] text-subtle-foreground">Hanya Admin yang dapat mengubah.</span>
+        )}
       </div>
     </div>
   )
@@ -132,15 +170,63 @@ function BudgetRow({ label, spent, cap }: { label: string; spent: number; cap: n
   )
 }
 
+function BudgetEditor({ harian, bulanan, onSaved }: { harian: number; bulanan: number; onSaved: () => void }) {
+  const [h, setH] = useState(String(harian))
+  const [b, setB] = useState(String(bulanan))
+  const [saving, setSaving] = useState(false)
+  const changed = Number(h) !== harian || Number(b) !== bulanan
+
+  async function save() {
+    setSaving(true)
+    try {
+      await saveSettings({ anggaran: { harian_rp: Number(h), bulanan_rp: Number(b) } })
+      onSaved()
+      toast.success("Batas budget tersimpan dan tercatat di Ledger")
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-end gap-3 px-5 py-5">
+      {[
+        ["Batas harian (Rp)", h, setH],
+        ["Batas bulanan (Rp)", b, setB],
+      ].map(([label, val, set]) => (
+        <label key={label as string} className="min-w-[160px] flex-1 space-y-1.5 text-[12.5px] font-medium">
+          <span>{label as string}</span>
+          <Input
+            type="number"
+            min={0}
+            step={1000}
+            value={val as string}
+            onChange={(e) => (set as (v: string) => void)(e.target.value)}
+            className="tabular h-9 rounded-[10px] bg-card"
+          />
+        </label>
+      ))}
+      <AButton size="sm" className="h-9" disabled={!changed || saving || h === "" || b === ""} onClick={save}>
+        Simpan
+      </AButton>
+    </div>
+  )
+}
+
 function Anggaran() {
-  const { data } = useSWR<Status>("/api/status", fetcher)
-  if (!data) return <SkeletonRows rows={3} />
-  const a = data.anggaran
+  const { role } = useRole()
+  const { data: status } = useSWR<Status>("/api/status", fetcher)
+  const { data: live, mutate } = useSWR<AgentsStatus>("/api/agents/status", fetcher, { refreshInterval: 10000 })
+  if (!status || !live) return <SkeletonRows rows={3} />
+  const a = live.anggaran
+  const data = status
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
       <Panel className="divide-y divide-line">
         <BudgetRow label="Batas harian" spent={a.terpakai_hari_ini_rp} cap={a.harian_rp} />
         <BudgetRow label="Batas bulanan" spent={a.terpakai_bulan_ini_rp} cap={a.bulanan_rp} />
+        {role === "admin" && <BudgetEditor key={`${a.harian_rp}-${a.bulanan_rp}`} harian={a.harian_rp} bulanan={a.bulanan_rp} onSaved={() => mutate()} />}
       </Panel>
       <Panel className="space-y-3 p-5 text-[13px]">
         <h2 className="text-[14px] font-semibold">Saat batas terlewati</h2>
@@ -148,7 +234,7 @@ function Anggaran() {
         <div className="h-px bg-line" />
         <div className="flex justify-between"><span className="text-muted-foreground">Model utama</span><span className="font-mono text-[12px]">{data.llm.aktif ? data.llm.model : "offline (deterministik)"}</span></div>
         <div className="flex justify-between"><span className="text-muted-foreground">Model pemeriksa</span><span className="font-mono text-[12px]">{data.llm.judge ?? "—"}</span></div>
-        <p className="text-[12px] text-subtle-foreground">Batas diatur lewat BUDGET_DAILY_RP dan BUDGET_MONTHLY_RP di server.</p>
+        <p className="text-[12px] text-subtle-foreground">Nilai awal dari BUDGET_DAILY_RP dan BUDGET_MONTHLY_RP; Admin dapat mengubahnya di sini.</p>
       </Panel>
     </div>
   )

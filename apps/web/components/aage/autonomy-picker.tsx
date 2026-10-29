@@ -12,18 +12,21 @@ export function AutonomyPicker({
   allowOtonom = true,
   size = "md",
   label = "Mode otonomi",
+  readOnly = false,
 }: {
   value: AutonomyMode
   onChange: (m: AutonomyMode) => void
   allowOtonom?: boolean
   size?: "sm" | "md"
   label?: string
+  /** Hanya Admin yang boleh mengubah mode; role lain melihat saja. */
+  readOnly?: boolean
 }) {
   return (
     <div role="radiogroup" aria-label={label} className="inline-flex rounded-[10px] border border-line bg-soft p-0.5">
       {MODES.map((m) => {
-        const disabled = m === "otonom" && !allowOtonom
         const on = value === m
+        const disabled = (m === "otonom" && !allowOtonom) || (readOnly && !on)
         return (
           <button
             key={m}
@@ -31,8 +34,14 @@ export function AutonomyPicker({
             role="radio"
             aria-checked={on}
             disabled={disabled}
-            title={disabled ? "Otonom hanya untuk jawaban katalog berisiko rendah setelah target akurasi terpenuhi" : undefined}
-            onClick={() => onChange(m)}
+            title={
+              m === "otonom" && !allowOtonom
+                ? "Otonom hanya untuk jawaban katalog berisiko rendah setelah target akurasi terpenuhi"
+                : readOnly
+                  ? "Hanya Admin yang dapat mengubah mode otonomi"
+                  : undefined
+            }
+            onClick={() => !readOnly && !on && onChange(m)}
             className={cn(
               "rounded-[8px] font-medium whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-40",
               size === "sm" ? "h-7 px-2.5 text-[12px]" : "h-8 px-3 text-[13px]",

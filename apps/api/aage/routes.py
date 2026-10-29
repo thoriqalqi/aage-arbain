@@ -10,8 +10,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from . import agent_status, claimguard, kpi, ledger, llm
 from . import approvals as approval_svc
-from . import claimguard, kpi, ledger, llm
 from . import serializers as ser
 from .agents.drafter import _template_source
 from .agents.graph import handle_inbound
@@ -43,6 +43,7 @@ from .security import create_token, current_user, require_admin, verify_password
 log = logging.getLogger("aage.api")
 settings = get_settings()
 router = APIRouter(prefix="/api")
+router.include_router(agent_status.router)  # /api/agents/status(+stream), /api/settings
 
 
 # ------------------------------------------------------------------ auth & status

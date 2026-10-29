@@ -22,6 +22,7 @@ PRODUCTS_JSON = Path(__file__).resolve().parent.parent / "config" / "mock_produc
 DEMO_USERS = [
     ("Admin AAGE", "admin@aage.local", "admin123", "admin"),
     ("Staf Sales", "staf@aage.local", "staf123", "staf"),
+    ("Staf Marketing", "marketing@aage.local", "marketing123", "marketing"),
 ]
 
 DEMO_CONTACTS = [
@@ -127,7 +128,7 @@ def main() -> None:
         if not args.tanpa_riwayat:
             seed_history(db)
     # Prospek tidak di-seed (tanpa data tiruan): jalankan "Petakan" di halaman Prospek untuk memindai OSM.
-    print("Seed selesai. Login: admin@aage.local / admin123 · staf@aage.local / staf123")
+    print("Seed selesai. Login: admin@aage.local / admin123 · staf@aage.local / staf123 · marketing@aage.local / marketing123")
 
 
 if __name__ == "__main__":

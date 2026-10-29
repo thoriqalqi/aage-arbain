@@ -15,7 +15,7 @@ from langgraph.graph import END, StateGraph
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .. import claimguard, clock, ledger, llm
+from .. import claimguard, clock, ledger, llm, settings_store
 from ..channels import sender
 from ..kb.retriever import Hit, retrieve
 from ..models import Approval, Contact, Conversation, Message, Product
@@ -39,6 +39,7 @@ class State(TypedDict, total=False):
     check: claimguard.CheckResult
     staff_check: claimguard.CheckResult | None
     decision: str
+    hold_reason: str | None  # ditahan oleh mode otonomi/jeda (bukan oleh ClaimGuard)
     sent: list[Message]
     approval_id: int | None
 
@@ -136,6 +137,18 @@ def claimguard_node(state: State, config) -> dict:
     return {"draft": d, "check": check, "staff_check": staff_check}
 
 
+def _apply_autonomy(db: Session, reason: str) -> tuple[str, str]:
+    """Mode otonomi Sales Assistant (diatur di dashboard) hanya bisa MENAHAN kiriman, tidak pernah melonggarkan."""
+    if settings_store.jeda(db)["sales"]:
+        return "tahan", "Sales Assistant dijeda staf — draf menunggu staf."
+    mode, why = settings_store.effective_mode(db, "sales")
+    if mode == "saran":
+        return "tahan", "Mode Saran saja: draf AI hanya usulan, staf yang mengirim."
+    if mode == "setujui":
+        return "tahan", why or "Mode Setujui dulu: staf menyetujui sebelum terkirim."
+    return "kirim", reason
+
+
 def policy_node(state: State, config) -> dict:
     db = _db(config)
     d, check = state["draft"], state.get("check")
@@ -153,10 +166,14 @@ def policy_node(state: State, config) -> dict:
         decision, reason = "kirim", "Draf pesanan dibuat — ringkasan dikirim otomatis, konfirmasi oleh staf."
     else:
         decision, reason = "kirim", "Lolos ClaimGuard, bersumber, dan dalam wewenang otomatis."
+    hold_reason = None
+    if decision == "kirim":
+        decision, reason = _apply_autonomy(db, reason)
+        hold_reason = reason if decision == "tahan" else None
     ledger.record(db, "kebijakan", trace_id=state["trace_id"], conversation_id=state["conv"].id,
                   objek_ref=f"conversation:{state['conv'].id}", ringkasan=f"Keputusan: {decision}", alasan=reason,
                   outcome=decision, verdict=check.verdict if check else None, model=llm.OFFLINE_MODEL)
-    return {"decision": decision}
+    return {"decision": decision, "hold_reason": hold_reason}
 
 
 def _summary(db: Session, conv: Conversation, intent: str, d: drafter.Draft) -> str:
@@ -195,7 +212,10 @@ def escalate_node(state: State, config) -> dict:
     conv, d, check = state["conv"], state["draft"], state.get("check")
     decision = state["decision"]
     staff_check = state.get("staff_check")
-    if decision == "tahan" and check is not None:
+    if state.get("hold_reason"):
+        # Draf sudah lolos ClaimGuard; hanya mode otonomi yang menahannya → staf tinggal menyetujui.
+        staff_text, verdict, reason = d.text, check.verdict, state["hold_reason"]
+    elif decision == "tahan" and check is not None:
         staff_text, verdict = check.safe_text, None
         reason = f"ClaimGuard {check.label}: " + "; ".join(sorted(check.rules_triggered) or ["klaim tidak cocok daftar disetujui"])
     else:

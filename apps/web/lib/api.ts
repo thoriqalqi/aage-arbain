@@ -5,7 +5,7 @@
 const TOKEN_KEY = "aage.token"
 const USER_KEY = "aage.user"
 
-export type SessionUser = { id: number; nama: string; email: string; role: "admin" | "staf" }
+export type SessionUser = { id: number; nama: string; email: string; role: "admin" | "staf" | "marketing" }
 
 export class ApiError extends Error {
   status: number

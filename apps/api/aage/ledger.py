@@ -32,6 +32,7 @@ EVENT_TYPES = {
     "agen_hitl": "Agen: menunggu persetujuan manusia",
     "agen_claimguard": "Agen ClaimGuard: audit",
     "invoice_dikirim": "Invoice dikirim",
+    "pengaturan_diubah": "Pengaturan diubah",
 }
 
 

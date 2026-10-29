@@ -1,5 +1,5 @@
 // Enam agen AAGE (Brief §3). Definisi statis untuk layar Agen, Pengaturan, dan Arsitektur.
-// Status & antrean langsung akan diganti data dari GET /api/v1/agents (+ SSE) saat endpoint siap.
+// Status live, mode tersimpan, dan jeda berasal dari GET /api/agents/status (+ SSE) dan /api/settings.
 
 export type AutonomyMode = "saran" | "setujui" | "otonom"
 
