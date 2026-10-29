@@ -23,7 +23,7 @@ const ProspectMap = dynamic(() => import("@/components/aage/prospect-map"), {
 })
 
 const JENIS = ["Apotek", "Toko Obat", "Minimarket"] as const
-const field = "h-10 rounded-[10px] border border-line bg-white px-3 text-[14px] outline-none focus:border-blue-500"
+const field = "h-10 rounded-[10px] border border-line bg-white px-3 text-[14px] outline-none focus:border-brand-500"
 const DEFAULT_GUDANG: Gudang = { nama: "Pusat Logistik CV Arba'in — Semarang", lat: -6.9932, lng: 110.4203 }
 
 type ScoutResponse = {
@@ -128,8 +128,8 @@ export default function ProspekPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Prospek"
-        description="Live Lead Scouting dari OpenStreetMap (tanpa API key) dalam batas wilayah administratif, lalu Opportunity Score 0–100 yang dihitung deterministik: kecocokan geografis 70 + kelengkapan data 30."
+        title="Leads"
+        description="Pemetaan apotek, toko obat, dan minimarket dari OpenStreetMap, dinilai dengan Opportunity Score 0–100. Hanya kontak inbound/opt-in yang dihubungi."
       />
 
       <Panel className="flex flex-wrap items-end gap-3 p-4">
@@ -183,7 +183,7 @@ export default function ProspekPage() {
           <ProspectMap items={shown} gudang={gudang} scanId={scanId} onSelect={setSelected} />
           {(loading || waitingBg) && (
             <div className="absolute inset-0 z-[500] flex flex-col items-center justify-center gap-3 bg-white/60 backdrop-blur-[2px]">
-              <span className="btn-glass flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-medium text-navy-900">
+              <span className="btn-glass flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-medium text-forest-900">
                 <Radar className="size-4 animate-spin" /> Memindai {jenis.toLowerCase()} di {wilayah}…
               </span>
               <span className="max-w-sm text-center text-[12px] text-muted-foreground">
@@ -218,9 +218,9 @@ export default function ProspekPage() {
             <p className="mt-3 text-[12px] text-subtle-foreground">{result.dilewati_tanpa_nama} titik tanpa nama di OSM tidak dimasukkan.</p>
           ) : null}
           <div className="mt-4 space-y-1.5 text-[12px] text-muted-foreground">
-            <div className="flex items-center gap-2"><span className="size-3 rounded-full bg-navy-700" /> Skor ≥ 70</div>
-            <div className="flex items-center gap-2"><span className="size-3 rounded-full bg-blue-500" /> Skor 45–69</div>
-            <div className="flex items-center gap-2"><span className="size-3 rounded-full bg-blue-300" /> Skor &lt; 45</div>
+            <div className="flex items-center gap-2"><span className="size-3 rounded-full bg-forest-700" /> Skor ≥ 70</div>
+            <div className="flex items-center gap-2"><span className="size-3 rounded-full bg-brand-500" /> Skor 45–69</div>
+            <div className="flex items-center gap-2"><span className="size-3 rounded-full bg-brand-300" /> Skor &lt; 45</div>
             <div className="flex items-center gap-2"><span className="size-3 rounded-full border-2 border-white bg-ok shadow" /> {gudang.nama}</div>
           </div>
         </Panel>
@@ -247,7 +247,7 @@ export default function ProspekPage() {
             </thead>
             <tbody>
               {shown.map((p) => (
-                <tr key={p.id} onClick={() => setSelected(p)} className="cursor-pointer border-t border-line bg-white hover:bg-blue-50">
+                <tr key={p.id} onClick={() => setSelected(p)} className="cursor-pointer border-t border-line bg-white hover:bg-brand-50">
                   <td className="sticky left-0 bg-inherit px-4 py-2.5">
                     <ScoreBar score={p.skor} reasons={p.alasan_skor} />
                   </td>

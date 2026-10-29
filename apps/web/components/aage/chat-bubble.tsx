@@ -41,10 +41,10 @@ function StreamingText({ text }: { text: string }) {
 export function TypingBubble() {
   return (
     <div className="flex justify-start">
-      <div className="flex items-center gap-1 rounded-2xl rounded-bl-md bg-blue-100 px-4 py-3" aria-label="AI sedang mengetik">
-        <span className="typing-dot size-1.5 rounded-full bg-navy-700" />
-        <span className="typing-dot size-1.5 rounded-full bg-navy-700" />
-        <span className="typing-dot size-1.5 rounded-full bg-navy-700" />
+      <div className="flex items-center gap-1 rounded-2xl rounded-bl-md bg-brand-100 px-4 py-3" aria-label="AI sedang mengetik">
+        <span className="typing-dot size-1.5 rounded-full bg-forest-700" />
+        <span className="typing-dot size-1.5 rounded-full bg-forest-700" />
+        <span className="typing-dot size-1.5 rounded-full bg-forest-700" />
       </div>
     </div>
   )
@@ -76,12 +76,12 @@ export function ChatBubble({
           className={cn(
             "rounded-2xl px-3.5 py-2.5 leading-[21px] whitespace-pre-wrap shadow-xs",
             inbound && "rounded-bl-md border border-line bg-white",
-            !inbound && !staff && "rounded-br-md bg-blue-100 text-navy-950",
-            staff && "rounded-br-md border border-blue-200/70 bg-[color-mix(in_oklab,var(--blue-200)_28%,white)]",
+            !inbound && !staff && "rounded-br-md bg-brand-100 text-forest-950",
+            staff && "rounded-br-md border border-brand-200/70 bg-[color-mix(in_oklab,var(--brand-200)_28%,white)]",
           )}
         >
           {!inbound && (
-            <div className="mb-1 flex items-center gap-1 text-[11px] font-semibold tracking-wide text-navy-700 uppercase">
+            <div className="mb-1 flex items-center gap-1 text-[11px] font-semibold tracking-wide text-forest-700 uppercase">
               {staff ? <UserRound className="size-3" aria-hidden /> : <Bot className="size-3" aria-hidden />}
               {staff ? "Staf" : "Asisten AI"}
             </div>
@@ -91,7 +91,7 @@ export function ChatBubble({
             {formatTime(message.waktu)}
             {!inbound &&
               (message.status_kirim === "terkirim" ? (
-                <CheckCheck className="size-3.5 text-blue-500" aria-label="Terkirim" />
+                <CheckCheck className="size-3.5 text-brand-500" aria-label="Terkirim" />
               ) : (
                 <Check className="size-3.5" aria-label={message.status_kirim} />
               ))}

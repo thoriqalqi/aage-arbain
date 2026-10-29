@@ -71,9 +71,9 @@ export function KpiTile({
     <Panel className="lift flex flex-col gap-4 p-5">
       <div className="flex items-center gap-2.5">
         {icon && (
-          <span className="flex size-7 items-center justify-center rounded-lg border border-line bg-soft text-navy-900 [&_svg]:size-4">{icon}</span>
+          <span className="flex items-center text-brand-600 [&_svg]:size-4">{icon}</span>
         )}
-        <span className="text-[13.5px] font-medium text-foreground">{label}</span>
+        <span className="text-[13px] text-muted-foreground">{label}</span>
         {info && (
           <UiTooltip>
             <TooltipTrigger render={<span className="ml-auto inline-flex text-subtle-foreground" />}>
@@ -96,7 +96,7 @@ export function KpiTile({
   )
 }
 
-/** Bar skor 0–100 gradient navy → biru + tooltip alasan skor. */
+/** Bar skor 0–100 zamrud + tooltip alasan skor. */
 export function ScoreBar({ score, reasons, className }: { score: number; reasons?: ScoreReason[]; className?: string }) {
   const bar = (
     <div className={cn("flex items-center gap-2.5", className)}>
@@ -105,10 +105,10 @@ export function ScoreBar({ score, reasons, className }: { score: number; reasons
           initial={{ width: 0 }}
           animate={{ width: `${score}%` }}
           transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
-          className="h-full rounded-full bg-[linear-gradient(90deg,var(--blue-400),var(--navy-900))]"
+          className="h-full rounded-full bg-brand-500"
         />
       </div>
-      <span className="tabular w-7 text-[13px] font-semibold text-navy-900">{score}</span>
+      <span className="tabular w-7 text-[13px] font-semibold text-forest-900">{score}</span>
     </div>
   )
   if (!reasons?.length) return bar
@@ -128,7 +128,7 @@ export function ScoreBar({ score, reasons, className }: { score: number; reasons
   )
 }
 
-const FUNNEL_COLORS = ["var(--navy-900)", "var(--navy-700)", "var(--blue-600)", "var(--blue-500)", "var(--blue-400)"]
+const FUNNEL_COLORS = ["var(--forest-900)", "var(--forest-700)", "var(--brand-600)", "var(--brand-500)", "var(--brand-400)"]
 
 /** Funnel lead: bar horizontal proporsional + konversi antar tahap. */
 export function FunnelChart({ data }: { data: { tahap: string; nilai: number; konversi_persen: number | null }[] }) {
@@ -188,7 +188,7 @@ export function Legend({ items }: { items: { label: string; color: string }[] })
   )
 }
 
-/** Volume chat harian bertumpuk: otomatis (navy) vs eskalasi/ditahan (biru lembut). */
+/** Volume chat harian bertumpuk: otomatis (hijau hutan) vs eskalasi/ditahan (emas). */
 export function VolumeChart({ data }: { data: { tanggal: string; otomatis: number; eskalasi: number }[] }) {
   return (
     <div className="space-y-3">
@@ -198,7 +198,7 @@ export function VolumeChart({ data }: { data: { tanggal: string; otomatis: numbe
             <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
             <XAxis dataKey="tanggal" tickFormatter={(v) => formatDay(v)} tickLine={false} axisLine={false} tick={{ fill: "var(--chart-axis)", fontSize: 11 }} />
             <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fill: "var(--chart-axis)", fontSize: 11 }} />
-            <Tooltip content={<GlassTooltip />} cursor={{ fill: "var(--blue-50)" }} />
+            <Tooltip content={<GlassTooltip />} cursor={{ fill: "var(--brand-50)" }} />
             <Bar dataKey="otomatis" name="Dijawab otomatis" stackId="a" fill="var(--chart-1)" />
             <Bar dataKey="eskalasi" name="Eskalasi/ditahan" stackId="a" fill="var(--chart-4)" radius={[4, 4, 0, 0]} />
           </BarChart>
@@ -211,7 +211,7 @@ export function VolumeChart({ data }: { data: { tanggal: string; otomatis: numbe
 
 const HARI = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"]
 
-/** Bar 7 hari: bar tertinggi disorot gradient navy, sisanya abu-biru. */
+/** Bar 7 hari: bar tertinggi disorot zamrud, sisanya abu. */
 export function WeekBars({ data }: { data: { tanggal: string; value: number }[] }) {
   const max = Math.max(...data.map((d) => d.value), 0)
   const peak = data.findIndex((d) => d.value === max)
@@ -220,17 +220,11 @@ export function WeekBars({ data }: { data: { tanggal: string; value: number }[] 
     <div className="h-56 w-full">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={rows} margin={{ top: 24, right: 0, left: 0, bottom: 0 }} barCategoryGap="22%">
-          <defs>
-            <linearGradient id="aage-peak" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--navy-700)" />
-              <stop offset="100%" stopColor="var(--blue-300)" />
-            </linearGradient>
-          </defs>
           <XAxis dataKey="hari" tickLine={false} axisLine={false} tick={{ fill: "var(--chart-axis)", fontSize: 11.5 }} />
           <Tooltip content={<GlassTooltip />} cursor={false} />
           <Bar dataKey="value" name="Chat" radius={[8, 8, 8, 8]} minPointSize={6}>
             {rows.map((_, i) => (
-              <Cell key={i} fill={i === peak && max > 0 ? "url(#aage-peak)" : "var(--chart-muted)"} />
+              <Cell key={i} fill={i === peak && max > 0 ? "var(--brand-500)" : "var(--chart-muted)"} />
             ))}
             <LabelList
               dataKey="value"

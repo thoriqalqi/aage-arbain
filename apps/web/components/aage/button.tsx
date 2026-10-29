@@ -5,7 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { Button as UiButton } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-// Tombol liquid glass: primer = navy berkilau, sekunder = kaca bening. Membungkus shadcn Button.
+// Tombol datar: primer = hijau hutan, sekunder = putih bergaris. Membungkus shadcn Button.
 const variants = cva(
   "rounded-[10px] font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50",
   {
@@ -57,7 +57,7 @@ export function Segmented<T extends string>({
           onClick={() => onChange(o.value)}
           className={cn(
             "inline-flex h-8 items-center gap-1.5 rounded-[8px] px-3 text-[13px] font-medium transition-colors",
-            value === o.value ? "btn-glass text-navy-900" : "text-muted-foreground hover:text-foreground",
+            value === o.value ? "btn-glass text-forest-900" : "text-muted-foreground hover:text-foreground",
           )}
         >
           {o.label}

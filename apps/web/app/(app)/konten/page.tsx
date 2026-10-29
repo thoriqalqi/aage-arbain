@@ -17,7 +17,7 @@ import { formatDateTime } from "@/lib/format"
 import type { CheckResult, ContentDraft, Product, Verdict } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
-const field = "h-10 w-full rounded-md border border-line bg-white px-3 text-[14px] outline-none focus:border-blue-500"
+const field = "h-10 w-full rounded-md border border-line bg-white px-3 text-[14px] outline-none focus:border-brand-500"
 
 function Markdown({ text }: { text: string }) {
   return (
@@ -48,7 +48,7 @@ function Step({ n, title, active, done }: { n: number; title: string; active: bo
       <span
         className={cn(
           "flex size-6 items-center justify-center rounded-full text-[12px] font-semibold",
-          done ? "bg-blue-500 text-white" : active ? "bg-primary text-primary-foreground" : "bg-line",
+          done ? "bg-brand-500 text-white" : active ? "bg-primary text-primary-foreground" : "bg-line",
         )}
       >
         {done ? <Check className="size-3.5" /> : n}
@@ -203,7 +203,7 @@ function Studio() {
                       <span className="inline-flex items-center gap-1 text-ok"><CheckCircle2 className="size-4" /> Sintaks JSON-LD valid (Product, FAQPage, Organization)</span>
                     )}
                   </div>
-                  <pre className="scrollbar-thin max-h-96 overflow-auto rounded-lg bg-navy-950 p-4 font-mono text-[12px] leading-[18px] text-blue-300">
+                  <pre className="scrollbar-thin max-h-96 overflow-auto rounded-lg bg-forest-950 p-4 font-mono text-[12px] leading-[18px] text-brand-300">
                     {JSON.stringify(draft.json_ld, null, 2)}
                   </pre>
                 </TabsContent>
@@ -250,7 +250,7 @@ function Studio() {
           <ul className="divide-y divide-line">
             {list?.items.slice(0, 10).map((d) => (
               <li key={d.id}>
-                <button onClick={() => open(d.id)} className={cn("w-full px-4 py-3 text-left text-[13px] hover:bg-blue-50", draft?.id === d.id && "bg-blue-50")}>
+                <button onClick={() => open(d.id)} className={cn("w-full px-4 py-3 text-left text-[13px] hover:bg-brand-50", draft?.id === d.id && "bg-brand-50")}>
                   <div className="line-clamp-1 font-medium">{d.judul}</div>
                   <div className="mt-1 flex items-center gap-2">
                     <VerdictBadge verdict={d.claim_verdict as Verdict} />
@@ -338,7 +338,7 @@ function Audit() {
                 <div className="min-w-0 flex-1">
                   <div className="font-medium">{c.label} <span className="text-[12px] font-normal text-subtle-foreground">· bobot {c.bobot}</span></div>
                   <div className="text-[13px] text-muted-foreground">{c.detail}</div>
-                  {c.status === "gagal" && <div className="text-[13px] text-navy-700">Saran: {c.saran}</div>}
+                  {c.status === "gagal" && <div className="text-[13px] text-forest-700">Saran: {c.saran}</div>}
                 </div>
               </div>
             ))}
@@ -372,8 +372,8 @@ export default function KontenPage() {
   return (
     <div>
       <PageHeader
-        title="Konten & GEO Studio"
-        description="Draf artikel/deskripsi bersumber, FAQ yang mudah dikutip AI search, dan schema JSON-LD — semuanya lolos ClaimGuard sebelum bisa diekspor."
+        title="Studio Konten"
+        description="Draf artikel dan deskripsi bersumber untuk SEO dan AI-search. Tanpa janji ranking, tanpa statistik tanpa sumber, dan wajib lolos ClaimGuard."
       />
       <Tabs defaultValue="studio">
         <TabsList className="mb-4">

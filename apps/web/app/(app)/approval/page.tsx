@@ -63,7 +63,7 @@ function ApprovalCard({
       onClick={onFocus}
       className="mb-4"
     >
-      <Panel className={cn("p-5 transition-shadow", focused && "shadow-glow ring-1 ring-blue-500/40")}>
+      <Panel className={cn("p-5 transition-shadow", focused && "shadow-glow ring-1 ring-brand-500/40")}>
         <div className="flex flex-wrap items-start gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
@@ -80,7 +80,7 @@ function ApprovalCard({
             </p>
           </div>
           {a.conversation_id && (
-            <Link href={`/inbox?id=${a.conversation_id}`} className="text-[13px] font-medium text-navy-700 hover:underline">
+            <Link href={`/inbox?id=${a.conversation_id}`} className="text-[13px] font-medium text-forest-700 hover:underline">
               Buka chat
             </Link>
           )}
@@ -109,7 +109,7 @@ function ApprovalCard({
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 rows={6}
-                className="w-full rounded-lg border border-line bg-white p-3 text-[14px] leading-6 outline-none focus:border-blue-500"
+                className="w-full rounded-lg border border-line bg-white p-3 text-[14px] leading-6 outline-none focus:border-brand-500"
                 aria-label="Edit draf balasan"
                 onKeyDown={(e) => {
                   if (e.key === "Escape") onEdit(false)
@@ -230,8 +230,8 @@ export default function ApprovalPage() {
   return (
     <div>
       <PageHeader
-        title="Approval"
-        description="Draf yang butuh keputusan staf, diurutkan dari yang paling lama menunggu. Teks yang dikirim tetap diperiksa ClaimGuard."
+        title="Approval & Eskalasi"
+        description="Harga, MOQ, negosiasi, dan klaim kesehatan selalu menunggu keputusan staf. Diurutkan dari yang paling lama menunggu."
         actions={
           <span className="hidden items-center gap-1.5 text-[12px] text-muted-foreground md:inline-flex">
             <Keyboard className="size-4" /> A setujui · E edit · R tolak · J/K pindah

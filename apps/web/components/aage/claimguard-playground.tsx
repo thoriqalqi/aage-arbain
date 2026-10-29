@@ -8,7 +8,7 @@ import useSWR from "swr"
 import { AButton } from "@/components/aage/button"
 import { ClaimHighlight } from "@/components/aage/claim-highlight"
 import { EmptyState } from "@/components/aage/empty-state"
-import { Panel, PageHeader, SectionTitle } from "@/components/aage/panel"
+import { Panel, SectionTitle } from "@/components/aage/panel"
 import { ScanningBadge, VerdictBadge } from "@/components/aage/status"
 import { api, fetcher } from "@/lib/api"
 import { formatDuration } from "@/lib/format"
@@ -21,7 +21,7 @@ Sebanyak 95% pengguna merasakan energi meningkat 3 kali lipat.
 100% alami tanpa efek samping.
 Produk ini bukan obat dan tidak ditujukan untuk mengobati penyakit.`
 
-export default function ClaimGuardPage() {
+export function ClaimGuardPlayground() {
   const [mode, setMode] = useState<"teks" | "url">("teks")
   const [text, setText] = useState(SAMPLE)
   const [url, setUrl] = useState("")
@@ -48,11 +48,7 @@ export default function ClaimGuardPage() {
 
   return (
     <div>
-      <PageHeader
-        title="ClaimGuard Playground"
-        description="Tempel teks atau URL. Setiap kalimat diperiksa 3 tahap: aturan deterministik → pencocokan klaim disetujui → LLM-judge untuk kasus ambigu."
-      />
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-5 lg:grid-cols-2">
         <Panel className="flex flex-col gap-4 p-5">
           <div className="flex gap-1 self-start rounded-lg bg-soft p-1" role="tablist">
             {(["teks", "url"] as const).map((m) => (
@@ -72,7 +68,7 @@ export default function ClaimGuardPage() {
               value={text}
               onChange={(e) => setText(e.target.value)}
               rows={12}
-              className="min-h-64 w-full flex-1 rounded-lg border border-line bg-white p-3 text-[14px] leading-6 outline-none focus:border-blue-500"
+              className="min-h-64 w-full flex-1 rounded-lg border border-line bg-white p-3 text-[14px] leading-6 outline-none focus:border-brand-500"
               aria-label="Teks yang diperiksa"
             />
           ) : (
@@ -80,7 +76,7 @@ export default function ClaimGuardPage() {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://situs-mitra.co.id/produk/madu"
-              className="h-11 w-full rounded-lg border border-line bg-white px-3 outline-none focus:border-blue-500"
+              className="h-11 w-full rounded-lg border border-line bg-white px-3 outline-none focus:border-brand-500"
               aria-label="URL halaman"
             />
           )}

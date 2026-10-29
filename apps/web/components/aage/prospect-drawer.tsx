@@ -53,7 +53,7 @@ function TabsHeader({ active, onChange }: { active: Tab; onChange: (t: Tab) => v
           >
             {t.icon}
             <span>{t.label}</span>
-            {on && <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-[#10b981]" aria-hidden />}
+            {on && <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-brand-500" aria-hidden />}
           </button>
         )
       })}
@@ -70,7 +70,7 @@ function StatusButtons({ p, onStatus }: { p: Prospect; onStatus: (p: Prospect, s
           <button
             key={s}
             onClick={() => onStatus(p, s)}
-            className={cn("h-9 rounded-full px-3 text-[13px] font-medium", p.status === s && "ring-2 ring-blue-500", STATUS[s].cls)}
+            className={cn("h-9 rounded-full px-3 text-[13px] font-medium", p.status === s && "ring-2 ring-brand-500", STATUS[s].cls)}
           >
             {STATUS[s].label}
           </button>
@@ -87,7 +87,7 @@ function TabDasar({ p }: { p: Prospect }) {
       <section>
         <div className="mb-2 flex items-end justify-between">
           <h3 className="text-[13px] font-semibold">Opportunity Score</h3>
-          <span className="tabular text-[28px] leading-none font-semibold text-navy-900">{p.skor}</span>
+          <span className="tabular text-[28px] leading-none font-semibold text-forest-900">{p.skor}</span>
         </div>
         <ul className="space-y-2.5">
           {p.alasan_skor.map((r) => (
@@ -99,7 +99,7 @@ function TabDasar({ p }: { p: Prospect }) {
                 </span>
               </div>
               <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-line">
-                <div className="h-full rounded-full bg-[linear-gradient(90deg,var(--blue-400),var(--navy-900))]" style={{ width: `${(r.poin / r.maks) * 100}%` }} />
+                <div className="h-full rounded-full bg-brand-500" style={{ width: `${(r.poin / r.maks) * 100}%` }} />
               </div>
               <div className="mt-0.5 text-[12px] text-muted-foreground">{r.keterangan}</div>
             </li>
@@ -114,7 +114,7 @@ function TabDasar({ p }: { p: Prospect }) {
           <h3 className="text-[13px] font-semibold">Draf pesan pembuka WhatsApp</h3>
           <VerdictBadge verdict={p.draf_verdict} />
         </div>
-        <p className="rounded-lg bg-blue-50 p-3 text-[13px] leading-6">{p.draf_pesan}</p>
+        <p className="rounded-lg bg-brand-50 p-3 text-[13px] leading-6">{p.draf_pesan}</p>
         <AButton
           variant="outline"
           size="sm"
@@ -179,11 +179,11 @@ function TabMarket({ p, busy, onRun }: { p: Prospect; busy: boolean; onRun: () =
           {m.topik.map((t) => (
             <li key={t.id} className="text-[12.5px]">
               <div className="flex justify-between">
-                <span className={cn(t.id === m.topik_utama && "font-semibold text-navy-900")}>{t.label}</span>
+                <span className={cn(t.id === m.topik_utama && "font-semibold text-forest-900")}>{t.label}</span>
                 <span className="tabular">{t.jumlah_artikel} artikel</span>
               </div>
               <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-line">
-                <div className={cn("h-full rounded-full", t.id === m.topik_utama ? "bg-[#10b981]" : "bg-blue-300")} style={{ width: `${(t.jumlah_artikel / max) * 100}%` }} />
+                <div className={cn("h-full rounded-full", t.id === m.topik_utama ? "bg-brand-500" : "bg-brand-300")} style={{ width: `${(t.jumlah_artikel / max) * 100}%` }} />
               </div>
             </li>
           ))}
@@ -197,9 +197,9 @@ function TabMarket({ p, busy, onRun }: { p: Prospect; busy: boolean; onRun: () =
             .slice(0, 12)
             .map((a) => (
               <li key={a.tautan}>
-                <a href={a.tautan} target="_blank" rel="noopener noreferrer" className="group block rounded-lg border border-line p-3 hover:border-blue-300 hover:bg-blue-50/50">
+                <a href={a.tautan} target="_blank" rel="noopener noreferrer" className="group block rounded-lg border border-line p-3 hover:border-brand-300 hover:bg-brand-50/50">
                   <div className="flex items-start gap-2">
-                    <span className="min-w-0 flex-1 text-[13px] font-medium group-hover:text-navy-700">{a.judul}</span>
+                    <span className="min-w-0 flex-1 text-[13px] font-medium group-hover:text-forest-700">{a.judul}</span>
                     <ExternalLink className="mt-0.5 size-3.5 shrink-0 text-subtle-foreground" />
                   </div>
                   {a.cuplikan && <p className="mt-1 line-clamp-2 text-[12px] text-muted-foreground">{a.cuplikan}</p>}
@@ -322,7 +322,7 @@ export function ProspectDrawer({
                     href={`https://www.openstreetmap.org/${p.osm_id.replace("osm:", "")}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex h-6 items-center gap-1 rounded-full bg-blue-50 px-2 text-[12px] font-medium text-navy-700 hover:underline"
+                    className="inline-flex h-6 items-center gap-1 rounded-full bg-brand-50 px-2 text-[12px] font-medium text-forest-700 hover:underline"
                   >
                     <MapPin className="size-3" /> {p.osm_id.replace("osm:", "OSM ")}
                   </a>

@@ -52,7 +52,7 @@ export function SourceChip({ source, className }: { source: Source; className?: 
         onClick={() => setOpen(true)}
         className={cn(
           "inline-flex h-6 max-w-full items-center gap-1 rounded-full border border-line bg-white/70 px-2 text-[11.5px] text-muted-foreground transition-colors",
-          clickable ? "cursor-pointer hover:border-blue-500/40 hover:text-navy-900" : "cursor-default",
+          clickable ? "cursor-pointer hover:border-brand-500/40 hover:text-forest-900" : "cursor-default",
           className,
         )}
         title={sourceLabel(source)}

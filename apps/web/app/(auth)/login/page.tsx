@@ -1,20 +1,21 @@
 "use client"
 
-import { Bot, LoaderCircle, MessageCircle, ScrollText, ShieldCheck } from "lucide-react"
+import { LoaderCircle, MessageCircle } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { motion } from "motion/react"
 import { useState } from "react"
 
+import { Logo } from "@/components/aage/app-shell"
 import { AButton } from "@/components/aage/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { api, saveSession, type SessionUser } from "@/lib/api"
+import { setRolePreview } from "@/lib/rbac"
 
-const HIGHLIGHTS = [
-  { icon: Bot, title: "Jawab pembeli 24 jam", text: "Katalog, izin edar, harga grosir, dan pesan ulang lewat WhatsApp." },
-  { icon: ShieldCheck, title: "ClaimGuard", text: "Setiap kalimat diperiksa — klaim terapi tidak pernah terkirim." },
-  { icon: ScrollText, title: "Ledger yang bisa diaudit", text: "Sumber, model, biaya, dan persetujuan tercatat permanen." },
+const POINTS = [
+  ["Asisten WhatsApp 24 jam", "Jawaban katalog bersumber dari Knowledge Base."],
+  ["ClaimGuard", "Klaim kesehatan diperiksa sebelum terbit atau terkirim."],
+  ["Evidence Ledger", "Setiap aksi tercatat dan dapat diaudit."],
 ]
 
 export default function LoginPage() {
@@ -31,6 +32,7 @@ export default function LoginPage() {
     try {
       const res = await api<{ token: string; user: SessionUser }>("/api/auth/login", { method: "POST", json: { email, password } })
       saveSession(res.token, res.user)
+      setRolePreview(null)
       router.replace("/")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login gagal")
@@ -40,66 +42,53 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="grid min-h-dvh bg-white lg:grid-cols-2">
-      <section className="brand-gradient relative m-3 hidden flex-col justify-between overflow-hidden rounded-[22px] p-10 lg:flex">
+    <div className="grid min-h-dvh bg-background lg:grid-cols-[1fr_1.1fr]">
+      <section className="brand-gradient relative hidden flex-col justify-between p-12 lg:flex">
         <div className="flex items-center gap-2.5">
-          <span className="glass-on-dark flex size-9 items-center justify-center rounded-[10px] text-[15px] font-bold">A</span>
-          <span className="text-[17px] font-bold tracking-tight">AAGE</span>
+          <Logo className="bg-white/10" />
+          <span className="font-display text-[18px]">AAGE</span>
         </div>
 
         <div className="max-w-md">
-          <h1 className="text-[34px] leading-[42px] font-semibold tracking-tight">Penjualan yang tumbuh, klaim yang tetap jujur.</h1>
-          <p className="mt-3 text-[15px] leading-6 text-white/75">
-            Agen penjualan &amp; pemasaran AI untuk CV Arba&apos;in — dari chat WhatsApp sampai konten SEO.
+          <h1 className="text-[40px] leading-[48px] text-white">
+            Penjualan tumbuh, <span className="text-gold-500">klaim tetap jujur.</span>
+          </h1>
+          <p className="mt-4 text-[15px] leading-6 text-white/65">
+            Asisten penjualan multi-agen untuk CV Arba&apos;in Jaya Mandiri — dari WhatsApp mitra B2B sampai konten SEO.
           </p>
-          <ul className="mt-8 space-y-3">
-            {HIGHLIGHTS.map((h, i) => (
-              <motion.li
-                key={h.title}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.1 + i * 0.06, ease: [0.22, 1, 0.36, 1] }}
-                className="glass-on-dark flex items-start gap-3 rounded-[14px] p-4"
-              >
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/15">
-                  <h.icon className="size-4" aria-hidden />
-                </span>
+          <ul className="mt-10 space-y-5">
+            {POINTS.map(([t, d]) => (
+              <li key={t} className="flex gap-3.5">
+                <span className="mt-2 size-1.5 shrink-0 rounded-full bg-gold-500" />
                 <span>
-                  <span className="block text-[14px] font-semibold">{h.title}</span>
-                  <span className="block text-[13px] text-white/70">{h.text}</span>
+                  <span className="block text-[14px] font-medium">{t}</span>
+                  <span className="block text-[13px] text-white/60">{d}</span>
                 </span>
-              </motion.li>
+              </li>
             ))}
           </ul>
         </div>
 
-        <p className="text-[12px] text-white/55">UMS Health Innovation Hackathon 2026 · ARB-01</p>
+        <p className="text-[12px] text-white/40">Arba&apos;in Autonomous Growth Engine · Purwarupa</p>
       </section>
 
       <section className="flex items-center justify-center p-6">
-        <motion.form
-          onSubmit={submit}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-          className="w-full max-w-[380px] space-y-6"
-        >
-          <div>
-            <div className="mb-6 flex items-center gap-2.5 lg:hidden">
-              <span className="flex size-9 items-center justify-center rounded-[10px] bg-[linear-gradient(145deg,var(--blue-500),var(--navy-900))] text-[15px] font-bold text-white">A</span>
-              <span className="text-[17px] font-bold text-navy-900">AAGE</span>
-            </div>
-            <h2 className="text-[24px] leading-8 font-semibold tracking-tight">Masuk ke dashboard</h2>
-            <p className="mt-1 text-muted-foreground">Untuk staf sales, marketing, dan manajemen.</p>
+        <form onSubmit={submit} className="w-full max-w-[360px]">
+          <div className="mb-8 flex items-center gap-2.5 lg:hidden">
+            <Logo />
+            <span className="font-display text-[18px] text-forest-900">AAGE</span>
           </div>
-          <div className="space-y-4">
+          <h2 className="font-display text-[28px] leading-9 text-forest-900">Masuk</h2>
+          <p className="mt-1.5 text-[13.5px] text-muted-foreground">Untuk tim Sales, Marketing, dan Manajemen.</p>
+
+          <div className="mt-8 space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 rounded-[10px] bg-white" placeholder="nama@arbain.co.id" />
+              <Input id="email" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 rounded-[10px] bg-card" placeholder="nama@arbain.co.id" />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="password">Kata sandi</Label>
-              <Input id="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} className="h-11 rounded-[10px] bg-white" />
+              <Input id="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} className="h-11 rounded-[10px] bg-card" />
             </div>
             {error && (
               <p role="alert" className="rounded-[10px] bg-blocked-bg px-3 py-2 text-[13px] text-blocked">
@@ -107,17 +96,18 @@ export default function LoginPage() {
               </p>
             )}
           </div>
-          <AButton type="submit" size="lg" className="w-full" disabled={loading}>
+
+          <AButton type="submit" size="lg" className="mt-6 w-full" disabled={loading}>
             {loading && <LoaderCircle className="size-4 animate-spin" />} Masuk
           </AButton>
-          <div className="flex items-center gap-3 text-[12px] text-subtle-foreground">
-            <span className="h-px flex-1 bg-line" /> atau <span className="h-px flex-1 bg-line" />
+
+          <div className="mt-8 border-t border-line pt-6">
+            <Link href="/chat" className="inline-flex items-center gap-2 text-[13px] font-medium text-brand-600 hover:underline">
+              <MessageCircle className="size-4" /> Coba simulator WhatsApp pembeli
+            </Link>
+            <p className="mt-2 text-[12px] text-subtle-foreground">Akun demo tercantum di README (data seed).</p>
           </div>
-          <Link href="/chat" className="btn-glass flex h-11 w-full items-center justify-center gap-2 rounded-[10px] text-[14.5px] font-medium">
-            <MessageCircle className="size-4" /> Coba web chat pembeli
-          </Link>
-          <p className="text-center text-[12px] text-subtle-foreground">Akun demo tercantum di README (data seed).</p>
-        </motion.form>
+        </form>
       </section>
     </div>
   )

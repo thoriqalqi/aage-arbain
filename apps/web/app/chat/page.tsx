@@ -108,7 +108,7 @@ export default function WebChatPage() {
           <div className="min-w-0 flex-1">
             <div className="truncate font-semibold text-white">CV Arba&apos;in · Penjualan</div>
             <div className="flex items-center gap-1 text-[12px] text-white/70">
-              <ShieldCheck className="size-3.5 text-blue-200" aria-hidden /> Asisten AI 24 jam · diperiksa ClaimGuard
+              <ShieldCheck className="size-3.5 text-brand-200" aria-hidden /> Asisten AI 24 jam · diperiksa ClaimGuard
             </div>
           </div>
           <button
@@ -142,7 +142,7 @@ export default function WebChatPage() {
                 key={s}
                 type="button"
                 onClick={() => send(s)}
-                className="btn-glass h-9 shrink-0 rounded-full px-3 text-[13px] text-navy-900"
+                className="btn-glass h-9 shrink-0 rounded-full px-3 text-[13px] text-forest-900"
               >
                 {s}
               </button>

@@ -7,10 +7,11 @@ import useSWR from "swr"
 
 import { AButton } from "@/components/aage/button"
 import { SkeletonRows } from "@/components/aage/empty-state"
-import { Panel, PageHeader, Surface } from "@/components/aage/panel"
+import { Panel, Surface } from "@/components/aage/panel"
 import { Pill } from "@/components/aage/status"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { api, fetcher, getUser } from "@/lib/api"
+import { normalizeRole } from "@/lib/rbac"
 import { formatDateTime, formatRp } from "@/lib/format"
 import type { Product } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -36,12 +37,12 @@ function Dropzone({ accept, label, onFile, busy }: { accept: string; label: stri
         if (f) onFile(f)
       }}
       className={cn(
-        "flex w-full flex-col items-center justify-center gap-2 rounded-[14px] border-2 border-dashed border-blue-200 bg-white p-6 text-center transition-colors hover:border-blue-400 hover:bg-blue-50",
-        over && "!border-blue-500 bg-blue-50",
+        "flex w-full flex-col items-center justify-center gap-2 rounded-[14px] border-2 border-dashed border-brand-200 bg-white p-6 text-center transition-colors hover:border-brand-400 hover:bg-brand-50",
+        over && "!border-brand-500 bg-brand-50",
       )}
       disabled={busy}
     >
-      {busy ? <LoaderCircle className="size-6 animate-spin text-navy-700" /> : <UploadCloud className="size-6 text-navy-700" />}
+      {busy ? <LoaderCircle className="size-6 animate-spin text-forest-700" /> : <UploadCloud className="size-6 text-forest-700" />}
       <span className="font-medium">{label}</span>
       <span className="text-[12px] text-muted-foreground">Seret file ke sini atau klik · {accept}</span>
       <input
@@ -59,13 +60,13 @@ function Dropzone({ accept, label, onFile, busy }: { accept: string; label: stri
   )
 }
 
-export default function KatalogPage() {
+export function KatalogManager() {
   const { data: products, mutate: mutateProducts } = useSWR<{ items: Product[] }>("/api/kb/products", fetcher)
   const { data: docs, mutate: mutateDocs } = useSWR<{ items: Doc[] }>("/api/kb/documents", fetcher)
   const [busy, setBusy] = useState(false)
   const [docUrl, setDocUrl] = useState("")
   const [docTitle, setDocTitle] = useState("")
-  const isAdmin = getUser()?.role === "admin"
+  const isAdmin = normalizeRole(getUser()?.role) === "admin"
 
   async function upload(path: string, form: FormData, okMsg: (r: Record<string, unknown>) => string) {
     setBusy(true)
@@ -91,11 +92,9 @@ export default function KatalogPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Katalog"
-        description="Knowledge Base: katalog produk, dokumen bersumber, klaim yang disetujui, dan tier harga yang menjadi batas wewenang AI."
-        actions={synthetic ? <Pill className="bg-review-bg text-review">Data sintetis berlabel — ganti dengan katalog resmi mitra</Pill> : null}
-      />
+      {synthetic && (
+        <Pill className="mb-4 bg-review-bg text-review">Data sintetis berlabel — ganti dengan katalog resmi mitra</Pill>
+      )}
       <Tabs defaultValue="produk">
         <TabsList className="mb-4">
           <TabsTrigger value="produk">Produk ({items.length})</TabsTrigger>
@@ -169,10 +168,10 @@ export default function KatalogPage() {
               />
               <Panel className="flex flex-col justify-center gap-3 p-5">
                 <div className="flex items-center gap-2 font-medium">
-                  <Link2 className="size-4 text-navy-700" /> Ingest dari URL
+                  <Link2 className="size-4 text-forest-700" /> Ingest dari URL
                 </div>
-                <input value={docTitle} onChange={(e) => setDocTitle(e.target.value)} placeholder="Judul dokumen" className="h-10 rounded-md border border-line bg-white px-3 outline-none focus:border-blue-500" />
-                <input value={docUrl} onChange={(e) => setDocUrl(e.target.value)} placeholder="https://…" className="h-10 rounded-md border border-line bg-white px-3 outline-none focus:border-blue-500" />
+                <input value={docTitle} onChange={(e) => setDocTitle(e.target.value)} placeholder="Judul dokumen" className="h-10 rounded-md border border-line bg-white px-3 outline-none focus:border-brand-500" />
+                <input value={docUrl} onChange={(e) => setDocUrl(e.target.value)} placeholder="https://…" className="h-10 rounded-md border border-line bg-white px-3 outline-none focus:border-brand-500" />
                 <AButton
                   className="self-start"
                   disabled={busy || !docUrl || !docTitle}

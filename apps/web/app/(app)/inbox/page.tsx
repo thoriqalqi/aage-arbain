@@ -89,10 +89,10 @@ function ConversationList({ selected, onSelect }: { selected: number | null; onS
                   onClick={() => onSelect(c.id)}
                   className={cn(
                     "flex w-full gap-3 border-b border-line/70 px-3 py-3 text-left transition-colors hover:bg-soft/70",
-                    selected === c.id && "bg-blue-50",
+                    selected === c.id && "bg-brand-50",
                   )}
                 >
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-line text-[13px] font-semibold text-navy-900">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-line text-[13px] font-semibold text-forest-900">
                     {(c.contact.nama_toko || "P").slice(0, 1)}
                   </span>
                   <span className="min-w-0 flex-1">
@@ -125,7 +125,7 @@ function ContextPanel({ conv }: { conv: ConversationDetail }) {
         <h3 className="mb-2 text-[12px] font-medium tracking-[0.02em] text-muted-foreground">Profil toko</h3>
         <div className="space-y-1">
           <div className="flex items-center gap-2 font-semibold">
-            <Store className="size-4 text-navy-700" /> {c.nama_toko || "Belum diketahui"}
+            <Store className="size-4 text-forest-700" /> {c.nama_toko || "Belum diketahui"}
           </div>
           <div className="font-mono text-[12px] text-muted-foreground">{c.wa_number}</div>
           {c.alamat && <div className="text-[13px] text-muted-foreground">{c.alamat}</div>}
@@ -158,7 +158,7 @@ function ContextPanel({ conv }: { conv: ConversationDetail }) {
       <section>
         <h3 className="mb-3 text-[12px] font-medium tracking-[0.02em] text-muted-foreground">Ledger percakapan</h3>
         <LedgerTimeline events={conv.ledger.slice(-24)} dense />
-        <Link href={`/ledger?conversation_id=${conv.id}`} className="text-[13px] font-medium text-navy-700 hover:underline">
+        <Link href={`/compliance?tab=ledger&conversation_id=${conv.id}`} className="text-[13px] font-medium text-forest-700 hover:underline">
           Lihat semua event →
         </Link>
       </section>
@@ -216,7 +216,7 @@ function ChatPanel({ id, onOpenContext, showContextButton }: { id: number; onOpe
           </AButton>
         )}
       </div>
-      <div className="scrollbar-thin flex-1 space-y-3 overflow-y-auto bg-[linear-gradient(180deg,transparent,rgb(247_244_236/0.6))] p-4">
+      <div className="scrollbar-thin flex-1 space-y-3 overflow-y-auto bg-canvas p-4">
         {data.pesan.map((m) => (
           <div key={m.id}>
             <ChatBubble message={m} />
@@ -288,12 +288,12 @@ function InboxInner() {
 
   return (
     <>
-    <PageHeader title="Inbox" description="Semua chat WhatsApp & web chat. Bubble AI menampilkan verdict ClaimGuard dan sumbernya." />
+    <PageHeader title="Inbox WhatsApp" description="Percakapan dari WhatsApp dan simulator. Jawaban otomatis hanya bersumber dari Knowledge Base dan selalu diperiksa ClaimGuard." />
     <div className="panel h-[calc(100dvh-13rem)] min-h-[520px] overflow-hidden">
       {!medium ? (
         selected ? (
           <div className="flex h-full flex-col">
-            <button onClick={() => router.replace("/inbox")} className="border-b px-4 py-2 text-left text-[13px] text-navy-700">← Semua percakapan</button>
+            <button onClick={() => router.replace("/inbox")} className="border-b px-4 py-2 text-left text-[13px] text-forest-700">← Semua percakapan</button>
             <div className="min-h-0 flex-1">{chat}</div>
           </div>
         ) : (

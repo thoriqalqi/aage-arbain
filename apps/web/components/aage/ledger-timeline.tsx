@@ -79,11 +79,11 @@ export function LedgerTimeline({
             transition={{ duration: 0.24, delay: Math.min(i, 12) * 0.04, ease: [0.22, 1, 0.36, 1] }}
             className="relative flex gap-3 pb-4"
           >
-            {!last && <span className="absolute top-7 bottom-0 left-[13px] w-px bg-blue-500/30" aria-hidden />}
+            {!last && <span className="absolute top-7 bottom-0 left-[13px] w-px bg-brand-500/30" aria-hidden />}
             <span
               className={cn(
-                "relative z-10 mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full border bg-white text-navy-700",
-                highlightId === e.id ? "ring-once border-blue-500" : "border-line",
+                "relative z-10 mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full border bg-white text-forest-700",
+                highlightId === e.id ? "ring-once border-brand-500" : "border-line",
               )}
             >
               <Icon className="size-3.5" strokeWidth={1.75} aria-hidden />

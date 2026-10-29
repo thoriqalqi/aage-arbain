@@ -36,7 +36,7 @@ export default function ProspectMap({
   scanId: number
   onSelect: (p: Prospect) => void
 }) {
-  const c = { stroke: token("--navy-900"), hi: token("--navy-700"), mid: token("--blue-500"), lo: token("--blue-300"), wh: token("--ok") }
+  const c = { stroke: token("--forest-900"), hi: token("--forest-700"), mid: token("--brand-500"), lo: token("--brand-300"), wh: token("--ok") }
   const pts = items.filter((p) => p.lat != null && p.lng != null)
   return (
     <MapContainer center={[gudang.lat, gudang.lng]} zoom={12} scrollWheelZoom className="h-full w-full">

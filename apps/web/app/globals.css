@@ -3,82 +3,90 @@
 @import "shadcn/tailwind.css";
 
 /* ============================================================
-   Token AAGE v2 — palet navy → soft blue, latar putih bersih.
-   Liquid glass hanya untuk tombol & elemen melayang; kartu putih solid.
-   Jangan pakai hex lepas di komponen.
+   Token AAGE v3 — sesuai Brief Engineering §5.
+   Hijau hutan #0F3D2E · zamrud #1F9D6B · emas #C9A24B · latar #F7F6F1.
+   Fraunces untuk judul, Inter untuk UI. Kartu radius 16px.
+   Gaya: bersih, datar, minimalis. Jangan pakai hex lepas di komponen.
    ============================================================ */
 
 :root {
   --radius: 0.75rem;
 
-  /* netral */
-  --background: #fafbfd;
-  --foreground: #101828;
+  /* netral hangat */
+  --background: #f7f6f1;
+  --foreground: #17221d;
   --card: #ffffff;
-  --card-foreground: #101828;
+  --card-foreground: #17221d;
   --popover: #ffffff;
-  --popover-foreground: #101828;
-  --canvas: #fafbfd;
-  --soft: #f3f5f9;
-  --line: #e8ebf1;
-  --muted: #f3f5f9;
-  --muted-foreground: #5b6474;
-  --subtle-foreground: #8c94a3;
-  --secondary: #f3f5f9;
-  --secondary-foreground: #101828;
-  --border: #e8ebf1;
-  --input: #e1e5ec;
+  --popover-foreground: #17221d;
+  --canvas: #fbfaf7;
+  --soft: #f2f1eb;
+  --line: #e6e3da;
+  --muted: #f2f1eb;
+  --muted-foreground: #5c665f;
+  --subtle-foreground: #8e958f;
+  --secondary: #f2f1eb;
+  --secondary-foreground: #17221d;
+  --border: #e6e3da;
+  --input: #dedad0;
 
-  /* navy → soft blue */
-  --navy-950: #0b1437;
-  --navy-900: #1a2b6b;
-  --navy-800: #22378a;
-  --navy-700: #2c47a8;
-  --blue-600: #3b63d6;
-  --blue-500: #5b86ee;
-  --blue-400: #86a8f4;
-  --blue-300: #afc6f8;
-  --blue-200: #d3e0fc;
-  --blue-100: #e8effe;
-  --blue-50: #f4f7ff;
+  /* hijau hutan */
+  --forest-950: #0a2a20;
+  --forest-900: #0f3d2e;
+  --forest-800: #154c3a;
+  --forest-700: #1b5c46;
 
-  --primary: #1a2b6b;
+  /* zamrud */
+  --brand-600: #188457;
+  --brand-500: #1f9d6b;
+  --brand-400: #4cb68b;
+  --brand-300: #8fd0b2;
+  --brand-200: #c5e7d6;
+  --brand-100: #e2f2e9;
+  --brand-50: #f1f8f4;
+
+  /* emas */
+  --gold-600: #a8842f;
+  --gold-500: #c9a24b;
+  --gold-100: #f5eedb;
+
+  --primary: #0f3d2e;
   --primary-foreground: #ffffff;
-  --primary-hover: #22378a;
-  --accent: #e8effe;
-  --accent-foreground: #1a2b6b;
-  --destructive: #d92d20;
-  --ring: #5b86ee;
+  --primary-hover: #154c3a;
+  --accent: #e2f2e9;
+  --accent-foreground: #0f3d2e;
+  --destructive: #c4321f;
+  --ring: #1f9d6b;
 
-  --chart-1: #1a2b6b;
-  --chart-2: #3b63d6;
-  --chart-3: #5b86ee;
-  --chart-4: #86a8f4;
-  --chart-5: #c9d8fb;
-  --chart-muted: #eef1f7;
-  --chart-grid: #eef1f6;
-  --chart-axis: #8c94a3;
+  --chart-1: #0f3d2e;
+  --chart-2: #1f9d6b;
+  --chart-3: #4cb68b;
+  --chart-4: #c9a24b;
+  --chart-5: #c5e7d6;
+  --chart-muted: #efede6;
+  --chart-grid: #eeece5;
+  --chart-axis: #8e958f;
 
   --sidebar: #ffffff;
-  --sidebar-foreground: #344054;
-  --sidebar-primary: #1a2b6b;
+  --sidebar-foreground: #38443e;
+  --sidebar-primary: #0f3d2e;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f4f7ff;
-  --sidebar-accent-foreground: #1a2b6b;
-  --sidebar-border: #e8ebf1;
-  --sidebar-ring: #5b86ee;
+  --sidebar-accent: #f1f8f4;
+  --sidebar-accent-foreground: #0f3d2e;
+  --sidebar-border: #e6e3da;
+  --sidebar-ring: #1f9d6b;
 
-  /* status — semantik tetap hijau/kuning/merah, sisanya navy/biru */
-  --ok: #067647;        --ok-bg: #ecfdf3;
-  --review: #b54708;    --review-bg: #fffaeb;
-  --blocked: #d92d20;   --blocked-bg: #fef3f2;
-  --info: #3b63d6;      --info-bg: #f4f7ff;
-  --escalate: #1a2b6b;  --escalate-bg: #e8effe;
+  /* status — selalu ikon + label, bukan hanya warna */
+  --ok: #157a4f;        --ok-bg: #e9f6ef;
+  --review: #a35c0a;    --review-bg: #fdf4e3;
+  --blocked: #c4321f;   --blocked-bg: #fcefec;
+  --info: #24697d;      --info-bg: #ebf4f6;
+  --escalate: #8a6a1f;  --escalate-bg: #f5eedb;
 
-  --shadow-xs: 0 1px 2px rgb(16 24 40 / 0.04);
-  --shadow-md: 0 4px 12px -2px rgb(16 24 40 / 0.06), 0 2px 4px -2px rgb(16 24 40 / 0.04);
-  --shadow-lg: 0 12px 24px -6px rgb(16 24 40 / 0.08);
-  --shadow-glow: 0 0 0 4px rgb(91 134 238 / 0.18);
+  --shadow-xs: 0 1px 2px rgb(23 34 29 / 0.04);
+  --shadow-md: 0 4px 14px -4px rgb(23 34 29 / 0.08);
+  --shadow-lg: 0 16px 32px -12px rgb(23 34 29 / 0.14);
+  --shadow-glow: 0 0 0 4px rgb(31 157 107 / 0.16);
 
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
@@ -108,17 +116,20 @@
   --color-canvas: var(--canvas);
   --color-soft: var(--soft);
   --color-line: var(--line);
-  --color-navy-950: var(--navy-950);
-  --color-navy-900: var(--navy-900);
-  --color-navy-800: var(--navy-800);
-  --color-navy-700: var(--navy-700);
-  --color-blue-600: var(--blue-600);
-  --color-blue-500: var(--blue-500);
-  --color-blue-400: var(--blue-400);
-  --color-blue-300: var(--blue-300);
-  --color-blue-200: var(--blue-200);
-  --color-blue-100: var(--blue-100);
-  --color-blue-50: var(--blue-50);
+  --color-forest-950: var(--forest-950);
+  --color-forest-900: var(--forest-900);
+  --color-forest-800: var(--forest-800);
+  --color-forest-700: var(--forest-700);
+  --color-brand-600: var(--brand-600);
+  --color-brand-500: var(--brand-500);
+  --color-brand-400: var(--brand-400);
+  --color-brand-300: var(--brand-300);
+  --color-brand-200: var(--brand-200);
+  --color-brand-100: var(--brand-100);
+  --color-brand-50: var(--brand-50);
+  --color-gold-600: var(--gold-600);
+  --color-gold-500: var(--gold-500);
+  --color-gold-100: var(--gold-100);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -150,8 +161,8 @@
   --shadow-md: var(--shadow-md);
   --shadow-lg: var(--shadow-lg);
   --shadow-glow: var(--shadow-glow);
-  --font-sans: var(--font-jakarta);
-  --font-heading: var(--font-jakarta);
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-fraunces);
   --font-mono: var(--font-jetbrains);
 }
 
@@ -167,6 +178,11 @@
     font-size: 14px;
     line-height: 22px;
   }
+  h1 {
+    font-family: var(--font-fraunces), Georgia, serif;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
   :focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
@@ -176,135 +192,69 @@
   }
 }
 
-/* ---------- Kartu: putih solid, garis tipis ---------- */
+.font-display {
+  font-family: var(--font-fraunces), Georgia, serif;
+  letter-spacing: -0.01em;
+}
+
+/* ---------- Kartu: putih solid, garis tipis, radius 16px ---------- */
 .panel {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 14px;
-  box-shadow: var(--shadow-xs);
+  border-radius: 16px;
 }
 
-/* ---------- Gradient merek (panel login, header web chat) ---------- */
+/* ---------- Permukaan merek (panel login, header web chat) ---------- */
 .brand-gradient {
-  background:
-    radial-gradient(40rem 26rem at 100% 0%, rgb(134 168 244 / 0.45), transparent 60%),
-    linear-gradient(160deg, #0b1437 0%, #1a2b6b 45%, #3b63d6 100%);
+  background: var(--forest-900);
   color: #ffffff;
 }
 
-/* ---------- Liquid glass ---------- */
-/* Permukaan melayang (popover, composer chat, tooltip grafik) */
+/* ---------- Permukaan melayang (popover, menu, composer) ---------- */
 .glass {
-  background: linear-gradient(135deg, rgb(255 255 255 / 0.82), rgb(255 255 255 / 0.62));
-  backdrop-filter: blur(16px) saturate(170%);
-  -webkit-backdrop-filter: blur(16px) saturate(170%);
-  border: 1px solid rgb(255 255 255 / 0.8);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.9),
-    0 1px 2px rgb(16 24 40 / 0.05),
-    0 10px 24px -10px rgb(26 43 107 / 0.18);
+  background: var(--popover);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-lg);
   border-radius: 14px;
 }
 .glass-strong {
-  background: linear-gradient(135deg, rgb(255 255 255 / 0.94), rgb(255 255 255 / 0.84));
+  background: var(--popover);
 }
 .glass-on-dark {
-  background: linear-gradient(135deg, rgb(255 255 255 / 0.16), rgb(255 255 255 / 0.06));
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
-  border: 1px solid rgb(255 255 255 / 0.22);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25);
+  background: rgb(255 255 255 / 0.08);
+  border: 1px solid rgb(255 255 255 / 0.14);
 }
 
-/* Tombol liquid glass — primer: navy berkilau; sekunder: kaca bening */
+/* ---------- Tombol: datar, tenang ---------- */
 .btn-liquid,
 .btn-glass {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
   transition:
-    transform 150ms var(--ease-out),
-    box-shadow 150ms var(--ease-out),
-    filter 150ms var(--ease-out);
-}
-.btn-liquid::before,
-.btn-glass::before {
-  content: "";
-  position: absolute;
-  inset: 1px 1px 50% 1px;
-  border-radius: inherit;
-  background: linear-gradient(180deg, rgb(255 255 255 / 0.32), rgb(255 255 255 / 0));
-  pointer-events: none;
-  z-index: -1;
-}
-.btn-liquid::after,
-.btn-glass::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: -60%;
-  width: 40%;
-  background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.35), transparent);
-  transform: skewX(-20deg);
-  opacity: 0;
-  pointer-events: none;
-}
-.btn-liquid:hover::after,
-.btn-glass:hover::after {
-  opacity: 1;
-  left: 120%;
-  transition: left 700ms var(--ease-out), opacity 150ms;
+    background-color 150ms var(--ease-out),
+    border-color 150ms var(--ease-out),
+    color 150ms var(--ease-out);
 }
 .btn-liquid {
   color: #ffffff;
-  background: linear-gradient(180deg, #34509f 0%, #1a2b6b 55%, #15235a 100%);
-  border: 1px solid rgb(11 20 55 / 0.6);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.28),
-    inset 0 -1px 0 rgb(0 0 0 / 0.18),
-    0 1px 2px rgb(16 24 40 / 0.12),
-    0 6px 14px -6px rgb(26 43 107 / 0.55);
+  background: var(--forest-900);
+  border: 1px solid var(--forest-900);
 }
 .btn-liquid:hover:not(:disabled) {
-  filter: brightness(1.08);
-  transform: translateY(-1px);
+  background: var(--forest-800);
 }
 .btn-glass {
   color: var(--foreground);
-  background: linear-gradient(180deg, rgb(255 255 255 / 0.95), rgb(244 247 255 / 0.7));
-  backdrop-filter: blur(12px) saturate(160%);
-  -webkit-backdrop-filter: blur(12px) saturate(160%);
-  border: 1px solid rgb(26 43 107 / 0.12);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 1),
-    inset 0 -1px 0 rgb(26 43 107 / 0.04),
-    0 1px 2px rgb(16 24 40 / 0.05);
+  background: var(--card);
+  border: 1px solid var(--line);
 }
 .btn-glass:hover:not(:disabled) {
-  border-color: rgb(59 99 214 / 0.3);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 1),
-    0 4px 12px -4px rgb(26 43 107 / 0.15);
-  transform: translateY(-1px);
-}
-.btn-liquid:active:not(:disabled),
-.btn-glass:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .glass, .btn-glass { background: rgb(255 255 255 / 0.96); }
-}
-@media (prefers-reduced-transparency: reduce) {
-  .glass, .btn-glass, .glass-on-dark { backdrop-filter: none; -webkit-backdrop-filter: none; background: #ffffff; }
-  .glass-on-dark { background: rgb(255 255 255 / 0.18); }
+  background: var(--canvas);
+  border-color: var(--input);
 }
 
 .lift {
-  transition: box-shadow 150ms var(--ease-out), border-color 150ms var(--ease-out);
+  transition: border-color 150ms var(--ease-out);
 }
-.lift:hover { box-shadow: var(--shadow-md); border-color: var(--blue-200); }
+.lift:hover { border-color: var(--brand-300); }
 
 /* Skeleton shimmer */
 .shimmer {
@@ -315,14 +265,14 @@
 @keyframes shimmer { to { background-position: -200% 0; } }
 
 @keyframes pulse-once {
-  0% { box-shadow: 0 0 0 0 rgb(91 134 238 / 0.5); }
-  100% { box-shadow: 0 0 0 8px rgb(91 134 238 / 0); }
+  0% { box-shadow: 0 0 0 0 rgb(31 157 107 / 0.45); }
+  100% { box-shadow: 0 0 0 8px rgb(31 157 107 / 0); }
 }
 .pulse-once { animation: pulse-once 600ms var(--ease-out) 1; }
 
 @keyframes ring-once {
-  0% { box-shadow: 0 0 0 0 rgb(59 99 214 / 0.45); }
-  100% { box-shadow: 0 0 0 8px rgb(59 99 214 / 0); }
+  0% { box-shadow: 0 0 0 0 rgb(31 157 107 / 0.4); }
+  100% { box-shadow: 0 0 0 8px rgb(31 157 107 / 0); }
 }
 .ring-once { animation: ring-once 600ms var(--ease-out) 1; }
 
@@ -351,15 +301,21 @@
   30% { transform: translateY(-3px); opacity: 1; }
 }
 
+/* Indikator agen sedang bekerja (layar Agen) */
+@keyframes breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.breathe { animation: breathe 1.8s var(--ease-in-out) infinite; }
+
 .scrollbar-thin { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 
 @media (prefers-reduced-motion: reduce) {
-  .mark-blocked, .typing-dot, .pulse-once, .ring-once { animation: none !important; }
-  .btn-liquid::after, .btn-glass::after { display: none; }
+  .mark-blocked, .typing-dot, .pulse-once, .ring-once, .breathe { animation: none !important; }
   *, *::before, *::after { transition-duration: 100ms !important; }
 }
 
-/* ---------- Command Center (/dashboard): tema gelap obsidian + hijau neon herbal ---------- */
+/* ---------- Command Center 3D (/dashboard): tema gelap terpisah ---------- */
 .cc-bg {
   background:
     radial-gradient(60rem 30rem at 70% -10%, rgb(16 185 129 / 0.12), transparent 60%),

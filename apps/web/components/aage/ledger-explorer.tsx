@@ -14,7 +14,7 @@ import { Suspense, useMemo, useState } from "react"
 import useSWR from "swr"
 
 import { EmptyState, SkeletonRows } from "@/components/aage/empty-state"
-import { Panel, PageHeader, Surface } from "@/components/aage/panel"
+import { Panel, Surface } from "@/components/aage/panel"
 import { EVENT_META, LedgerTimeline, actorLabel } from "@/components/aage/ledger-timeline"
 import { CostChip, Pill, VerdictBadge } from "@/components/aage/status"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
@@ -37,7 +37,7 @@ type Trace = {
   disetujui_oleh: string | null
 }
 
-const selectCls = "h-9 rounded-md border border-line bg-white px-2.5 text-[13px] outline-none focus:border-blue-500"
+const selectCls = "h-9 rounded-md border border-line bg-white px-2.5 text-[13px] outline-none focus:border-brand-500"
 
 function TraceSheet({ id, onClose }: { id: number | null; onClose: () => void }) {
   const { data } = useSWR<Trace>(id ? `/api/ledger/${id}/trace` : null, fetcher)
@@ -83,7 +83,7 @@ function TraceSheet({ id, onClose }: { id: number | null; onClose: () => void })
                   {data.sumber.map((s) => (
                     <li key={s.chunk_id} className="rounded-lg border border-line p-3">
                       <div className="flex flex-wrap items-center gap-2 text-[13px]">
-                        <FileText className="size-4 text-navy-700" />
+                        <FileText className="size-4 text-forest-700" />
                         <span className="font-semibold">{s.dokumen.judul}</span>
                         <Pill>versi {s.versi}</Pill>
                         {!s.aktif && <Pill className="bg-review-bg text-review">versi lama</Pill>}
@@ -138,7 +138,7 @@ function LedgerInner() {
           const Icon = m?.icon
           return (
             <span className="inline-flex items-center gap-1.5 whitespace-nowrap font-medium">
-              {Icon && <Icon className="size-3.5 text-navy-700" />} {m?.label ?? c.getValue<string>()}
+              {Icon && <Icon className="size-3.5 text-forest-700" />} {m?.label ?? c.getValue<string>()}
             </span>
           )
         },
@@ -163,15 +163,12 @@ function LedgerInner() {
 
   return (
     <div>
-      <PageHeader
-        title="Ledger"
-        description="Evidence-to-Action Ledger: setiap aksi AI dan staf, append-only. Klik baris untuk menelusuri rantai sampai dokumen sumber."
-        actions={
-          <span className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground">
-            <Lock className="size-3.5" /> append-only · {data?.total ?? "…"} event
-          </span>
-        }
-      />
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-[12.5px] text-muted-foreground">
+        <span>Setiap aksi AI dan staf tercatat append-only dengan rantai hash. Klik baris untuk menelusuri sampai dokumen sumber.</span>
+        <span className="inline-flex items-center gap-1.5">
+          <Lock className="size-3.5" /> {data?.total ?? "…"} event
+        </span>
+      </div>
       <Panel className="mb-4 flex flex-wrap items-end gap-3 p-4">
         <label className="grid gap-1 text-[12px] text-muted-foreground">
           Tipe event
@@ -239,7 +236,7 @@ function LedgerInner() {
                 <tr
                   key={row.id}
                   onClick={() => setOpen(row.original.id)}
-                  className={`cursor-pointer border-t border-line hover:bg-blue-50 ${i % 2 ? "bg-canvas" : "bg-white"}`}
+                  className={`cursor-pointer border-t border-line hover:bg-brand-50 ${i % 2 ? "bg-canvas" : "bg-white"}`}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <td key={cell.id} className={`px-3 py-2 align-middle first:sticky first:left-0 ${i % 2 ? "first:bg-canvas" : "first:bg-white"}`}>
@@ -254,7 +251,7 @@ function LedgerInner() {
       </Surface>
       {data && data.total > data.items.length && (
         <div className="mt-4 flex justify-center">
-          <button onClick={() => setLimit((l) => Math.min(500, l + 100))} className="h-9 rounded-md px-4 text-[13px] font-medium text-navy-700 hover:bg-soft">
+          <button onClick={() => setLimit((l) => Math.min(500, l + 100))} className="h-9 rounded-md px-4 text-[13px] font-medium text-forest-700 hover:bg-soft">
             Muat lebih banyak ({data.items.length} dari {data.total})
           </button>
         </div>
@@ -264,7 +261,7 @@ function LedgerInner() {
   )
 }
 
-export default function LedgerPage() {
+export function LedgerExplorer() {
   return (
     <Suspense fallback={<SkeletonRows rows={10} />}>
       <LedgerInner />
