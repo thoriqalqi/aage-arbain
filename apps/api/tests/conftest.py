@@ -12,6 +12,10 @@ os.environ["WA_ACCESS_TOKEN"] = ""
 os.environ["WA_APP_SECRET"] = "rahasia-uji"
 os.environ["AGENT_MODE"] = "simulasi"
 os.environ["FONNTE_TOKEN"] = ""
+os.environ["WATI_API_KEY"] = ""
+os.environ["WATI_WEBHOOK_TOKEN"] = "token-uji"
+os.environ["WATI_ALLOWLIST"] = ""
+os.environ["WA_PROVIDER"] = ""
 os.environ["ANTHROPIC_API_KEY"] = ""
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 

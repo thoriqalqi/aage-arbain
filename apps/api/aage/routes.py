@@ -1,5 +1,6 @@
 """Endpoint API (prefix /api) — PRD §7."""
 
+import hmac
 import logging
 from datetime import datetime
 
@@ -15,7 +16,7 @@ from . import serializers as ser
 from .agents.drafter import _template_source
 from .agents.graph import handle_inbound
 from .agents.sales import last_order
-from .channels import sender, whatsapp
+from .channels import sender, wati, whatsapp
 from .config import get_settings
 from .content import audit as audit_svc
 from .content import studio
@@ -70,7 +71,7 @@ def status():
     return {
         "llm": {"aktif": settings.llm_enabled, "model": settings.llm_model if settings.llm_enabled else llm.OFFLINE_MODEL,
                 "judge": settings.llm_judge_model if settings.llm_enabled else None},
-        "whatsapp": {"aktif": settings.wa_enabled, "kanal_cadangan": "webchat"},
+        "whatsapp": {"aktif": settings.wa_enabled, "penyedia": settings.wa_channel, "kanal_cadangan": "webchat"},
         "prospek": {"sumber": "OpenStreetMap Overpass (tanpa API key)", "timeout_s": settings.overpass_timeout_s,
                     "maks_hasil": settings.prospek_max_results},
         "anggaran": {"harian_rp": settings.budget_daily_rp, "bulanan_rp": settings.budget_monthly_rp,
@@ -96,7 +97,8 @@ def _process_wa(messages: list[dict]) -> None:
             if db.scalar(select(Message).where(Message.wa_message_id == m["id"])):
                 continue  # Meta bisa mengirim ulang webhook yang sama
             try:
-                handle_inbound(db, wa_number=m["from"], text=m["text"], kanal="whatsapp", wa_message_id=m["id"])
+                handle_inbound(db, wa_number=m["from"], text=m["text"], kanal="whatsapp", wa_message_id=m["id"],
+                               nama=m.get("name"))
             except Exception:
                 log.exception("Gagal memproses pesan WA %s", m["id"])
                 db.rollback()
@@ -111,6 +113,26 @@ async def wa_webhook(request: Request, background: BackgroundTasks):
     msgs = whatsapp.parse_messages(payload)
     if msgs:
         background.add_task(_process_wa, msgs)
+    return {"diterima": len(msgs)}
+
+
+@router.post("/webhook/wati")
+async def wati_webhook(request: Request, background: BackgroundTasks, token: str = Query("")):
+    # WATI tidak menandatangani webhook → lindungi dengan token rahasia di URL.
+    if settings.wati_webhook_token:
+        if not hmac.compare_digest(token, settings.wati_webhook_token):
+            raise HTTPException(401, "Token webhook WATI tidak valid")
+    elif settings.env != "dev":
+        raise HTTPException(403, "WATI_WEBHOOK_TOKEN wajib diisi di luar mode dev")
+    try:
+        payload = await request.json()
+    except ValueError:
+        raise HTTPException(400, "Body webhook bukan JSON")
+    items = payload if isinstance(payload, list) else [payload]
+    msgs = [m for m in (wati.parse_message(p) for p in items if isinstance(p, dict)) if m]
+    if msgs:
+        background.add_task(_process_wa, msgs)
+    # Selalu 200 untuk event yang tidak relevan, agar WATI tidak mengulang hingga 144x.
     return {"diterima": len(msgs)}
 
 

@@ -4,7 +4,6 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
@@ -43,6 +42,16 @@ class Settings(BaseSettings):
     wa_graph_version: str = "v21.0"
     wa_reminder_template: str = ""
 
+    # Penyedia WhatsApp: "meta" | "wati" | kosong = otomatis (wati bila WATI_API_KEY terisi, selain itu meta)
+    wa_provider: str = ""
+
+    # WATI API v3 (https://docs.wati.io). Key dikirim sebagai Bearer token, tidak pernah dicetak ke log.
+    wati_api_key: str = ""
+    wati_base_url: str = "https://live-mt-server.wati.io/api/ext/v3"
+    wati_webhook_token: str = ""  # wajib di luar env=dev; webhook: /api/webhook/wati?token=...
+    wati_channel_number: str = ""  # opsional, untuk akun multi-nomor: target "Channel:PhoneNumber"
+    wati_allowlist: str = ""  # nomor uji dipisah koma; bila terisi, HANYA nomor ini yang benar-benar dikirimi
+
     # Fonnte (gateway WhatsApp lokal) untuk kirim invoice yang disetujui staf
     fonnte_token: str = ""
 
@@ -72,9 +81,23 @@ class Settings(BaseSettings):
         return bool(self.gemini_api_key)
 
     @property
-    def wa_enabled(self) -> bool:
+    def meta_enabled(self) -> bool:
         return bool(self.wa_access_token and self.wa_phone_number_id)
 
+    @property
+    def wati_enabled(self) -> bool:
+        return bool(self.wati_api_key)
+
+    @property
+    def wa_channel(self) -> str:
+        provider = self.wa_provider.strip().lower()
+        if provider in ("meta", "wati"):
+            return provider
+        return "wati" if self.wati_enabled else "meta"
+
+    @property
+    def wa_enabled(self) -> bool:
+        return self.wati_enabled if self.wa_channel == "wati" else self.meta_enabled
 
 @lru_cache
 def get_settings() -> Settings:

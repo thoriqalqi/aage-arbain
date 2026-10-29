@@ -5,7 +5,10 @@ from sqlalchemy.orm import Session
 from .. import clock, ledger
 from ..claimguard import ALLOWED, CheckResult
 from ..models import Conversation, Message
-from . import whatsapp
+from ..config import get_settings
+from . import wati, whatsapp
+
+settings = get_settings()
 
 
 class ClaimGuardRequired(RuntimeError):
@@ -36,11 +39,13 @@ def send(
     db.flush()
 
     if conv.kanal == "whatsapp":
+        channel = wati if settings.wa_channel == "wati" else whatsapp
         if template:
-            ok, wa_id, err = whatsapp.send_template(conv.contact.wa_number, template[0], template[1])
+            ok, wa_id, err = channel.send_template(conv.contact.wa_number, template[0], template[1])
         else:
-            ok, wa_id, err = whatsapp.send_text(conv.contact.wa_number, text)
-        msg.status_kirim = "terkirim" if ok else ("simulasi" if err == "WhatsApp belum dikonfigurasi" else "gagal")
+            ok, wa_id, err = channel.send_text(conv.contact.wa_number, text)
+        simulated = err == "WhatsApp belum dikonfigurasi" or (err or "").startswith(wati.SIMULASI_PREFIX)
+        msg.status_kirim = "terkirim" if ok else ("simulasi" if simulated else "gagal")
         msg.wa_message_id = wa_id
     else:
         msg.status_kirim = "terkirim"

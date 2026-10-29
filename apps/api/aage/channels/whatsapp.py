@@ -58,14 +58,14 @@ def _post(payload: dict) -> tuple[bool, str | None, str | None]:
 
 
 def send_text(to: str, text: str) -> tuple[bool, str | None, str | None]:
-    if not settings.wa_enabled:
+    if not settings.meta_enabled:
         return False, None, "WhatsApp belum dikonfigurasi"
     return _post({"messaging_product": "whatsapp", "to": to, "type": "text",
                   "text": {"preview_url": False, "body": text[:4096]}})
 
 
 def send_template(to: str, template: str, params: list[str]) -> tuple[bool, str | None, str | None]:
-    if not settings.wa_enabled:
+    if not settings.meta_enabled:
         return False, None, "WhatsApp belum dikonfigurasi"
     return _post({
         "messaging_product": "whatsapp", "to": to, "type": "template",
