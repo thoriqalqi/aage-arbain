@@ -48,8 +48,8 @@
   },
   "negosiasi_pesanan_gagal": [],
   "operasional": {
-    "latensi_rata_ms": 38.2,
-    "latensi_p95_ms": 51.4,
+    "latensi_rata_ms": 44.5,
+    "latensi_p95_ms": 63.9,
     "biaya_per_percakapan_rp": 0.0,
     "selesai_otomatis_persen": 91.9,
     "pesan": 370

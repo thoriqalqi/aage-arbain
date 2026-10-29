@@ -36,10 +36,11 @@ AGENT_EVENTS: dict[str, tuple[str, ...]] = {
     "opportunity": ("prospek_dibuat", "prospek_status", "prospek_riset"),
     "sales": ("retrieval", "draf_jawaban", "pesan_keluar", "draf_pesanan", "pengingat_repeat_order",
               "invoice_dikirim", "agen_hitl"),
-    "content": ("konten_dibuat", "konten_disetujui", "konten_diekspor", "audit_halaman"),
+    "content": ("konten_dibuat", "konten_diedit", "konten_disetujui", "konten_diekspor", "konten_diarsipkan",
+                "audit_halaman"),
     "claimguard": ("claimguard", "claimguard_inbound", "agen_claimguard", "claimguard_playground",
                    "compliance_audit", "compliance_tindakan"),
-    "evaluation": (),
+    "evaluation": ("evaluasi_dimulai", "evaluasi_selesai"),
 }
 IDLE_TEXT = {
     "orchestrator": "Menunggu pesan atau tugas baru",
@@ -47,7 +48,7 @@ IDLE_TEXT = {
     "sales": "Siap menjawab pesan WhatsApp",
     "content": "Menunggu permintaan konten",
     "claimguard": "Siap memeriksa klaim",
-    "evaluation": "Evaluasi dijalankan lewat skrip eval (belum terjadwal)",
+    "evaluation": "Siap menjalankan dataset uji (Evaluasi & Biaya → Jalankan evaluasi)",
 }
 
 

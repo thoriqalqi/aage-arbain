@@ -1,39 +1,98 @@
 "use client"
 
+import { FlaskConical, LoaderCircle } from "lucide-react"
+import { useState } from "react"
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { toast } from "sonner"
 import useSWR from "swr"
 
+import { AButton } from "@/components/aage/button"
 import { PageHeader, Panel } from "@/components/aage/panel"
-import { fetcher } from "@/lib/api"
-import { formatDay, formatDuration, formatNum, formatPct, formatRp } from "@/lib/format"
+import { api, fetcher } from "@/lib/api"
+import { formatDateTime, formatDay, formatDuration, formatNum, formatPct, formatRp } from "@/lib/format"
+import { useRole } from "@/lib/rbac"
 import type { Kpi, Status } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
-type Target = {
-  metrik: string
-  target: string
-  /** Nilai terkini bila sudah bisa diukur dari API; null = menunggu dataset uji. */
-  nilai?: (k: Kpi, s: Status | undefined) => { teks: string; lolos: boolean } | null
+type EvalHasil = {
+  mode: string
+  qa: { n: number; akurasi: number; groundedness: number }
+  klaim: { n: number; recall: number; precision: number; diblokir_lolos: number }
+  eskalasi: { n: number; ketepatan: number }
+  negosiasi?: { n: number; sesuai_tier: number }
+  pesanan?: { n: number; lengkap: number }
+  operasional: { latensi_rata_ms: number; latensi_p95_ms: number; biaya_per_percakapan_rp: number; pesan: number }
 }
 
+type EvalSummary = {
+  ada: boolean
+  hasil: EvalHasil | null
+  dijalankan_pada: string | null
+  berjalan: boolean
+  mulai: string | null
+  error: string | null
+}
+
+type Nilai = { teks: string; lolos: boolean; sumber: "uji" | "live" } | null
+type Ctx = { kpi?: Kpi; status?: Status; ev?: EvalHasil | null }
+
+const pct = (v: number) => `${String(v).replace(".", ",")}%`
+
 // Brief §9 — kriteria penerimaan (target awal, ditinjau setelah baseline Nov 2026).
-const TARGETS: Target[] = [
-  { metrik: "Akurasi jawaban katalog", target: "≥95% (≥200 pertanyaan berlabel)" },
-  { metrik: "Groundedness jawaban otomatis", target: "≥98%" },
-  { metrik: "ClaimGuard", target: "Recall ≥90%, precision ≥80% (≥100 kalimat)" },
-  { metrik: "Klaim berisiko terbit tanpa approval", target: "0 kejadian" },
-  { metrik: "Ketepatan eskalasi", target: "≥95%" },
+const TARGETS: { metrik: string; target: string; nilai: (c: Ctx) => Nilai }[] = [
+  {
+    metrik: "Akurasi jawaban katalog",
+    target: "≥95% (≥200 pertanyaan berlabel)",
+    nilai: ({ ev }) => (ev ? { teks: `${pct(ev.qa.akurasi)} · n=${ev.qa.n}`, lolos: ev.qa.akurasi >= 95 && ev.qa.n >= 200, sumber: "uji" } : null),
+  },
+  {
+    metrik: "Groundedness jawaban otomatis",
+    target: "≥98%",
+    nilai: ({ ev }) => (ev ? { teks: pct(ev.qa.groundedness), lolos: ev.qa.groundedness >= 98, sumber: "uji" } : null),
+  },
+  {
+    metrik: "ClaimGuard",
+    target: "Recall ≥90%, precision ≥80% (≥100 kalimat)",
+    nilai: ({ ev }) =>
+      ev
+        ? {
+            teks: `R ${pct(ev.klaim.recall)} · P ${pct(ev.klaim.precision)} · n=${ev.klaim.n}`,
+            lolos: ev.klaim.recall >= 90 && ev.klaim.precision >= 80 && ev.klaim.n >= 100,
+            sumber: "uji",
+          }
+        : null,
+  },
+  {
+    metrik: "Klaim berisiko terbit tanpa approval",
+    target: "0 kejadian",
+    nilai: ({ ev }) => (ev ? { teks: `${ev.klaim.diblokir_lolos} kejadian`, lolos: ev.klaim.diblokir_lolos === 0, sumber: "uji" } : null),
+  },
+  {
+    metrik: "Ketepatan eskalasi",
+    target: "≥95%",
+    nilai: ({ ev }) => (ev ? { teks: `${pct(ev.eskalasi.ketepatan)} · n=${ev.eskalasi.n}`, lolos: ev.eskalasi.ketepatan >= 95, sumber: "uji" } : null),
+  },
   {
     metrik: "Latensi respons asisten (p95)",
     target: "≤10 detik",
-    nilai: (k) => (k.ringkasan.respons_ai_p95_ms == null ? null : { teks: formatDuration(k.ringkasan.respons_ai_p95_ms), lolos: k.ringkasan.respons_ai_p95_ms <= 10_000 }),
+    nilai: ({ kpi }) =>
+      kpi?.ringkasan.respons_ai_p95_ms == null
+        ? null
+        : { teks: formatDuration(kpi.ringkasan.respons_ai_p95_ms), lolos: kpi.ringkasan.respons_ai_p95_ms <= 10_000, sumber: "live" },
   },
-  { metrik: "Waktu tugas rutin", target: "Turun ≥30% dari baseline" },
-  { metrik: "Kegunaan (SUS)", target: "≥68" },
+  { metrik: "Waktu tugas rutin", target: "Turun ≥30% dari baseline", nilai: () => null },
+  { metrik: "Kegunaan (SUS)", target: "≥68", nilai: () => null },
   {
     metrik: "Biaya AI per percakapan",
     target: "Dalam anggaran bulanan",
-    nilai: (k, s) => (s ? { teks: formatRp(k.ringkasan.biaya_per_percakapan_rp, { decimals: true }), lolos: s.anggaran.terpakai_bulan_ini_rp <= s.anggaran.bulanan_rp } : null),
+    nilai: ({ kpi, status }) =>
+      kpi && status
+        ? {
+            teks: formatRp(kpi.ringkasan.biaya_per_percakapan_rp, { decimals: true }),
+            lolos: status.anggaran.terpakai_bulan_ini_rp <= status.anggaran.bulanan_rp,
+            sumber: "live",
+          }
+        : null,
   },
 ]
 
@@ -79,16 +138,60 @@ function CostChart({ data }: { data: Kpi["harian"] }) {
   )
 }
 
+function EvalRunner({ summary, onStarted }: { summary?: EvalSummary; onStarted: () => void }) {
+  const { role } = useRole()
+  const [starting, setStarting] = useState(false)
+  const running = summary?.berjalan || starting
+
+  async function start() {
+    setStarting(true)
+    try {
+      await api("/api/eval/run", { method: "POST" })
+      toast.success("Evaluasi dimulai — hasil diperbarui otomatis saat selesai")
+      onStarted()
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setStarting(false)
+    }
+  }
+
+  return (
+    <Panel className="flex flex-wrap items-center gap-x-5 gap-y-3 p-5">
+      <FlaskConical className="size-5 shrink-0 text-forest-700" />
+      <div className="min-w-0 flex-1 text-[13px]">
+        <div className="font-medium">Dataset uji berlabel</div>
+        <div className="text-muted-foreground">
+          {summary?.ada && summary.hasil
+            ? `Terakhir dijalankan ${formatDateTime(summary.dijalankan_pada)} · mode ${summary.hasil.mode} · ${formatNum(summary.hasil.operasional.pesan)} pesan diuji`
+            : "Belum ada hasil uji."}
+        </div>
+        {summary?.error && <div className="text-blocked">Evaluasi terakhir gagal: {summary.error}</div>}
+      </div>
+      {role === "admin" && (
+        <AButton size="sm" onClick={start} disabled={running}>
+          {running ? <LoaderCircle className="size-4 animate-spin" /> : <FlaskConical className="size-4" />}
+          {running ? "Sedang berjalan…" : "Jalankan evaluasi"}
+        </AButton>
+      )}
+    </Panel>
+  )
+}
+
 export default function EvaluasiPage() {
   const { data: kpi } = useSWR<Kpi>("/api/kpi", fetcher, { refreshInterval: 30000 })
   const { data: status } = useSWR<Status>("/api/status", fetcher, { refreshInterval: 30000 })
+  const { data: summary, mutate } = useSWR<EvalSummary>("/api/eval/summary", fetcher, {
+    refreshInterval: (d) => (d?.berjalan ? 2000 : 30000),
+  })
   const r = kpi?.ringkasan
+  const ctx: Ctx = { kpi, status, ev: summary?.hasil }
 
   return (
     <div className="space-y-5">
       <PageHeader
         title="Evaluasi & Biaya"
-        description="Target uji purwarupa dan pemakaian biaya AI. Angka adalah target awal dan ditinjau ulang setelah baseline November 2026."
+        description="Hasil dataset uji berlabel dan pemakaian biaya AI. Target adalah kriteria awal Brief §9 dan ditinjau ulang setelah baseline November 2026."
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -98,18 +201,12 @@ export default function EvaluasiPage() {
         <Stat label="Dijawab otomatis" value={formatPct(r?.otomatis_persen)} hint={r ? `${formatPct(r.eskalasi_persen)} dieskalasi` : undefined} />
       </div>
 
-      <Panel className="p-5">
-        <div className="mb-4 flex items-baseline justify-between gap-3">
-          <h2 className="text-[14px] font-semibold">Biaya per percakapan</h2>
-          <span className="text-[12px] text-subtle-foreground">14 hari terakhir</span>
-        </div>
-        {kpi ? <CostChart data={kpi.harian} /> : <div className="shimmer h-56 rounded-lg" />}
-      </Panel>
+      <EvalRunner summary={summary} onStarted={() => mutate()} />
 
       <Panel className="overflow-hidden">
         <div className="flex items-baseline justify-between gap-3 p-5 pb-3">
           <h2 className="text-[14px] font-semibold">Target uji</h2>
-          <span className="text-[12px] text-subtle-foreground">Kriteria penerimaan, bukan hasil</span>
+          <span className="text-[12px] text-subtle-foreground">Uji = dataset berlabel · Live = data operasional</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
@@ -123,12 +220,21 @@ export default function EvaluasiPage() {
             </thead>
             <tbody>
               {TARGETS.map((t) => {
-                const v = kpi && t.nilai ? t.nilai(kpi, status) : null
+                const v = t.nilai(ctx)
                 return (
                   <tr key={t.metrik} className="border-b border-line last:border-0">
                     <td className="px-5 py-3 font-medium">{t.metrik}</td>
                     <td className="px-3 py-3 text-muted-foreground">{t.target}</td>
-                    <td className="tabular px-3 py-3">{v ? v.teks : <span className="text-subtle-foreground">—</span>}</td>
+                    <td className="tabular px-3 py-3 whitespace-nowrap">
+                      {v ? (
+                        <>
+                          {v.teks}
+                          <span className="ml-2 rounded-full bg-soft px-1.5 py-0.5 text-[10.5px] font-medium text-muted-foreground uppercase">{v.sumber}</span>
+                        </>
+                      ) : (
+                        <span className="text-subtle-foreground">—</span>
+                      )}
+                    </td>
                     <td className="px-5 py-3 text-right">
                       <span
                         className={cn(
@@ -147,8 +253,17 @@ export default function EvaluasiPage() {
           </table>
         </div>
         <p className="border-t border-line px-5 py-3 text-[12px] text-subtle-foreground">
-          Metrik akurasi, groundedness, ClaimGuard, dan eskalasi terisi setelah dataset uji berlabel dijalankan oleh agen Evaluation.
+          Waktu tugas rutin dan SUS diukur lewat sesi uji pengguna bersama mitra, bukan otomatis.
+          {summary?.hasil?.mode?.startsWith("offline") && " Hasil uji saat ini dari mode offline deterministik (tanpa LLM)."}
         </p>
+      </Panel>
+
+      <Panel className="p-5">
+        <div className="mb-4 flex items-baseline justify-between gap-3">
+          <h2 className="text-[14px] font-semibold">Biaya per percakapan</h2>
+          <span className="text-[12px] text-subtle-foreground">14 hari terakhir</span>
+        </div>
+        {kpi ? <CostChart data={kpi.harian} /> : <div className="shimmer h-56 rounded-lg" />}
       </Panel>
     </div>
   )

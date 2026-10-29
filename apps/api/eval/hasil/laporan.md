@@ -12,7 +12,7 @@ Mode model: **offline (deterministik)** · dataset: katalog 50 produk **simulasi
 | Ketepatan eskalasi (n=30) | 100.0% | ≥95% | ✅ |
 | Penawaran sesuai tier (n=12) | 100.0% | ≥100% | ✅ |
 | Draf pesanan lengkap (n=9) | 100.0% | ≥90% | ✅ |
-| Latensi p95 pipeline | 51.4 ms | ≤10000 ms | ✅ |
+| Latensi p95 pipeline | 63.9 ms | ≤10000 ms | ✅ |
 
 Akurasi 3 kelas ClaimGuard: 99.2% · selesai otomatis: 91.9% · biaya rata-rata per percakapan: Rp 0.0
 

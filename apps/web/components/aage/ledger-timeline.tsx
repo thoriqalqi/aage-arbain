@@ -6,11 +6,13 @@ import {
   ClipboardCheck,
   Compass,
   FileSearch,
+  FlaskConical,
   Gavel,
   type LucideIcon,
   PenLine,
   ReceiptText,
   ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
   UserRoundCheck,
 } from "lucide-react"
@@ -45,10 +47,18 @@ export const EVENT_META: Record<string, { label: string; icon: LucideIcon }> = {
   katalog_diimpor: { label: "Katalog diimpor", icon: FileSearch },
   dokumen_diingest: { label: "Dokumen di-ingest", icon: FileSearch },
   claimguard_playground: { label: "Playground ClaimGuard", icon: ShieldCheck },
+  prospek_riset: { label: "Riset prospek", icon: FileSearch },
+  agen_hitl: { label: "Agen: menunggu manusia", icon: UserRoundCheck },
+  agen_claimguard: { label: "Agen ClaimGuard", icon: ShieldCheck },
+  invoice_dikirim: { label: "Invoice dikirim", icon: ReceiptText },
+  pengaturan_diubah: { label: "Pengaturan diubah", icon: SlidersHorizontal },
+  evaluasi_dimulai: { label: "Evaluasi dimulai", icon: FlaskConical },
+  evaluasi_selesai: { label: "Evaluasi selesai", icon: FlaskConical },
 }
 
 export function actorLabel(aktor: string) {
   if (aktor === "AI") return "AI"
+  if (aktor.startsWith("AI:")) return `AI · ${aktor.slice(3)}`
   if (aktor === "pembeli") return "Pembeli"
   return aktor.replace(/^staf:/, "Staf · ")
 }

@@ -4,6 +4,7 @@ import uuid
 
 from sqlalchemy.orm import Session
 
+from . import ledger_chain
 from .models import LedgerEvent
 
 EVENT_TYPES = {
@@ -21,6 +22,8 @@ EVENT_TYPES = {
     "konten_dibuat": "Konten dibuat",
     "konten_disetujui": "Konten disetujui",
     "konten_diekspor": "Konten diekspor",
+    "konten_diedit": "Konten diedit",
+    "konten_diarsipkan": "Konten diarsipkan",
     "audit_halaman": "Audit halaman",
     "prospek_dibuat": "Prospek dibuat",
     "prospek_status": "Status prospek berubah",
@@ -33,6 +36,8 @@ EVENT_TYPES = {
     "agen_claimguard": "Agen ClaimGuard: audit",
     "invoice_dikirim": "Invoice dikirim",
     "pengaturan_diubah": "Pengaturan diubah",
+    "evaluasi_dimulai": "Evaluasi dimulai",
+    "evaluasi_selesai": "Evaluasi selesai",
 }
 
 
@@ -46,6 +51,7 @@ def record(db: Session, tipe_event: str, **fields) -> LedgerEvent:
     ev = LedgerEvent(tipe_event=tipe_event, **fields)
     db.add(ev)
     db.flush()
+    ledger_chain.seal(db, ev)  # segel hash di transaksi yang sama
     return ev
 
 

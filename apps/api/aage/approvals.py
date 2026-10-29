@@ -1,17 +1,43 @@
 """Inbox & Approval (M5): staf menyetujui, mengedit, atau menolak draf. Teks yang dikirim tetap
 diperiksa ClaimGuard — staf pun tidak bisa mengirim klaim yang diblokir."""
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from . import claimguard, clock, ledger
 from .channels import sender
-from .models import Approval, Conversation, OrderDraft, User
+from .models import Approval, ContentDraft, Conversation, LedgerEvent, OrderDraft, User
 
 
 class ApprovalError(Exception):
     def __init__(self, message: str, check: claimguard.CheckResult | None = None):
         super().__init__(message)
         self.check = check
+
+
+def _decide_content(db: Session, ap: Approval, *, aksi: str, actor: str) -> None:
+    """Konten pemasaran: disetujui/ditolak di sini, diedit di Studio Konten. Aturan dua orang berlaku."""
+    from .content import studio
+
+    d = db.get(ContentDraft, ap.objek_id) if ap.objek_id else None
+    if d is None:
+        raise ApprovalError("Draf konten tidak ditemukan")
+    if aksi == "tolak":
+        ap.status = "ditolak"
+        d.status = "ditolak"
+        return
+    if aksi != "setujui":
+        raise ApprovalError("Konten diedit di Studio Konten; di sini hanya Setujui atau Tolak.")
+    submitter = db.scalar(select(LedgerEvent.aktor).where(LedgerEvent.tipe_event == "approval_dibuat",
+                                                          LedgerEvent.objek_ref == f"approval:{ap.id}"))
+    if actor == submitter:
+        raise ApprovalError("Aturan dua orang: pengaju draf tidak boleh menyetujui drafnya sendiri.")
+    try:
+        studio.approve(db, d, actor, commit=False)
+    except studio.ContentError as exc:
+        raise ApprovalError(str(exc)) from None
+    ap.status = "disetujui"
+    ap.verdict = d.claim_verdict
 
 
 def decide(db: Session, approval_id: int, *, aksi: str, user: User, teks: str | None = None,
@@ -24,7 +50,9 @@ def decide(db: Session, approval_id: int, *, aksi: str, user: User, teks: str | 
     conv = db.get(Conversation, ap.conversation_id) if ap.conversation_id else None
     actor = f"staf:{user.nama}"
 
-    if aksi == "tolak":
+    if ap.objek_tipe == "konten":
+        _decide_content(db, ap, aksi=aksi, actor=actor)
+    elif aksi == "tolak":
         ap.status = "ditolak"
         if ap.objek_tipe == "order_draft" and ap.objek_id:
             od = db.get(OrderDraft, ap.objek_id)

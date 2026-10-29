@@ -1,6 +1,6 @@
 "use client"
 
-import { Check, Keyboard, MessageSquareText, Pencil, ReceiptText, X } from "lucide-react"
+import { Check, Keyboard, Megaphone, MessageSquareText, Pencil, ReceiptText, X } from "lucide-react"
 import Link from "next/link"
 import { AnimatePresence, motion } from "motion/react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -53,6 +53,7 @@ function ApprovalCard({
   }, [editing])
   const [head, ...lines] = a.ringkasan.split("\n")
   const isOrder = a.objek_tipe === "order_draft"
+  const isContent = a.objek_tipe === "konten"
   return (
     <motion.div
       layout
@@ -67,12 +68,12 @@ function ApprovalCard({
         <div className="flex flex-wrap items-start gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-semibold">{contactName(a.contact)}</span>
+              <span className="font-semibold">{isContent ? "Studio Konten" : contactName(a.contact)}</span>
               <Pill>
-                {isOrder ? <ReceiptText className="size-3.5" /> : <MessageSquareText className="size-3.5" />}
-                {AGENT_LABEL[a.objek_tipe] ?? (isOrder ? `Draf pesanan #${a.objek_id}` : "Balasan chat")}
+                {isOrder ? <ReceiptText className="size-3.5" /> : isContent ? <Megaphone className="size-3.5" /> : <MessageSquareText className="size-3.5" />}
+                {AGENT_LABEL[a.objek_tipe] ?? (isOrder ? `Draf pesanan #${a.objek_id}` : isContent ? "Konten pemasaran" : "Balasan chat")}
               </Pill>
-              {a.intent && <Pill>{INTENT_LABEL[a.intent] ?? a.intent}</Pill>}
+              {a.intent && !isContent && <Pill>{INTENT_LABEL[a.intent] ?? a.intent}</Pill>}
               <span className="text-[12px] text-subtle-foreground">menunggu {relativeTime(a.dibuat_pada).replace(" lalu", "")}</span>
             </div>
             <p className="mt-1.5 text-[13px] text-escalate">
@@ -82,6 +83,11 @@ function ApprovalCard({
           {a.conversation_id && (
             <Link href={`/inbox?id=${a.conversation_id}`} className="text-[13px] font-medium text-forest-700 hover:underline">
               Buka chat
+            </Link>
+          )}
+          {isContent && a.objek_id && (
+            <Link href={`/konten?id=${a.objek_id}`} className="text-[13px] font-medium text-forest-700 hover:underline">
+              Buka di Studio
             </Link>
           )}
         </div>
@@ -100,7 +106,7 @@ function ApprovalCard({
           </div>
           <div>
             <div className="mb-1.5 flex items-center justify-between gap-2">
-              <span className="text-[12px] font-medium text-muted-foreground">Draf balasan untuk pembeli</span>
+              <span className="text-[12px] font-medium text-muted-foreground">{isContent ? "Isi konten" : "Draf balasan untuk pembeli"}</span>
               <VerdictBadge verdict={a.verdict} />
             </div>
             {editing ? (
@@ -147,11 +153,13 @@ function ApprovalCard({
           ) : (
             <>
               <AButton onClick={() => onDecide("setujui")} disabled={busy || !a.draf}>
-                <Check className="size-4" /> Setujui &amp; kirim <kbd className="ml-1 font-mono text-[11px] opacity-60">A</kbd>
+                <Check className="size-4" /> {isContent ? "Setujui" : "Setujui & kirim"} <kbd className="ml-1 font-mono text-[11px] opacity-60">A</kbd>
               </AButton>
-              <AButton variant="outline" onClick={() => onEdit(true)} disabled={busy}>
-                <Pencil className="size-4" /> Edit <kbd className="ml-1 font-mono text-[11px] opacity-60">E</kbd>
-              </AButton>
+              {!isContent && (
+                <AButton variant="outline" onClick={() => onEdit(true)} disabled={busy}>
+                  <Pencil className="size-4" /> Edit <kbd className="ml-1 font-mono text-[11px] opacity-60">E</kbd>
+                </AButton>
+              )}
               <AButton variant="destructive" onClick={() => onDecide("tolak")} disabled={busy}>
                 <X className="size-4" /> Tolak <kbd className="ml-1 font-mono text-[11px] opacity-60">R</kbd>
               </AButton>
@@ -188,7 +196,14 @@ export default function ApprovalPage() {
         setEditing(null)
         await mutate({ items: items.filter((x) => x.id !== a.id) }, { revalidate: true })
         if (aksi === "tolak") toast("Draf ditolak — tidak ada pesan terkirim.")
-        else toast.success(a.objek_tipe === "order_draft" ? "Pesanan dikonfirmasi & terkirim ke WhatsApp" : "Terkirim ke WhatsApp")
+        else
+          toast.success(
+            a.objek_tipe === "order_draft"
+              ? "Pesanan dikonfirmasi & terkirim ke WhatsApp"
+              : a.objek_tipe === "konten"
+                ? "Konten disetujui — siap diekspor di Studio Konten"
+                : "Terkirim ke WhatsApp",
+          )
       } catch (err) {
         if (err instanceof ApiError && (err.detail as { claimguard?: CheckResult })?.claimguard) {
           setErrors((e) => ({ ...e, [a.id]: (err.detail as { claimguard: CheckResult }).claimguard }))
@@ -212,7 +227,7 @@ export default function ApprovalPage() {
       else if (k === "k") setFocus((f) => Math.max(0, f - 1))
       else if (!a) return
       else if (k === "a" && a.draf) decide(a, "setujui")
-      else if (k === "e") {
+      else if (k === "e" && a.objek_tipe !== "konten") {
         e.preventDefault()
         setEditing(a.id)
       } else if (k === "r") decide(a, "tolak")

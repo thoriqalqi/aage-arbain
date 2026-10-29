@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from . import agent_status, claimguard, kpi, ledger, llm
+from . import agent_status, claimguard, eval_api, kpi, ledger, ledger_chain, llm
 from . import approvals as approval_svc
 from . import serializers as ser
 from .agents.drafter import _template_source
@@ -44,6 +44,7 @@ log = logging.getLogger("aage.api")
 settings = get_settings()
 router = APIRouter(prefix="/api")
 router.include_router(agent_status.router)  # /api/agents/status(+stream), /api/settings
+router.include_router(eval_api.router)  # /api/eval/summary, /api/eval/run
 
 
 # ------------------------------------------------------------------ auth & status
@@ -291,8 +292,16 @@ def ledger_list(conversation_id: int | None = None, product_id: int | None = Non
     if sampai:
         stmt = stmt.where(LedgerEvent.waktu <= sampai)
     total = db.scalar(select(func.count()).select_from(stmt.subquery()))
-    rows = db.scalars(stmt.order_by(LedgerEvent.id.desc()).limit(limit).offset(offset))
-    return {"total": total, "items": [ser.ledger_event(e) for e in rows], "tipe": ledger.EVENT_TYPES}
+    rows = list(db.scalars(stmt.order_by(LedgerEvent.id.desc()).limit(limit).offset(offset)))
+    hashes = ledger_chain.hashes_for(db, [e.id for e in rows])
+    return {"total": total, "items": [{**ser.ledger_event(e), "hash": hashes.get(e.id)} for e in rows],
+            "tipe": ledger.EVENT_TYPES}
+
+
+@router.get("/ledger/verify")
+def ledger_verify(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Hitung ulang rantai hash seluruh Ledger: sha256(prev_hash + payload)."""
+    return ledger_chain.verify(db)
 
 
 @router.get("/ledger/{event_id}/trace")
@@ -448,7 +457,7 @@ class GenerateIn(BaseModel):
     product_id: int
     topik: str = ""
     target: str = Field("apotek", pattern="^(apotek|konsumen)$")
-    tipe: str = Field("artikel", pattern="^(artikel|deskripsi)$")
+    tipe: str = Field("artikel", pattern="^(artikel|deskripsi|caption_ig|broadcast_wa|marketplace|brosur)$")
 
 
 @router.post("/content/generate")
@@ -462,8 +471,12 @@ def content_generate(body: GenerateIn, user: User = Depends(current_user), db: S
 
 
 @router.get("/content")
-def content_list(user: User = Depends(current_user), db: Session = Depends(get_db)):
-    return {"items": [ser.content(d, full=False) for d in db.scalars(select(ContentDraft).order_by(ContentDraft.id.desc()))]}
+def content_list(arsip: bool = False, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    stmt = select(ContentDraft).order_by(ContentDraft.id.desc())
+    if not arsip:
+        stmt = stmt.where(ContentDraft.status != "diarsipkan")
+    formats = {k: {"label": v["label"], "web": v["web"]} for k, v in studio.FORMATS.items()}
+    return {"items": [ser.content(d, full=False) for d in db.scalars(stmt)], "format": formats}
 
 
 @router.get("/content/sample-page", response_class=HTMLResponse)
@@ -491,23 +504,59 @@ def content_patch(content_id: int, body: ContentPatch, user: User = Depends(curr
     d = db.get(ContentDraft, content_id)
     if d is None:
         raise HTTPException(404, "Konten tidak ditemukan")
-    for field_name in ("judul", "isi", "faq", "meta"):
-        value = getattr(body, field_name)
-        if value is not None:
-            setattr(d, field_name, value)
-    if d.product_id:
-        d.json_ld = studio.build_json_ld(db.get(Product, d.product_id), d.faq, d.meta)
-    d.status = "draf"
-    studio.recheck(db, d)
-    db.commit()
+    try:
+        studio.edit(db, d, body.model_dump(), f"staf:{user.nama}")
+    except studio.ContentError as exc:
+        raise HTTPException(409, str(exc)) from None
+    return ser.content(d)
+
+
+class RecheckIn(BaseModel):
+    teks: str = Field(..., max_length=20000)
+    product_id: int | None = None
+
+
+@router.post("/content/recheck")
+def content_recheck_text(body: RecheckIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """ClaimGuard langsung saat staf mengetik (tanpa menyimpan). Jalur deterministik agar cepat dan gratis."""
+    check = claimguard.check(db, body.teks, product_ids=[body.product_id] if body.product_id else None, use_llm=False)
+    return check.to_dict()
+
+
+@router.post("/content/{content_id}/submit")
+def content_submit(content_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    d = db.get(ContentDraft, content_id)
+    if d is None:
+        raise HTTPException(404, "Konten tidak ditemukan")
+    try:
+        ap = studio.submit(db, d, f"staf:{user.nama}")
+    except studio.ContentError as exc:
+        raise HTTPException(422, str(exc)) from None
+    return {**ser.content(d), "approval_id": ap.id}
+
+
+@router.post("/content/{content_id}/arsip")
+def content_archive(content_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    d = db.get(ContentDraft, content_id)
+    if d is None:
+        raise HTTPException(404, "Konten tidak ditemukan")
+    studio.archive(db, d, f"staf:{user.nama}")
     return ser.content(d)
 
 
 @router.post("/content/{content_id}/approve")
 def content_approve(content_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Setujui langsung (tetap aturan dua orang). Alur utama: /submit → antrean Approval."""
     d = db.get(ContentDraft, content_id)
     if d is None:
         raise HTTPException(404, "Konten tidak ditemukan")
+    ap = studio.pending_approval(db, d)
+    if ap is not None:
+        try:
+            approval_svc.decide(db, ap.id, aksi="setujui", user=user)
+        except approval_svc.ApprovalError as exc:
+            raise HTTPException(422, str(exc)) from None
+        return ser.content(d)
     try:
         studio.approve(db, d, f"staf:{user.nama}")
     except studio.ContentError as exc:

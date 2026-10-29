@@ -8,19 +8,98 @@ import {
   type SortingState,
   useReactTable,
 } from "@tanstack/react-table"
-import { ArrowUpDown, FileText, Lock } from "lucide-react"
+import { ArrowUpDown, FileText, LoaderCircle, Lock, ShieldAlert, ShieldCheck } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 import { Suspense, useMemo, useState } from "react"
 import useSWR from "swr"
 
+import { AButton } from "@/components/aage/button"
 import { EmptyState, SkeletonRows } from "@/components/aage/empty-state"
 import { Panel, Surface } from "@/components/aage/panel"
 import { EVENT_META, LedgerTimeline, actorLabel } from "@/components/aage/ledger-timeline"
 import { CostChip, Pill, VerdictBadge } from "@/components/aage/status"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { fetcher } from "@/lib/api"
-import { formatDateTime, formatRp } from "@/lib/format"
-import type { LedgerEvent } from "@/lib/types"
+import { api, fetcher } from "@/lib/api"
+import { formatDateTime, formatNum, formatRp } from "@/lib/format"
+import type { LedgerEvent as BaseLedgerEvent } from "@/lib/types"
+import { cn } from "@/lib/utils"
+
+type LedgerEvent = BaseLedgerEvent & { hash?: string | null }
+
+type ChainCheck = {
+  utuh: boolean
+  jumlah_event: number
+  diperiksa: number
+  belum_disegel: number
+  masalah: { event_id: number; alasan: string }[]
+  hash_terakhir: string | null
+  diperiksa_pada: string
+}
+
+/** Hitung ulang sha256(prev_hash + payload) untuk seluruh Ledger di server. */
+function ChainVerifier() {
+  const [res, setRes] = useState<ChainCheck | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  async function run() {
+    setBusy(true)
+    setErr(null)
+    try {
+      setRes(await api<ChainCheck>("/api/ledger/verify"))
+    } catch (e) {
+      setErr((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Panel className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-3 p-4">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        {res ? (
+          res.utuh ? <ShieldCheck className="size-5 shrink-0 text-ok" /> : <ShieldAlert className="size-5 shrink-0 text-blocked" />
+        ) : (
+          <Lock className="size-5 shrink-0 text-forest-700" />
+        )}
+        <div className="min-w-0 text-[13px]">
+          {!res && !err && (
+            <>
+              <div className="font-medium">Rantai hash Ledger</div>
+              <div className="text-muted-foreground">Setiap event disegel dengan sha256(prev_hash + isi event). Perubahan diam-diam akan terdeteksi.</div>
+            </>
+          )}
+          {res && (
+            <>
+              <div className={cn("font-medium", res.utuh ? "text-ok" : "text-blocked")}>
+                {res.utuh ? "Rantai utuh, tidak ada event yang diubah" : "Rantai rusak, ada event yang berubah atau belum tersegel"}
+              </div>
+              <div className="text-muted-foreground">
+                {formatNum(res.diperiksa)} dari {formatNum(res.jumlah_event)} event diperiksa
+                {res.belum_disegel > 0 && ` · ${res.belum_disegel} belum tersegel`}
+                {res.hash_terakhir && (
+                  <>
+                    {" · hash terakhir "}
+                    <code className="font-mono text-[12px]">{res.hash_terakhir.slice(0, 12)}…</code>
+                  </>
+                )}
+              </div>
+              {res.masalah.map((m) => (
+                <div key={m.event_id} className="text-blocked">
+                  Event #{m.event_id}: {m.alasan}
+                </div>
+              ))}
+            </>
+          )}
+          {err && <div className="text-blocked">{err}</div>}
+        </div>
+      </div>
+      <AButton size="sm" onClick={run} disabled={busy}>
+        {busy ? <LoaderCircle className="size-4 animate-spin" /> : <ShieldCheck className="size-4" />} Verifikasi rantai hash
+      </AButton>
+    </Panel>
+  )
+}
 
 type Trace = {
   event: LedgerEvent
@@ -149,6 +228,16 @@ function LedgerInner() {
       { accessorKey: "model", header: "Model", cell: (c) => <span className="font-mono text-[11px] whitespace-nowrap text-subtle-foreground">{c.getValue<string>() ?? "—"}</span> },
       { accessorKey: "biaya_rp", header: "Biaya", cell: (c) => <CostChip value={c.getValue<number>()} /> },
       { accessorKey: "trace_id", header: "Trace", enableSorting: false, cell: (c) => <span className="font-mono text-[11px] text-subtle-foreground">{c.getValue<string>()?.slice(0, 8) ?? "—"}</span> },
+      {
+        accessorKey: "hash",
+        header: "Hash",
+        enableSorting: false,
+        cell: (c) => (
+          <span className="font-mono text-[11px] text-subtle-foreground" title={c.getValue<string>() ?? "Belum tersegel"}>
+            {c.getValue<string>()?.slice(0, 10) ?? "—"}
+          </span>
+        ),
+      },
     ],
     [],
   )
@@ -169,6 +258,7 @@ function LedgerInner() {
           <Lock className="size-3.5" /> {data?.total ?? "…"} event
         </span>
       </div>
+      <ChainVerifier />
       <Panel className="mb-4 flex flex-wrap items-end gap-3 p-4">
         <label className="grid gap-1 text-[12px] text-muted-foreground">
           Tipe event

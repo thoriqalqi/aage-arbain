@@ -146,7 +146,9 @@ def test_content_generate_approve_export(client, auth):
     d = client.post("/api/content/generate", headers=auth, json={"product_id": 1, "topik": "daya tahan tubuh"}).json()
     assert d["claim_verdict"] != "blocked" and not d["claim_report"]["json_ld_errors"]
     assert client.get(f"/api/content/{d['id']}/export", headers=auth).status_code == 422  # belum disetujui
-    assert client.post(f"/api/content/{d['id']}/approve", headers=auth).status_code == 200
+    assert client.post(f"/api/content/{d['id']}/approve", headers=auth).status_code == 422  # aturan dua orang
+    tok = client.post("/api/auth/login", json={"email": "admin@aage.local", "password": "admin123"}).json()["token"]
+    assert client.post(f"/api/content/{d['id']}/approve", headers={"Authorization": f"Bearer {tok}"}).status_code == 200
     exp = client.get(f"/api/content/{d['id']}/export", headers=auth).json()
     assert "application/ld+json" in exp["html"]
 

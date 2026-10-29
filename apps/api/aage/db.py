@@ -66,7 +66,7 @@ def _add_missing_columns() -> None:
 
 
 def init_db(drop: bool = False) -> None:
-    from . import models, settings_store  # noqa: F401  (registrasi tabel)
+    from . import ledger_chain, models, settings_store  # noqa: F401  (registrasi tabel)
 
     if IS_POSTGRES:
         with engine.begin() as conn:
@@ -78,3 +78,5 @@ def init_db(drop: bool = False) -> None:
     if IS_POSTGRES:
         with engine.begin() as conn:
             conn.execute(text(LEDGER_GUARD_SQL))
+    with SessionLocal() as db:  # segel event lama yang tercatat sebelum rantai hash ada
+        ledger_chain.backfill(db)
