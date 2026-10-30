@@ -8,6 +8,9 @@ import pytest
 _DB = Path(tempfile.gettempdir()) / f"aage-test-{os.getpid()}.db"
 os.environ["DATABASE_URL"] = f"sqlite:///{_DB.as_posix()}"
 os.environ["GEMINI_API_KEY"] = ""
+os.environ["LLM_MODEL"] = "gemini/model-tes"
+os.environ["LLM_API_KEY"] = ""  # tes tidak memakai kuota LLM sungguhan (provider mana pun)
+os.environ["LLM_PROVIDER_NAME"] = ""
 os.environ["WA_ACCESS_TOKEN"] = ""
 os.environ["WA_APP_SECRET"] = "rahasia-uji"
 os.environ["AGENT_MODE"] = "simulasi"

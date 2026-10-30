@@ -47,6 +47,24 @@ def _product_source(db: Session, p: Product, hits: list[Hit]) -> dict:
     return Hit(ch, 1.0).source()
 
 
+def _product_facts(db: Session, p: Product) -> str:
+    """Lembar fakta lengkap dari katalog untuk LLM (bukan kutipan chunk yang terpotong 220 karakter)."""
+    klaim = "; ".join(_claims(db, p.id)) or "belum ada klaim yang disetujui"
+    tier = ", ".join(f"mulai {r.min_qty} {p.satuan_grosir} diskon hingga {r.diskon_maks_persen:g}%" for r in p.pricing)
+    return (f"Produk: {p.nama} (SKU {p.sku}). Kategori: {p.kategori}. Komposisi: {p.komposisi}. "
+            f"Kemasan: {p.kemasan}. Nomor izin edar: {p.no_izin_edar}. "
+            f"Harga grosir: {rupiah(p.harga_dasar)} per {p.satuan_grosir}. MOQ: {p.moq} {p.satuan_grosir}. "
+            f"Diskon volume: {tier or 'sesuai kebijakan penjualan'}. Klaim disetujui: {klaim}.")
+
+
+def _policy_source(db: Session) -> dict | None:
+    """Potongan Kebijakan Penjualan tentang pengiriman (teks utuh chunk) sebagai sumber tambahan untuk LLM."""
+    from ..models import Chunk
+
+    ch = db.scalar(select(Chunk).where(Chunk.aktif.is_(True), Chunk.teks.like("%Pengiriman:%")).order_by(Chunk.id))
+    return {**Hit(ch, 1.0).source(), "kutipan": ch.teks} if ch else None
+
+
 def _pricing_source(p: Product) -> dict:
     return {"jenis": "pricing_rules", "product_id": p.id, "judul": f"Tier harga {p.sku}"}
 
@@ -124,9 +142,13 @@ def draft_tanya_produk(db: Session, text: str, conv: Conversation, hits: list[Hi
         return Draft(None, escalate=True, escalate_reason="Tidak ada produk di katalog yang cocok (tanpa sumber).",
                      staff_draft=None)
     sources = [_product_source(db, p, hits) for p in products]
-    res = _llm_answer(text, sources, "Sebutkan nama produk, nomor izin edar, klaim disetujui, harga grosir & MOQ.")
+    # LLM menerima lembar fakta lengkap per produk (tetap tertaut ke chunk sumbernya) + kebijakan pengiriman.
+    llm_sources = [{**s, "kutipan": _product_facts(db, p)} for s, p in zip(sources, products)]
+    if (policy := _policy_source(db)) is not None:
+        llm_sources.append(policy)
+    res = _llm_answer(text, llm_sources, "Sebutkan nama produk, nomor izin edar, klaim disetujui, harga grosir & MOQ.")
     if res is not None:
-        return Draft(res.text, sources=sources, product_ids=[p.id for p in products],
+        return Draft(res.text, sources=llm_sources, product_ids=[p.id for p in products],
                      konteks={"last_product_ids": [p.id for p in products]}, llm_result=res, template="llm")
     lines = ["Ada, Kak. Berikut produk dari katalog kami yang sesuai:"]
     for p in products:

@@ -22,10 +22,21 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     llm_model: str = "gemini/gemini-2.5-flash"
     llm_judge_model: str = "gemini/gemini-2.5-pro"
-    llm_fallback_models: str = "gemini/gemini-2.0-flash"
+    llm_fallback_models: str = ""  # opsional, dipisah koma; kosong = tidak ada fallback diam-diam ke model lain
     embedding_model: str = "gemini/gemini-embedding-001"
     embedding_dim: int = 384
     llm_timeout_s: float = 8.0
+
+    # Provider: "gemini" (REST Gemini) | "openai_compat" (endpoint /chat/completions, mis. TokenHarbor) |
+    # kosong = otomatis (openai_compat bila LLM_API_KEY + LLM_BASE_URL terisi, selain itu gemini).
+    llm_provider_name: str = ""
+    llm_base_url: str = ""  # mis. https://tokenharbor.ai/v1
+    llm_api_key: str = ""
+    # False = Gemini Flash diminta tidak "berpikir" (thinkingBudget 0), agar token tidak habis untuk reasoning.
+    llm_reasoning: bool = False
+    # Harga per 1 juta token (USD) untuk menghitung biaya & budget cap. Sesuaikan dengan harga model yang dipakai.
+    llm_price_in_usd_per_m: float = 0.30
+    llm_price_out_usd_per_m: float = 2.50
     budget_daily_rp: float = 25_000
     budget_monthly_rp: float = 500_000
     usd_to_idr: float = 16_300
@@ -85,7 +96,16 @@ class Settings(BaseSettings):
 
     @property
     def llm_enabled(self) -> bool:
+        if self.llm_provider == "openai_compat":
+            return bool(self.llm_api_key and self.llm_base_url)
         return bool(self.gemini_api_key)
+
+    @property
+    def llm_provider(self) -> str:
+        name = self.llm_provider_name.strip().lower()
+        if name in ("gemini", "openai_compat"):
+            return name
+        return "openai_compat" if self.llm_api_key and self.llm_base_url else "gemini"
 
     @property
     def meta_enabled(self) -> bool:
