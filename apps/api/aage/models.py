@@ -286,8 +286,74 @@ class LedgerEvent(Base):
     data: Mapped[dict] = mapped_column(JSON, default=dict)
 
 
+class MarketingDraft(Base):
+    """Draf materi pemasaran yang diperiksa ClaimGuard Compliance Check. Tidak pernah dihapus permanen (status dibuang)."""
+
+    __tablename__ = "marketing_drafts"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), index=True)
+    teks: Mapped[str] = mapped_column(Text)
+    # draf | diblokir | perlu_review | lolos_pemeriksaan | audit_gagal | menunggu_audit_ulang | disetujui | dibuang
+    status: Mapped[str] = mapped_column(String(24), default="draf", index=True)
+    versi: Mapped[int] = mapped_column(Integer, default=1)  # naik setiap teks berubah
+    dibuat_oleh: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    keputusan_oleh: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    keputusan_pada: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    catatan_keputusan: Mapped[str | None] = mapped_column(Text, nullable=True)
+    dibuat_pada: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    diperbarui_pada: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    product: Mapped[Product] = relationship()
+
+
+class ComplianceAudit(Base):
+    """Satu baris per audit ClaimGuard. Append-only di ORM (listener di bawah); teks penuh tidak disimpan di sini —
+    hanya hash + cuplikan bukti. Teks berada di marketing_drafts yang hanya bisa dibaca pengguna terautentikasi."""
+
+    __tablename__ = "compliance_audits"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    audit_id: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(80), unique=True, nullable=True)
+    product_sku: Mapped[str] = mapped_column(String(40), index=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), index=True)
+    draft_id: Mapped[int | None] = mapped_column(ForeignKey("marketing_drafts.id"), nullable=True, index=True)
+    draft_versi: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    input_text_hash: Mapped[str] = mapped_column(String(64))
+    text_length: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String(16), index=True)  # BLOCKED | NEED_REVIEW | ALLOWED | ERROR
+    stage: Mapped[str] = mapped_column(String(16))
+    reason: Mapped[str] = mapped_column(Text, default="")
+    violation_law: Mapped[str | None] = mapped_column(Text, nullable=True)
+    regulatory_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    matched_rules: Mapped[list] = mapped_column(JSON, default=list)
+    evidence: Mapped[list] = mapped_column(JSON, default=list)
+    references: Mapped[list] = mapped_column(JSON, default=list)
+    recommendation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    recommendation_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rules_version: Mapped[str] = mapped_column(String(24))
+    engine_version: Mapped[str] = mapped_column(String(40))
+    model_provider: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    model_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    model_info: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    status_draf_diperbarui: Mapped[bool] = mapped_column(Boolean, default=False)
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0)
+    actor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
+
+
 class LedgerImmutableError(RuntimeError):
     pass
+
+
+@event.listens_for(ComplianceAudit, "before_update")
+def _block_audit_update(*_):
+    raise LedgerImmutableError("compliance_audits bersifat append-only: audit lama disimpan sebagai riwayat")
+
+
+@event.listens_for(ComplianceAudit, "before_delete")
+def _block_audit_delete(*_):
+    raise LedgerImmutableError("compliance_audits bersifat append-only: audit tidak boleh dihapus")
 
 
 @event.listens_for(LedgerEvent, "before_update")

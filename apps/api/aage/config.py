@@ -4,6 +4,7 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
@@ -60,6 +61,12 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     agent_mode: str = "auto"  # auto | llm | simulasi
 
+    # ClaimGuard & Compliance Check (src/compliance/claim_guard.py). Versi aturan ada di config/claimguard_registry.json.
+    claimguard_model: str = "claude-sonnet-5-5"  # model Anthropic untuk analisis konteks (Tahap B)
+    claimguard_max_text_length: int = 12_000
+    claimguard_llm_timeout_s: float = 30.0
+    claimguard_llm_failure_status: str = "ERROR"  # ERROR | NEED_REVIEW bila LLM tidak tersedia/gagal; tidak pernah ALLOWED
+
     # Prospek: Live Lead Scouting (OpenStreetMap Overpass, tanpa API key) + Opportunity Score
     serper_api_key: str = ""  # Live AI Search Audit (google.serper.dev); kosong = tidak terhubung
     overpass_urls: str = "https://overpass-api.de/api/interpreter,https://overpass.private.coffee/api/interpreter"
@@ -98,6 +105,7 @@ class Settings(BaseSettings):
     @property
     def wa_enabled(self) -> bool:
         return self.wati_enabled if self.wa_channel == "wati" else self.meta_enabled
+
 
 @lru_cache
 def get_settings() -> Settings:

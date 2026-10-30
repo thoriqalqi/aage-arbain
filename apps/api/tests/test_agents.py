@@ -37,7 +37,8 @@ def test_claimguard_blocks_product_forbidden_phrase_with_pasal():
     r = ac.audit_compliance("Madu ini obat kuat pria dan menyembuhkan diabetes.", "ARB-002", "uji")
     assert r["status"] == ac.BLOCKED
     assert any(h["aturan"] == "R20" for v in r["pelanggaran"] for h in v["temuan"])
-    assert any(p["rujukan"].startswith("Pasal 2") for p in r["pasal_dilanggar"])
+    assert any(p["rujukan"].startswith("Perban BPOM 34/2022") for p in r["pasal_dilanggar"])
+    assert all(p["status_verifikasi"] == "VERIFIED" for p in r["pasal_dilanggar"])
     assert r["notifikasi_dashboard"].startswith("[BPOM COMPLIANCE ALERT")
 
 

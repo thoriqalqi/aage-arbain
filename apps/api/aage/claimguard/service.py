@@ -3,12 +3,9 @@
 Dipakai oleh Sales Assistant (sebelum kirim), Content Studio (sebelum ekspor), Prospect Mapper
 (draf pesan pembuka), approval staf (teks hasil edit), dan Playground."""
 
-import json
 import re
 import time
 from dataclasses import asdict, dataclass, field
-from functools import lru_cache
-from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -16,6 +13,7 @@ from sqlalchemy.orm import Session
 from .. import llm
 from ..models import ApprovedClaim, Product
 from ..textutil import content_tokens, cosine, stem
+from . import registry
 from .rules import HEALTH_OBJ_RE, RULES, is_benefit_claim, is_negated, stat_without_source
 
 ALLOWED, REVIEW, BLOCKED = "allowed", "review", "blocked"
@@ -27,16 +25,11 @@ ADVISORY_RE = re.compile(
     re.IGNORECASE,
 )
 MATCH_THRESHOLD = 0.5
-_REGULASI_PATH = Path(__file__).resolve().parents[2] / "config" / "regulasi_bpom.json"
 
 
-@lru_cache
 def regulasi() -> dict:
-    """Rujukan pasal Perban BPOM 30/2023 per aturan (config/regulasi_bpom.json)."""
-    try:
-        return json.loads(_REGULASI_PATH.read_text(encoding="utf-8"))
-    except FileNotFoundError:  # pragma: no cover
-        return {"pasal": {}, "pemetaan_aturan": {}, "peraturan": {"judul": ""}}
+    """Rujukan pasal per aturan dari registry terverifikasi (config/claimguard_registry.json)."""
+    return registry.legacy_view()
 
 
 def pasal_for(rule_id: str) -> list[dict]:
