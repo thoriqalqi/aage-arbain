@@ -29,6 +29,7 @@ def take_over(db: Session, conv: Conversation, nama: str, *, alasan: str = "Staf
                       outcome=DITANGANI_STAF, model=None)
     conv.status = DITANGANI_STAF
     conv.ditangani_oleh = nama
+    conv.konteks = {**(conv.konteks or {}), "sensitif_terbuka": False}  # staf kini memegang kasusnya
     conv.aktivitas_staf_terakhir = now
 
 

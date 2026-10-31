@@ -27,7 +27,9 @@ from .sales import parse_order_lines
 
 NO_RETRIEVAL = {"salam", "medis_personal", "minta_staf", "perlu_staf", "minta_dokumen", "identitas", "luar_topik",
                 "media", "manipulasi", "perusahaan", "pembanding", "ambigu", "darurat", "sensitif", "marah", "tuduhan",
-                "sara", "daftar_produk", "gratis", "basa_basi", "nomor_dibagikan"}
+                "sara", "daftar_produk", "gratis", "basa_basi", "nomor_dibagikan", "tindak_lanjut", "tunda_closing"}
+# Pertanyaan kesehatan yang belum ditangani staf: selama terbuka, pesanan baru ditunda (jalur sensitif menang).
+SENSITIF_TERBUKA = {"medis_personal", "darurat", "sensitif"}
 
 
 class State(TypedDict, total=False):
@@ -422,6 +424,7 @@ def handle_inbound(db: Session, *, channel: str, external_user_id: str, text: st
     _merge_konteks(conv, {
         "tahap": tahap_baru(conv.konteks.get("tahap"), state["intent"], state["text"], conv.konteks),
         "sinyal": sinyal_baru(state["text"], state["intent"]),
+        "sensitif_terbuka": state["intent"] in SENSITIF_TERBUKA or bool(conv.konteks.get("sensitif_terbuka")),
     })
     db.commit()
     check = state.get("check")

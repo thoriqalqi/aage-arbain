@@ -1,12 +1,12 @@
 """Pelacak tahap percakapan sales dan deteksi sinyal pembeli. Murni aturan (deterministik): LLM tidak menentukan tahap.
 
 Tahap giliran terakhir disimpan di konteks percakapan sebagai "tahap", sinyal giliran terakhir sebagai "sinyal".
-Fase 1 hanya mencatat; balasan belum berubah karenanya.
+Dipakai untuk mencatat & mengukur percakapan (eval/run_percakapan.py); aturan balasannya ada di router & drafter.
 """
 
 import re
 
-from .router import PESAN_ULANG
+from .router import PESAN_ULANG, TINDAK_LANJUT
 
 TAHAP = ("sapa", "gali_kebutuhan", "rekomendasi", "keberatan", "closing", "tindak_lanjut", "layanan")
 SINYAL = ("niat_tinggi", "membandingkan", "penasaran", "repeat")
@@ -18,12 +18,11 @@ _MIN_ORDER = re.compile(r"\bmin(?:imal|imum)?\s+order\b", re.I)
 _BANDING = re.compile(r"\bvs\b|\bmana yang\b|\bbedanya\b|\bbeda antara\b|\blebih (?:bagus|cocok|baik)\b|\bdibanding\w*", re.I)
 _PENASARAN = re.compile(r"\b(?:cuma nanya|cuma tanya|sekadar|sekedar|penasaran|iseng|lihat-lihat|kira-kira|kira kira)\b", re.I)
 _KEBERATAN = re.compile(r"\b(?:mahal\w*|kemahalan|keberatan|terlalu (?:mahal|tinggi)|diskon|potongan|nego|kurangi)\b", re.I)
-_TINDAK = re.compile(r"\b(?:mikir\w*|pikir(?:-| )?pikir|pikir dulu|nanti (?:aku|saya|dulu|ya)|kabari|belum yakin|nanti dulu)\b",
-                     re.I)
+_TINDAK = TINDAK_LANJUT
 
 _SAPA = {"salam", "identitas", "luar_topik", "basa_basi", "sara", "manipulasi", "perusahaan", "media", "pembanding"}
 _LAYANAN = {"darurat", "sensitif", "marah", "medis_personal", "keluhan", "tuduhan", "agama", "klaim_kesehatan",
-            "minta_staf", "perlu_staf"}
+            "minta_staf", "perlu_staf", "tunda_closing"}
 _PRODUK = {"harga_moq", "tanya_produk", "spesifikasi", "izin_edar"}
 
 

@@ -28,3 +28,8 @@ S11,1,"kak pesan ulang yang kemarin ya","harus=Bagikan nomor HP;;terlarang=Habba
 S11,2,"@nomor=081200000002","harus=Kapsul Habbatussauda 120;;harus=menunggu konfirmasi",nomor dibagikan → riwayat WhatsApp ketemu,telegram,tg-S11
 S12,1,"pesan ulang dong kak","harus=Bagikan nomor HP;;tanpa_harga",Telegram tanpa riwayat,telegram,tg-S12
 S12,2,"@nomor=081299998888","eskalasi;;harus=belum ada;;tanpa_harga",nomor dibagikan tapi riwayat tidak ada,telegram,tg-S12
+S13,1,"ada produk buat daya tahan tubuh?","satu_ajakan;;harus=daya tahan",rekomendasi fokus 1-2 produk,,
+S14,1,"harga 8 box madu stamina?","harus=mulai 10 box;;harus=3%;;satu_ajakan",upsell jujur dari tier berikutnya,,
+S15,1,"kalau barangnya ga laku bisa dikembalikan?","harus=Retur|retur;;harus=staf;;terlarang=bisa dikembalikan kapan saja|pasti bisa dikembalikan",keberatan risiko dijawab dari kebijakan,,
+S16,1,"kamu bot ya?","harus=asisten AI",tawaran staf muncul,,
+S16,2,"oke nanti aku kabari ya","tahap=tindak_lanjut;;bukan_eskalasi;;satu_ajakan",oke+kabari bukan berarti minta staf,,

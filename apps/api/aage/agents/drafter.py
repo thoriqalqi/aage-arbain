@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .. import llm
+from .. import clock, llm
 from ..kb.retriever import Hit, find_products, retrieve
 from ..models import ApprovedClaim, Contact, Conversation, OrderDraft, PricingRule, Product
 from ..textutil import content_tokens, expand, rupiah, split_sentences, stem
@@ -213,11 +213,16 @@ def draft_tanya_produk(db: Session, text: str, conv: Conversation, hits: list[Hi
         return _di_luar_katalog(terms)
     if not products:
         seen: list[int] = []
+        skor: list[float] = []
         top = hits[0].score if hits else 0
         for h in hits:
             if h.chunk.product_id and h.chunk.product_id not in seen and h.score >= top * 0.6:
                 seen.append(h.chunk.product_id)
-        products = [db.get(Product, pid) for pid in seen[:3]]
+                skor.append(h.score)
+        # Rekomendasi fokus: 1–2 produk paling cocok; produk ke-3 hanya ikut bila skornya setara (seri) dengan ke-2,
+        # agar kecocokan yang sama kuat tidak terbuang acak.
+        n = 3 if len(skor) > 2 and skor[2] >= skor[1] * 0.97 else 2
+        products = [db.get(Product, pid) for pid in seen[:n]]
     if not products:
         return Draft(None, escalate=True, escalate_reason="Tidak ada produk di katalog yang cocok (tanpa sumber).",
                      staff_draft=None)
@@ -293,7 +298,7 @@ def draft_harga(db: Session, text: str, conv: Conversation, slots: dict, hits: l
     sources = [_product_source(db, p, hits), _pricing_source(p)]
     if qty:
         q = sales.quote(db, p, int(qty))
-        body = sales.format_quote(q)
+        body = sales.format_quote(q) + _info_tier_berikut(db, p, int(qty)) + _catatan_stok_qty(p, int(qty))
         if len(products) > 1:
             body += f"\n\nIngin penawaran untuk produk lain ({', '.join(x.nama for x in products[1:])})?"
         else:
@@ -439,6 +444,41 @@ def draft_pesan(db: Session, text: str, conv: Conversation, contact: Contact, sl
     return _finalize_order(db, conv, contact, lines, sources,
                            {"last_product_ids": pending["product_ids"], "last_lines": None},
                            "pesan" if len(lines) == 1 else "pesan_multi")
+
+
+def _info_tier_berikut(db: Session, p: Product, qty: int) -> str:
+    """Upsell jujur: hanya menyebut tier diskon berikutnya yang memang ada di data."""
+    nxt = next((r for r in sales.tiers(db, p.id) if r.min_qty > qty), None)
+    return f"\nInfo: mulai {nxt.min_qty} {p.satuan_grosir}, diskon bisa s.d. {nxt.diskon_maks_persen:g}%." if nxt else ""
+
+
+def _catatan_stok_qty(p: Product, qty: int) -> str:
+    """Urgensi hanya dari stok tercatat: bila jumlah melebihi stok, katakan apa adanya — tanpa kata menekan."""
+    if p.stok is None or qty <= p.stok:
+        return ""
+    tgl = f" per {p.stok_per:%d/%m/%Y}" if p.stok_per else ""
+    return f"\nCatatan: stok tercatat{tgl} {p.stok} {p.satuan_grosir}; sisanya dikonfirmasi staf saat pesanan."
+
+
+def draft_tindak_lanjut(db: Session, text: str, conv: Conversation, **_) -> Draft:
+    """Pembeli ingin menimbang dulu: hormati, tanpa tekanan, satu ajakan ringan."""
+    ids = (conv.konteks or {}).get("last_product_ids") or []
+    p = db.get(Product, ids[0]) if ids else None
+    teks = "Siap, Kak 🙏 Silakan dipertimbangkan dulu, tidak perlu buru-buru."
+    if p is not None and p.aktif:
+        teks += f" Kalau sudah mantap dengan *{p.nama}*, cukup balas *pesan* dan jumlah box-nya, nanti saya rangkumkan."
+    else:
+        teks += " Kalau nanti ada yang ingin ditanyakan atau dipesan, chat saja di sini."
+    return Draft(teks, sources=[_template_source("tindak lanjut")], template="tindak_lanjut",
+                 konteks={"tawar_staf": False, "tindak_lanjut_pada": clock.now().isoformat()})
+
+
+def draft_tunda_closing(**_) -> Draft:
+    """Jalur sensitif menang atas closing: pesanan tidak didorong sebelum staf menangani pertanyaan kesehatan."""
+    return Draft("Baik, Kak 🙏 Sebelum pesanan diproses, staf kami akan menghubungi Kakak dulu terkait pertanyaan "
+                 "kesehatan tadi, agar produknya benar-benar sesuai. Permintaan pesanan Kakak sudah saya catat untuk staf.",
+                 sources=[_template_source("tunda closing")], escalate=True, staff_draft=None, template="tunda_closing",
+                 escalate_reason="Pembeli ingin memesan saat pertanyaan kesehatan belum ditangani staf — closing ditunda.")
 
 
 def _riwayat_kosong(conv: Conversation, contact: Contact) -> Draft:
@@ -632,6 +672,7 @@ _DI_LUAR_KEBIJAKAN = [
                 r"timor leste|arab saudi", re.I), "pengiriman ke luar negeri", "Pengiriman"),
     (re.compile(r"\bcod\b|bayar di tempat|kartu kredit|credit card|paylater|pay later|giro|\bcek\b|cicil\w*|"
                 r"\bkredit\b|qris|e-?wallet|\bovo\b|gopay|shopee ?pay", re.I), "metode pembayaran tersebut", "Pembayaran"),
+    (re.compile(r"tidak laku|ga laku|gak laku", re.I), "pengembalian produk yang tidak laku", "Retur"),
 ]
 
 
@@ -1068,5 +1109,7 @@ HANDLERS = {
     "basa_basi": draft_basa_basi,
     "cari_riwayat": draft_cari_riwayat,
     "nomor_dibagikan": draft_nomor_dibagikan,
+    "tindak_lanjut": draft_tindak_lanjut,
+    "tunda_closing": draft_tunda_closing,
     "lainnya": draft_dokumen,
 }

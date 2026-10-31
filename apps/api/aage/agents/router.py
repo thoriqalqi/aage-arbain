@@ -41,6 +41,8 @@ INTENTS = {
     "basa_basi": "Basa-basi / penutup",
     "nomor_dibagikan": "Nomor HP dibagikan",
     "cari_riwayat": "Mencari produk pesanan lama dari ciri",
+    "tindak_lanjut": "Pikir dulu / nanti dikabari",
+    "tunda_closing": "Pesanan ditunda (kasus kesehatan belum ditangani)",
     "lainnya": "Lainnya",
 }
 
@@ -90,7 +92,7 @@ HARGA = _r(r"\b(harga\w*|hrg|berapa|brp|moq|minimal|minimum|min order|grosir|pri
 IZIN = _r(r"\b(izin|ijin|bpom|pom|edar|registrasi|nie|terdaftar|legal)\b")
 KEBIJAKAN = _r(
     r"\b(pengiriman|ongkir|ongkos kirim|kirim ke|ekspedisi|pembayaran|bayar|transfer|tempo|\w*retur|garansi|masa simpan|"
-    r"kedaluwarsa berapa|cod|kartu kredit|paylater|giro|cicil\w*|luar negeri|ekspor|export|nyampe)\b"
+    r"kedaluwarsa berapa|cod|kartu kredit|paylater|giro|cicil\w*|luar negeri|ekspor|export|nyampe|dikembalikan|tidak laku)\b"
 )
 SPESIFIKASI = _r(
     r"\bisi(?:nya)?\s*(?:brp|berapa|apa)\b|\b(?:brp|berapa)\s*(?:isi|mg|gram|gr|ml|kapsul|tablet|sachet|botol|biji)\b|"
@@ -200,6 +202,8 @@ BASA_BASI = _r(
     r"^\W*(bercanda|becanda|canda|serius|oke+|ok|okay|sip|siap|mantap|makasih|terima kasih|thanks|thx|bye|dadah|"
     r"sampai jumpa|udahan|cukup)(\s+(kak|ya|dong|deh|saja|kok|sih|nih|min))*\W*$"
 )
+# "mikir dulu", "nanti aku kabari": pembeli menimbang — ditanggapi tanpa tekanan, bukan diserahkan ke staf.
+TINDAK_LANJUT = _r(r"\b(?:mikir\w*|pikir(?:-| )?pikir|pikir dulu|nanti (?:aku|saya|dulu|ya)|kabari|belum yakin|nanti dulu)\b")
 # "aku pernah pesan", "riwayat pesanan saya" → jalur repeat order (riwayat dicari, tidak pernah ditebak).
 RIWAYAT = _r(r"\b(?:pernah|udah|sudah)\s+(?:pesan|order|beli)\b|\briwayat\s+(?:pesanan|order|belanja|pembelian)\b")
 KATEGORI_SAJA = _r(r"^\W*(madu|kapsul|teh|minyak|vitamin|serbuk|sirup|tablet|herbal|jamu|suplemen)\W*$")
@@ -275,7 +279,7 @@ def route(text: str, *, inbound_verdict: str, inbound_rules: list[str], konteks:
         return RouteResult("medis_personal", "Pertanyaan menyangkut kondisi kesehatan pribadi → wajib staf.", slots)
     if MANIPULASI.search(t):
         return RouteResult("manipulasi", "Upaya mengubah aturan asisten / meminta akses — ditolak.", slots)
-    if MINTA_STAF.search(t) or (konteks.get("tawar_staf") and YA.match(t)):
+    if MINTA_STAF.search(t) or (konteks.get("tawar_staf") and YA.match(t) and not TINDAK_LANJUT.search(t)):
         return RouteResult("minta_staf", "Pembeli meminta bicara dengan staf.", slots)
     if KELUHAN.search(t):
         if KONDISIONAL.search(t) and KEBIJAKAN.search(t):
@@ -312,6 +316,10 @@ def route(text: str, *, inbound_verdict: str, inbound_rules: list[str], konteks:
         return RouteResult("minta_dokumen", "Meminta katalog/daftar harga lengkap dalam bentuk dokumen.", slots)
     if DAFTAR.search(t) and not mentions_product:
         return RouteResult("daftar_produk", "Meminta daftar produk → seluruh katalog aktif.", slots)
+    if konteks.get("sensitif_terbuka") and (PESAN.search(t) or PESAN_ULANG.search(t)):
+        return RouteResult("tunda_closing", "Pertanyaan kesehatan belum ditangani staf — pesanan ditunda, tidak didorong.", slots)
+    if TINDAK_LANJUT.search(t) and not any(r.search(t) for r in (PESAN, HARGA, KEBIJAKAN, NEGO, SPESIFIKASI)):
+        return RouteResult("tindak_lanjut", "Pembeli ingin menimbang dulu — ditanggapi tanpa tekanan.", slots)
     if PESAN_ULANG.search(t) or RIWAYAT.search(t):
         return RouteResult("pesan_ulang", "Permintaan pesan ulang / menyinggung riwayat pesanan.", slots)
     if konteks.get("cari_riwayat") and not (PESAN.search(t) or HARGA.search(t)):

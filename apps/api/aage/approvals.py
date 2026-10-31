@@ -49,6 +49,8 @@ def decide(db: Session, approval_id: int, *, aksi: str, user: User, teks: str | 
         raise ApprovalError(f"Approval sudah {ap.status}")
     conv = db.get(Conversation, ap.conversation_id) if ap.conversation_id else None
     actor = f"staf:{user.nama}"
+    if conv is not None and ap.objek_tipe != "konten":
+        conv.konteks = {**(conv.konteks or {}), "sensitif_terbuka": False}  # staf sudah memutuskan kasusnya
 
     if ap.objek_tipe == "konten":
         _decide_content(db, ap, aksi=aksi, actor=actor)

@@ -1,7 +1,7 @@
 {
   "mode": "llm",
   "model": "deepseek-v4.1-flash:free (juri ClaimGuard: deepseek-v4.1-flash:free)",
-  "jeda_s": 3.0,
+  "jeda_s": 4.0,
   "kiriman_stub": 0,
   "llm": {
     "panggilan": 0,
