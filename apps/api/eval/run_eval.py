@@ -287,13 +287,15 @@ def main() -> None:
     p.add_argument("--cek-pengaman", action="store_true")
     p.add_argument("--rencana", action="store_true", help="tampilkan jumlah yang akan diproses + uji pengaman, lalu berhenti")
     p.add_argument("--percobaan", type=int, default=1, help="jalankan tiap pesan N kali (ukur konsistensi)")
-    p.add_argument("--dataset", choices=["realistis", "holdout", "adversarial", "lapangan", "emosi"], default="realistis",
+    p.add_argument("--katalog", default="", help="file .xlsx/.csv: ganti katalog lewat jalur impor sebelum eval dimulai")
+    p.add_argument("--dataset", choices=["realistis", "holdout", "adversarial", "lapangan", "emosi", "katalog_uji"], default="realistis",
                    help="holdout = pertanyaan yang tidak dipakai untuk menyetel router/template")
     args = p.parse_args()
 
     OUT.mkdir(exist_ok=True)
-    db_path = _prepare_env(args.mode, args.dataset)
-    suffix = "" if args.dataset == "realistis" else f"_{args.dataset}"
+    kat = f"_kat-{Path(args.katalog).stem}" if args.katalog else ""
+    db_path = _prepare_env(args.mode, args.dataset + kat)
+    suffix = ("" if args.dataset == "realistis" else f"_{args.dataset}") + kat
     result_path = HERE / f"hasil_{args.mode}{suffix}.jsonl"
     dataset = HERE / f"dataset_{args.dataset}.csv"
     if args.ulang:
@@ -327,6 +329,17 @@ def main() -> None:
         with SessionLocal() as s:
             seed_base(s)
     from aage.models import Product
+
+    if args.katalog and fresh:
+        # Katalog diganti lewat jalur impor yang sama dengan dashboard (pratinjau → terapkan dalam satu transaksi).
+        from aage.kb import katalog_impor
+
+        with SessionLocal() as s:
+            berkas = Path(args.katalog)
+            imp = katalog_impor.buat_pratinjau(s, berkas.name, berkas.read_bytes(), "eval")
+            if imp.laporan["error"]:
+                sys.exit(f"Katalog {berkas.name} punya error: {imp.laporan['error'][:5]}")
+            print("Katalog diimpor:", katalog_impor.terapkan(s, imp.token, "eval"))
 
     with SessionLocal() as s:
         KATALOG.extend(n for (n,) in s.query(Product.nama).filter(Product.aktif.is_(True)))

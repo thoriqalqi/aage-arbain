@@ -26,6 +26,7 @@ def send(
     approval_id: int | None = None,
     inbound_at=None,
     template: tuple[str, list[str]] | None = None,
+    minta_nomor: bool = False,
 ) -> Message:
     if check is None or check.verdict != ALLOWED:
         raise ClaimGuardRequired("Teks belum lolos ClaimGuard (harus Diizinkan) — tidak dikirim.")
@@ -40,7 +41,7 @@ def send(
     if template:
         res = adapter.send_template(target, template[0], template[1], text)
     else:
-        res = adapter.send_text(target, text)
+        res = adapter.send_text(target, text, minta_nomor=minta_nomor)
     msg.status_kirim, msg.external_message_id, err = res.status, res.external_message_id, res.error
 
     now = clock.now()

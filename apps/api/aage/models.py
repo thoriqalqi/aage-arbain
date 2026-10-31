@@ -73,6 +73,9 @@ class Product(Base):
     larangan: Mapped[list] = mapped_column(JSON, default=list)
     data_teknis: Mapped[dict] = mapped_column(JSON, default=dict)
     het_per_botol: Mapped[float | None] = mapped_column(Float, nullable=True)
+    deskripsi: Mapped[str] = mapped_column(Text, default="")
+    stok: Mapped[int | None] = mapped_column(Integer, nullable=True)  # None = belum ada data stok (tidak dikarang)
+    stok_per: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # tanggal data stok
 
     claims: Mapped[list["ApprovedClaim"]] = relationship(back_populates="product")
     pricing: Mapped[list["PricingRule"]] = relationship(back_populates="product", order_by="PricingRule.min_qty")
@@ -263,6 +266,22 @@ class Prospect(Base):
     market_analysis: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # hasil Live AI Search Audit
     nba: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # Next Best Action
     dibuat_pada: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class KatalogImpor(Base):
+    """Pratinjau impor katalog: diunggah → divalidasi → (dikonfirmasi) diterapkan dalam satu transaksi."""
+
+    __tablename__ = "katalog_impor"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    token: Mapped[str] = mapped_column(String(40), unique=True, index=True)
+    nama_file: Mapped[str] = mapped_column(String(300), default="")
+    status: Mapped[str] = mapped_column(String(16), default="pratinjau")  # pratinjau | diterapkan | dibatalkan
+    produk: Mapped[list] = mapped_column(JSON, default=list)  # baris valid yang sudah dinormalisasi
+    kebijakan: Mapped[list] = mapped_column(JSON, default=list)
+    laporan: Mapped[dict] = mapped_column(JSON, default=dict)  # error, peringatan, ringkasan perubahan
+    dibuat_oleh: Mapped[str] = mapped_column(String(120), default="")
+    dibuat_pada: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    diterapkan_pada: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class ProspectCache(Base):

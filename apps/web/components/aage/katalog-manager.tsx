@@ -7,6 +7,7 @@ import useSWR from "swr"
 
 import { AButton } from "@/components/aage/button"
 import { SkeletonRows } from "@/components/aage/empty-state"
+import { KatalogImpor } from "@/components/aage/katalog-impor"
 import { Panel, Surface } from "@/components/aage/panel"
 import { Pill } from "@/components/aage/status"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -87,7 +88,9 @@ export function KatalogManager() {
     mutateProducts()
   }
 
-  const items = products?.items ?? []
+  const semua = products?.items ?? []
+  const items = semua.filter((p) => p.aktif)
+  const arsip = semua.length - items.length
   const synthetic = items.some((p) => p.sumber_data === "sintetis")
 
   return (
@@ -105,15 +108,10 @@ export function KatalogManager() {
 
         <TabsContent value="produk" className="space-y-4">
           {isAdmin && (
-            <Dropzone
-              accept=".csv,.xlsx"
-              label="Unggah katalog (CSV/XLSX)"
-              busy={busy}
-              onFile={(f) => {
-                const form = new FormData()
-                form.append("file", f)
-                form.append("judul", "Katalog Produk (data sintetis)")
-                upload("/api/kb/products/import", form, (r) => `Katalog v${r.versi}: ${r.produk} produk, ${r.klaim} klaim baru`)
+            <KatalogImpor
+              onSelesai={() => {
+                mutateProducts()
+                mutateDocs()
               }}
             />
           )}
@@ -130,6 +128,8 @@ export function KatalogManager() {
                     <th className="px-3 py-2.5 font-medium">Kemasan</th>
                     <th className="px-3 py-2.5 text-right font-medium">Harga/karton</th>
                     <th className="px-3 py-2.5 text-right font-medium">MOQ</th>
+                    <th className="px-3 py-2.5 text-right font-medium">Stok</th>
+                    <th className="px-3 py-2.5 font-medium">Halal</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -140,16 +140,25 @@ export function KatalogManager() {
                         <div className="font-medium">{p.nama}</div>
                         <div className="line-clamp-1 text-[12px] text-muted-foreground">{p.komposisi}</div>
                       </td>
-                      <td className="px-3 py-2.5 font-mono text-[12px] whitespace-nowrap">{p.no_izin_edar}</td>
+                      <td className="px-3 py-2.5 font-mono text-[12px] whitespace-nowrap">
+                        {p.no_izin_edar || <span className="font-sans text-review">belum ada data</span>}
+                      </td>
                       <td className="px-3 py-2.5 text-muted-foreground">{p.kemasan}</td>
                       <td className="tabular px-3 py-2.5 text-right whitespace-nowrap">{formatRp(p.harga_dasar)}</td>
                       <td className="tabular px-3 py-2.5 text-right">{p.moq}</td>
+                      <td className="tabular px-3 py-2.5 text-right">{p.stok ?? <span className="text-subtle-foreground">–</span>}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">{p.halal ?? <span className="text-review">belum ada data</span>}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             )}
           </Surface>
+          {arsip > 0 && (
+            <p className="text-[12px] text-muted-foreground">
+              {arsip} produk lama dinonaktifkan oleh impor (tidak dihapus — riwayat pesanan & Ledger tetap utuh).
+            </p>
+          )}
         </TabsContent>
 
         <TabsContent value="dokumen" className="space-y-4">

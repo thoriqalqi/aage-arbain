@@ -30,6 +30,7 @@ EVENT_TYPES = {
     "prospek_riset": "Riset pasar & Next Best Action prospek",
     "pengingat_repeat_order": "Pengingat repeat order",
     "katalog_diimpor": "Katalog diimpor",
+    "katalog_pratinjau": "Pratinjau impor katalog",
     "dokumen_diingest": "Dokumen di-ingest",
     "claimguard_playground": "Pemeriksaan Playground",
     "agen_hitl": "Agen: menunggu persetujuan manusia",

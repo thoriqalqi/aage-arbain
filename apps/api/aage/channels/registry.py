@@ -26,8 +26,8 @@ class WhatsAppAdapter:
         simulated = err == BELUM_DIKONFIGURASI or (err or "").startswith(wati.SIMULASI_PREFIX)
         return SendResult(SIMULASI if simulated else GAGAL, msg_id, err)
 
-    def send_text(self, external_user_id: str, text: str) -> SendResult:
-        return self._result(*self._provider().send_text(external_user_id, text))
+    def send_text(self, external_user_id: str, text: str, *, minta_nomor: bool = False) -> SendResult:
+        return self._result(*self._provider().send_text(external_user_id, text))  # nomor WA sudah diketahui
 
     def send_template(self, external_user_id: str, template: str, params: list[str], fallback_text: str) -> SendResult:
         return self._result(*self._provider().send_template(external_user_id, template, params))
@@ -44,7 +44,7 @@ class WebchatAdapter:
     def enabled(self) -> bool:
         return True
 
-    def send_text(self, external_user_id: str, text: str) -> SendResult:
+    def send_text(self, external_user_id: str, text: str, *, minta_nomor: bool = False) -> SendResult:
         return SendResult(TERKIRIM)
 
     def send_template(self, external_user_id: str, template: str, params: list[str], fallback_text: str) -> SendResult:

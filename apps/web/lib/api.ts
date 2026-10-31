@@ -89,3 +89,26 @@ export async function api<T = unknown>(path: string, init: RequestInit & { json?
 }
 
 export const fetcher = <T,>(path: string) => api<T>(path)
+
+/** Unduh file dari API (dengan token) lalu simpan lewat browser. */
+export async function unduh(path: string, namaFile: string): Promise<void> {
+  const headers = new Headers()
+  const token = getToken()
+  if (token) headers.set("Authorization", `Bearer ${token}`)
+  const res = await fetch(path, { headers })
+  if (!res.ok) {
+    const alasan =
+      res.status === 404
+        ? "file tidak ditemukan di server API — kemungkinan server API belum diperbarui/di-restart"
+        : res.status === 401 || res.status === 403
+          ? "perlu login sebagai admin"
+          : `server membalas ${res.status}`
+    throw new ApiError(res.status, `Unduhan gagal: ${alasan}.`, null)
+  }
+  const url = URL.createObjectURL(await res.blob())
+  const a = document.createElement("a")
+  a.href = url
+  a.download = namaFile
+  a.click()
+  URL.revokeObjectURL(url)
+}

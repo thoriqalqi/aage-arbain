@@ -1,0 +1,6 @@
+{
+  "mode": "template",
+  "model": "lokal/aturan-deterministik",
+  "jeda_s": 0.0,
+  "kiriman_stub": 75
+}

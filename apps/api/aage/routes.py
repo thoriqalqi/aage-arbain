@@ -15,14 +15,14 @@ from . import approvals as approval_svc
 from . import serializers as ser
 from .agents.drafter import _template_source
 from .agents.graph import handle_inbound
-from .agents.sales import last_order
+from .agents.sales import last_order, riwayat_terakhir
 from .channels import registry, sender, telegram, wati, whatsapp
 from .channels.base import InboundMessage
 from .config import get_settings
 from .content import audit as audit_svc
 from .content import studio
 from .db import SessionLocal, get_db
-from .kb import ingest
+from .kb import ingest, katalog_impor
 from .kb.retriever import document_by_id
 from .models import (
     Approval,
@@ -32,6 +32,7 @@ from .models import (
     ContentDraft,
     Conversation,
     Document,
+    KatalogImpor,
     LedgerEvent,
     Message,
     Product,
@@ -237,7 +238,7 @@ def _jendela(db: Session, c: Conversation) -> dict:
 def conversation_detail(conv_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
     c = _get_conv(db, conv_id)
     events = list(db.scalars(select(LedgerEvent).where(LedgerEvent.conversation_id == c.id).order_by(LedgerEvent.id)))
-    lo = last_order(db, c.contact_id)
+    lo = riwayat_terakhir(db, c.contact)
     aps = list(db.scalars(select(Approval).where(Approval.conversation_id == c.id).order_by(Approval.id.desc())))
     waiting = [a.dibuat_pada for a in aps if a.status == "menunggu"]
     prospect = db.get(Prospect, c.contact.prospect_id) if c.contact.prospect_id else None
@@ -274,6 +275,7 @@ def conversation_release(conv_id: int, user: User = Depends(current_user), db: S
 
 
 class ContactPatch(BaseModel):
+    telepon: str | None = Field(None, max_length=40)  # tautkan kontak (mis. Telegram) ke pembeli lama lewat nomor HP
     nama_toko: str | None = Field(None, max_length=160)
     tipe_toko: str | None = Field(None, max_length=40)
     alamat: str | None = Field(None, max_length=500)
@@ -284,14 +286,24 @@ def contact_patch(contact_id: int, body: ContactPatch, user: User = Depends(curr
     c = db.get(Contact, contact_id)
     if c is None:
         raise HTTPException(404, "Kontak tidak ditemukan")
-    changes = {k: v.strip() or None for k, v in body.model_dump(exclude_unset=True).items() if v is not None}
+    data = body.model_dump(exclude_unset=True)
+    telepon = data.pop("telepon", None)
+    changes = {k: v.strip() or None for k, v in data.items() if v is not None}
+    if telepon is not None:
+        nomor = mapper.wa_number(telepon) if telepon.strip() else None
+        if telepon.strip() and nomor is None:
+            raise HTTPException(422, "Nomor HP tidak valid (contoh: 0812xxxxxxx atau 62812xxxxxxx)")
+        changes["wa_number"] = nomor
     before = {k: getattr(c, k) for k in changes}
     for k, v in changes.items():
         setattr(c, k, v)
     if changes:
         ledger.record(db, "kontak_diubah", objek_ref=f"contact:{c.id}", aktor=f"staf:{user.nama}", model=None,
                       ringkasan=f"Profil {c.nama_toko or c.wa_number or c.external_user_id} diubah: {', '.join(changes)}",
-                      data={"sebelum": before, "sesudah": changes})
+                      data={"sebelum": {k: ("(disembunyikan)" if k == "wa_number" and v else v) for k, v in before.items()},
+                            "sesudah": {k: ("(disembunyikan)" if k == "wa_number" and v else v) for k, v in changes.items()}})
+    if changes.get("wa_number"):
+        mapper.link_contact(db, c)
     db.commit()
     return ser.contact(c, user)
 
@@ -448,6 +460,74 @@ async def kb_import(file: UploadFile = File(...), judul: str = Form("Katalog Pro
     except (ValueError, KeyError) as exc:
         raise HTTPException(400, f"Gagal impor: {exc}") from None
     return res.__dict__
+
+
+XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+def _unduh(isi: bytes, nama: str, tipe: str) -> Response:
+    return Response(isi, media_type=tipe, headers={"Content-Disposition": f'attachment; filename="{nama}"'})
+
+
+@router.get("/katalog/template.xlsx")
+def katalog_template_xlsx():
+    return _unduh(katalog_impor.template_xlsx(), "template_katalog_aage.xlsx", XLSX)
+
+
+@router.get("/katalog/template.csv")
+def katalog_template_csv():
+    return _unduh(katalog_impor.template_csv(), "template_katalog_produk.csv", "text/csv; charset=utf-8")
+
+
+@router.get("/katalog/template-kebijakan.csv")
+def katalog_template_kebijakan_csv():
+    return _unduh(katalog_impor.template_kebijakan_csv(), "template_katalog_kebijakan.csv", "text/csv; charset=utf-8")
+
+
+@router.get("/katalog/ekspor.xlsx")
+def katalog_ekspor(user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    return _unduh(katalog_impor.ekspor_xlsx(db), "katalog_aktif_aage.xlsx", XLSX)
+
+
+def _impor_json(imp) -> dict:
+    return {"token": imp.token, "nama_file": imp.nama_file, "status": imp.status, "laporan": imp.laporan,
+            "dibuat_pada": ser.ts(imp.dibuat_pada)}
+
+
+@router.post("/katalog/impor")
+async def katalog_impor_pratinjau(file: UploadFile = File(...), user: User = Depends(require_admin),
+                                  db: Session = Depends(get_db)):
+    """Langkah 1: validasi & pratinjau. Katalog BELUM berubah sampai pratinjau dikonfirmasi."""
+    try:
+        imp = katalog_impor.buat_pratinjau(db, file.filename or "katalog", await file.read(), f"staf:{user.nama}")
+    except katalog_impor.FileTidakValid as exc:
+        raise HTTPException(400, str(exc)) from None
+    return _impor_json(imp)
+
+
+class TerapkanIn(BaseModel):
+    lewati_error: bool = False
+
+
+@router.post("/katalog/impor/{token}/terapkan")
+def katalog_impor_terapkan(token: str, body: TerapkanIn, user: User = Depends(require_admin),
+                           db: Session = Depends(get_db)):
+    """Langkah 2: terapkan dalam satu transaksi (gagal → katalog lama tetap utuh)."""
+    try:
+        return katalog_impor.terapkan(db, token, f"staf:{user.nama}", lewati_error=body.lewati_error)
+    except katalog_impor.ImporDitolak as exc:
+        raise HTTPException(409, str(exc)) from None
+
+
+@router.post("/katalog/impor/{token}/batal")
+def katalog_impor_batal(token: str, user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    imp = db.scalar(select(KatalogImpor).where(KatalogImpor.token == token))
+    if imp is None:
+        raise HTTPException(404, "Pratinjau tidak ditemukan")
+    if imp.status == "pratinjau":
+        imp.status = "dibatalkan"
+        db.commit()
+    return _impor_json(imp)
 
 
 @router.get("/kb/documents")

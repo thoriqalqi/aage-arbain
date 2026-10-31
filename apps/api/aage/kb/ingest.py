@@ -45,8 +45,8 @@ def product_chunk_text(p: Product, claims: list[str]) -> str:
     klaim = " ".join(claims) if claims else "Belum ada klaim disetujui."
     return (
         f"Produk: {p.nama} (SKU {p.sku}). Kategori: {p.kategori}. "
-        f"Komposisi: {p.komposisi}. Kemasan: {p.kemasan}. "
-        f"Nomor izin edar: {p.no_izin_edar}. "
+        f"Komposisi: {p.komposisi or 'belum ada data'}. Kemasan: {p.kemasan or 'belum ada data'}. "
+        f"Nomor izin edar: {p.no_izin_edar or 'belum ada data'}. "
         f"Harga dasar grosir: {rupiah(p.harga_dasar)} per {p.satuan_grosir}. MOQ: {p.moq} {p.satuan_grosir}. "
         f"Klaim disetujui: {klaim} Kata kunci: {p.kata_kunci}."
         + _teknis_text(p)
@@ -54,13 +54,18 @@ def product_chunk_text(p: Product, claims: list[str]) -> str:
 
 
 def _teknis_text(p: Product) -> str:
+    """Data yang kosong ditulis "belum ada data" — tidak pernah diisi tebakan."""
     t = p.data_teknis or {}
-    if not t:
-        return ""
-    bko = t.get("status_bebas_bko", {})
-    halal = t.get("sertifikasi_halal", {})
-    return (f" Sertifikasi halal: {halal.get('status', '-')}. Uji BKO: {bko.get('hasil', '-')} ({bko.get('nomor_laporan_uji', '-')})."
-            f" HET: {rupiah(p.het_per_botol or 0)}/botol.")
+    bko = t.get("status_bebas_bko") or {}
+    halal = t.get("sertifikasi_halal") or {}
+    out = (f" Sertifikasi halal: {halal.get('status') or 'belum ada data'}."
+           f" Uji BKO: {bko.get('hasil') or 'belum ada data'}"
+           + (f" ({bko['nomor_laporan_uji']})." if bko.get("nomor_laporan_uji") else "."))
+    if p.het_per_botol:
+        out += f" HET: {rupiah(p.het_per_botol)}/botol."
+    if p.deskripsi:
+        out += f" Deskripsi: {p.deskripsi}"
+    return out
 
 
 def _next_version(db: Session, judul: str) -> int:
@@ -219,7 +224,7 @@ def extract_text(filename: str | None, content: bytes | None, url: str | None) -
 
 
 def ingest_document(db: Session, *, judul: str, text: str, tipe: str, url: str | None = None,
-                    aktor: str = "admin") -> Document:
+                    aktor: str = "admin", commit: bool = True) -> Document:
     versi = _next_version(db, judul)
     old_doc_ids = select(Document.id).where(Document.judul == judul).scalar_subquery()
     db.execute(update(Chunk).where(Chunk.document_id.in_(old_doc_ids)).values(aktif=False))
@@ -237,5 +242,6 @@ def ingest_document(db: Session, *, judul: str, text: str, tipe: str, url: str |
                   ringkasan=f"{judul} v{versi}: {len(pieces)} potongan",
                   sumber_ref=[{"document_id": doc.id, "versi": versi, "judul": judul, "url": url}],
                   outcome="sukses", model=llm.OFFLINE_MODEL)
-    db.commit()
+    if commit:
+        db.commit()
     return doc

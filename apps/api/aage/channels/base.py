@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from typing import Protocol
 
 TERKIRIM, SIMULASI, GAGAL = "terkirim", "simulasi", "gagal"
+# Teks netral untuk pesan "bagikan kontak" (Telegram): nomornya dibawa di InboundMessage.telepon.
+TEKS_NOMOR_DIBAGIKAN = "[nomor dibagikan]"
 
 
 @dataclass
@@ -39,7 +41,9 @@ class ChannelAdapter(Protocol):
 
     def enabled(self) -> bool: ...
 
-    def send_text(self, external_user_id: str, text: str) -> SendResult: ...
+    def send_text(self, external_user_id: str, text: str, *, minta_nomor: bool = False) -> SendResult:
+        """minta_nomor: tampilkan tombol "Bagikan nomor HP" bila kanal mendukung (Telegram); kanal lain abaikan."""
+        ...
 
     def send_template(self, external_user_id: str, template: str, params: list[str], fallback_text: str) -> SendResult:
         """Kanal tanpa template cukup mengirim fallback_text."""

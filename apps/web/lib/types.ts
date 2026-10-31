@@ -164,6 +164,10 @@ export type Product = {
   moq: number
   sumber_data: string
   aktif: boolean
+  stok: number | null
+  deskripsi: string
+  halal: string | null
+  bko: string | null
   klaim: { id: number; teks: string; sumber: string; diverifikasi_oleh: string | null }[]
   tier: { min_qty: number; diskon_maks_persen: number }[]
 }
@@ -419,4 +423,34 @@ export const INTENT_LABEL: Record<string, string> = {
   minta_dokumen: "Minta katalog",
   perlu_staf: "Di luar wewenang AI",
   lainnya: "Lainnya",
+}
+
+export type KatalogMasalah = { baris: number; kolom: string; alasan: string; sheet?: string }
+
+export type KatalogPratinjau = {
+  token: string
+  nama_file: string
+  status: "pratinjau" | "diterapkan" | "dibatalkan"
+  dibuat_pada: string
+  laporan: {
+    ringkasan: {
+      baris: number
+      valid: number
+      error: number
+      baru: number
+      diubah: number
+      tetap: number
+      dinonaktifkan: number
+      kebijakan: number | null
+      kebijakan_error: number
+    }
+    error: KatalogMasalah[]
+    peringatan: KatalogMasalah[]
+    jumlah_peringatan: number
+    baru: string[]
+    diubah: { nama: string; perubahan: string[] }[]
+    dinonaktifkan: string[]
+    contoh: { baris: number; sku: string; nama: string; harga_dasar: number; moq: number; stok: number | null; no_izin_edar: string; halal: string | null; bko: string | null }[]
+    ganti_kebijakan: boolean
+  }
 }

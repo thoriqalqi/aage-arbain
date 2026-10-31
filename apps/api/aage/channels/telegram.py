@@ -16,7 +16,7 @@ import time
 import httpx
 
 from ..config import get_settings
-from .base import GAGAL, SIMULASI, TERKIRIM, InboundMessage, SendResult
+from .base import GAGAL, SIMULASI, TEKS_NOMOR_DIBAGIKAN, TERKIRIM, InboundMessage, SendResult
 
 log = logging.getLogger("aage.telegram")
 settings = get_settings()
@@ -50,6 +50,18 @@ def parse_update(update: dict) -> InboundMessage | None:
     if not allowed(chat_id):
         log.warning("Pesan Telegram dari chat %s diabaikan: tidak ada di TELEGRAM_ALLOWLIST", chat_id)
         return None
+    nama = " ".join(p for p in (sender.get("first_name"), sender.get("last_name")) if p) or sender.get("username")
+    kontak = msg.get("contact")
+    if isinstance(kontak, dict):
+        # Hanya nomor MILIK pengirim sendiri yang dipakai (tombol "Bagikan nomor HP"). Kontak orang lain diabaikan,
+        # agar tidak ada yang bisa membuka riwayat pesanan pembeli lain dengan meneruskan kartu kontaknya.
+        milik_sendiri = sender.get("id") is not None and kontak.get("user_id") == sender["id"]
+        if milik_sendiri and kontak.get("phone_number"):
+            return InboundMessage(channel=CHANNEL, external_user_id=chat_id, text=TEKS_NOMOR_DIBAGIKAN, nama=nama,
+                                  external_message_id=f"tg:{chat_id}:{msg['message_id']}",
+                                  telepon="".join(ch for ch in str(kontak["phone_number"]) if ch.isdigit()))
+        return InboundMessage(channel=CHANNEL, external_user_id=chat_id, text="[contact tidak didukung]", nama=nama,
+                              external_message_id=f"tg:{chat_id}:{msg['message_id']}")
     text = (msg.get("text") or msg.get("caption") or "").strip()
     if not text:
         kind = next((k for k in _MEDIA if k in msg), None)
@@ -58,7 +70,6 @@ def parse_update(update: dict) -> InboundMessage | None:
         text = f"[{kind} tidak didukung]"
     if text.split(maxsplit=1)[0].split("@")[0].lower() in _SAPAAN:
         text = "Halo"  # perintah bawaan Telegram saat pembeli pertama kali membuka bot
-    nama = " ".join(p for p in (sender.get("first_name"), sender.get("last_name")) if p) or sender.get("username")
     return InboundMessage(channel=CHANNEL, external_user_id=chat_id, external_message_id=f"tg:{chat_id}:{msg['message_id']}",
                           text=text, nama=nama)
 
@@ -87,12 +98,15 @@ class TelegramAdapter:
     def enabled(self) -> bool:
         return bool(settings.telegram_bot_token)
 
-    def send_text(self, external_user_id: str, text: str) -> SendResult:
+    def send_text(self, external_user_id: str, text: str, *, minta_nomor: bool = False) -> SendResult:
         if not self.enabled():
             return SendResult(SIMULASI, error="Telegram belum dikonfigurasi")
         if not allowed(external_user_id):
             return SendResult(SIMULASI, error="simulasi: chat di luar TELEGRAM_ALLOWLIST, tidak dikirim")
         body = {"chat_id": external_user_id, "text": text[:4096], "disable_web_page_preview": True}
+        if minta_nomor:
+            body["reply_markup"] = {"keyboard": [[{"text": "📱 Bagikan nomor HP", "request_contact": True}]],
+                                    "one_time_keyboard": True, "resize_keyboard": True}
         for attempt in range(MAX_ATTEMPTS):
             try:
                 resp = _call("sendMessage", body)

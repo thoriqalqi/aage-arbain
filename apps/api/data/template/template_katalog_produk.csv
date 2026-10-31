@@ -1,0 +1,3 @@
+﻿sku,nama,kategori,harga_per_box,satuan,kemasan,moq,stok,deskripsi,komposisi,klaim_disetujui,izin_edar,halal_status,halal_nomor,halal_lembaga,bko_hasil,bko_nomor_laporan,diskon_volume,kata_kunci,kata_terlarang,het_per_botol
+ARB-101,Madu Stamina Plus 250 g,Obat Bahan Alam,2340000,box,Botol 250 g; box isi 36 botol,5,120,Madu dengan ekstrak jahe merah.,Madu; Ekstrak jahe merah; Ekstrak ginseng,Membantu memelihara stamina,POM TR 123456789,Bersertifikat Halal,ID12345678901234,BPJPH,Negatif,LHU-2026-0001,10:3|25:5|50:8|100:10,stamina energi madu jahe,menyembuhkan|obat kuat,78000
+,Teh Daun Kelor 20 kantong,Obat Bahan Alam,960000,box,Kotak 20 kantong; box isi 40 kotak,5,,,Daun kelor kering,,,,,,,,,kelor teh,,

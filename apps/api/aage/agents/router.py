@@ -5,6 +5,7 @@ import re
 from dataclasses import dataclass, field
 
 from .. import llm
+from ..channels.base import TEKS_NOMOR_DIBAGIKAN
 
 INTENTS = {
     "salam": "Salam",
@@ -38,6 +39,8 @@ INTENTS = {
     "daftar_produk": "Minta daftar semua produk",
     "gratis": "Minta gratis / tekanan",
     "basa_basi": "Basa-basi / penutup",
+    "nomor_dibagikan": "Nomor HP dibagikan",
+    "cari_riwayat": "Mencari produk pesanan lama dari ciri",
     "lainnya": "Lainnya",
 }
 
@@ -47,7 +50,9 @@ def _r(expr: str) -> re.Pattern:
 
 
 MEDIS_PERSONAL = _r(
-    r"\b(saya|aku|sy|aq|anak saya|ibu saya|bapak saya|suami saya|istri saya|ortu saya|orang tua saya)\b.{0,30}"
+    r"\b(saya|aku|sy|aq|gue|anak saya|anakku|anaknya|ibu saya|ibuku|bapak saya|bapakku|ayahku|suami saya|suamiku|"
+    r"istri saya|istriku|ortu saya|ortuku|orang tua saya|mama saya|mamaku|papaku|nenek saya|nenekku|kakek saya|adik saya|"
+    r"adikku|kakak saya|kakakku|keluarga saya)\b.{0,30}"
     r"\b(sakit|menderita|punya (?:penyakit|riwayat)|kena|didiagnosa|diagnosis|lagi minum obat|minum obat dokter|"
     r"demam|batuk|pilek|diare|muntah|pusing|sesak|nyeri|"
     r"hamil|menyusui|alergi|operasi|kemoterapi|cuci darah)\b|\b(ibu hamil|sedang hamil|menyusui|dosis (?:untuk|buat) (?:saya|anak))\b|"
@@ -195,6 +200,8 @@ BASA_BASI = _r(
     r"^\W*(bercanda|becanda|canda|serius|oke+|ok|okay|sip|siap|mantap|makasih|terima kasih|thanks|thx|bye|dadah|"
     r"sampai jumpa|udahan|cukup)(\s+(kak|ya|dong|deh|saja|kok|sih|nih|min))*\W*$"
 )
+# "aku pernah pesan", "riwayat pesanan saya" → jalur repeat order (riwayat dicari, tidak pernah ditebak).
+RIWAYAT = _r(r"\b(?:pernah|udah|sudah)\s+(?:pesan|order|beli)\b|\briwayat\s+(?:pesanan|order|belanja|pembelian)\b")
 KATEGORI_SAJA = _r(r"^\W*(madu|kapsul|teh|minyak|vitamin|serbuk|sirup|tablet|herbal|jamu|suplemen)\W*$")
 MEDIA = re.compile(r"^\s*\[(\w+) tidak didukung\]\s*$")
 # "bisa bantu saya ga" / "mau tanya dong" → sapaan pembuka.
@@ -256,6 +263,8 @@ def route(text: str, *, inbound_verdict: str, inbound_rules: list[str], konteks:
     slots = extract_slots(text)
     t = text.strip()
 
+    if t == TEKS_NOMOR_DIBAGIKAN:
+        return RouteResult("nomor_dibagikan", "Pembeli membagikan nomor HP-nya sendiri.", slots)
     if DARURAT.search(t):
         return RouteResult("darurat", "Kondisi darurat kesehatan → arahkan ke layanan darurat + staf.", slots)
     if MEDIA.match(t):
@@ -303,8 +312,10 @@ def route(text: str, *, inbound_verdict: str, inbound_rules: list[str], konteks:
         return RouteResult("minta_dokumen", "Meminta katalog/daftar harga lengkap dalam bentuk dokumen.", slots)
     if DAFTAR.search(t) and not mentions_product:
         return RouteResult("daftar_produk", "Meminta daftar produk → seluruh katalog aktif.", slots)
-    if PESAN_ULANG.search(t):
-        return RouteResult("pesan_ulang", "Permintaan pesan ulang.", slots)
+    if PESAN_ULANG.search(t) or RIWAYAT.search(t):
+        return RouteResult("pesan_ulang", "Permintaan pesan ulang / menyinggung riwayat pesanan.", slots)
+    if konteks.get("cari_riwayat") and not (PESAN.search(t) or HARGA.search(t)):
+        return RouteResult("cari_riwayat", "Pembeli menjelaskan ciri produk pesanan lama.", slots)
     if BANTUAN.match(t) or SALAM.match(t):
         return RouteResult("salam", "Salam / permintaan bantuan umum.", slots)
     if BASA_BASI.match(t):

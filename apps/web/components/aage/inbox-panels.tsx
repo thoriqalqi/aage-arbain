@@ -158,7 +158,7 @@ export function InlineApprovals({ approvals, onDone }: { approvals: Approval[]; 
 
 export function ContactEditor({ contact, onSaved }: { contact: Contact; onSaved: () => void }) {
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ nama_toko: "", tipe_toko: "", alamat: "" })
+  const [form, setForm] = useState({ nama_toko: "", tipe_toko: "", alamat: "", telepon: "" })
   const [busy, setBusy] = useState(false)
 
   if (!open) {
@@ -166,7 +166,7 @@ export function ContactEditor({ contact, onSaved }: { contact: Contact; onSaved:
       <button
         className="text-[12px] font-medium text-forest-700 hover:underline"
         onClick={() => {
-          setForm({ nama_toko: contact.nama_toko ?? "", tipe_toko: contact.tipe_toko ?? "", alamat: contact.alamat ?? "" })
+          setForm({ nama_toko: contact.nama_toko ?? "", tipe_toko: contact.tipe_toko ?? "", alamat: contact.alamat ?? "", telepon: "" })
           setOpen(true)
         }}
       >
@@ -178,12 +178,13 @@ export function ContactEditor({ contact, onSaved }: { contact: Contact; onSaved:
   async function save() {
     setBusy(true)
     try {
-      await api(`/api/contacts/${contact.id}`, { method: "PATCH", json: form })
-      toast.success("Profil toko disimpan")
+      // Nomor HP hanya dikirim bila diisi (nomor lama ditampilkan termasking dan tidak ditimpa tanpa sengaja).
+      await api(`/api/contacts/${contact.id}`, { method: "PATCH", json: { ...form, telepon: form.telepon || undefined } })
+      toast.success(form.telepon ? "Profil disimpan, nomor HP ditautkan ke riwayat pesanan" : "Profil toko disimpan")
       setOpen(false)
       onSaved()
-    } catch {
-      toast.error("Gagal menyimpan profil")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menyimpan profil")
     } finally {
       setBusy(false)
     }
@@ -204,6 +205,7 @@ export function ContactEditor({ contact, onSaved }: { contact: Contact; onSaved:
       {field("nama_toko", "Nama toko")}
       {field("tipe_toko", "Jenis toko (apotek, toko obat, …)")}
       {field("alamat", "Alamat pengiriman")}
+      {field("telepon", contact.wa_number ? `Nomor HP (saat ini ${contact.wa_number}) — isi untuk mengganti` : "Nomor HP — tautkan ke riwayat pesanan pembeli lama")}
       <div className="flex gap-2">
         <AButton size="sm" disabled={busy} onClick={save}>Simpan</AButton>
         <AButton size="sm" variant="ghost" onClick={() => setOpen(false)}>Batal</AButton>

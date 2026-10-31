@@ -72,6 +72,16 @@ def last_order(db: Session, contact_id: int) -> OrderDraft | None:
     )
 
 
+def riwayat_terakhir(db: Session, contact: Contact) -> OrderDraft | None:
+    """Pesanan terakhir pembeli ini, termasuk dari kontak di kanal lain dengan nomor HP yang sama (mis. dulu lewat
+    WhatsApp, sekarang lewat Telegram setelah nomornya dibagikan/ditautkan staf)."""
+    ids = [contact.id]
+    if contact.wa_number:
+        ids = list(db.scalars(select(Contact.id).where(Contact.wa_number == contact.wa_number))) or ids
+    return db.scalar(select(OrderDraft).where(OrderDraft.contact_id.in_(ids), OrderDraft.status != "ditolak")
+                     .order_by(OrderDraft.id.desc()))
+
+
 def build_items(db: Session, lines: list[tuple[Product, int]]) -> tuple[list[dict], float]:
     items, total = [], 0.0
     for product, qty in lines:
@@ -121,16 +131,16 @@ def parse_order_lines(db: Session, text: str) -> list[tuple[Product, int]]:
     return out
 
 
-def moq_note(lines: list[tuple[Product, int]]) -> str | None:
-    """Kebijakan: MOQ 5 box per produk; pembelian campuran boleh selama total minimal 10 box."""
+def moq_note(lines: list[tuple[Product, int]], min_campuran: int | None = None) -> str | None:
+    """MOQ per produk dari katalog; pembelian campuran boleh bila total ≥ min_campuran (dari kebijakan, bila diatur)."""
     total = sum(q for _, q in lines)
     kurang = [p for p, q in lines if q < p.moq]
     if not kurang:
         return None
-    if len(lines) > 1 and total >= 10:
+    if len(lines) > 1 and min_campuran and total >= min_campuran:
         return None
-    if len(lines) > 1:
-        return f"Catatan: pembelian campuran minimal total 10 box (saat ini {total} box)."
+    if len(lines) > 1 and min_campuran:
+        return f"Catatan: pembelian campuran minimal total {min_campuran} box (saat ini {total} box)."
     return f"Catatan: minimum order {kurang[0].moq} {kurang[0].satuan_grosir} per produk."
 
 

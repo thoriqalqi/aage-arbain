@@ -21,12 +21,13 @@ from ..channels import sender
 from ..kb.retriever import Hit, find_products, retrieve
 from ..models import Approval, Contact, Conversation, Message, Product
 from . import drafter, normalisasi, penjaga
+from .tahap import sinyal_baru, tahap_baru
 from .router import INTENTS, RouteResult, jelas_jualan, route
 from .sales import parse_order_lines
 
 NO_RETRIEVAL = {"salam", "medis_personal", "minta_staf", "perlu_staf", "minta_dokumen", "identitas", "luar_topik",
                 "media", "manipulasi", "perusahaan", "pembanding", "ambigu", "darurat", "sensitif", "marah", "tuduhan",
-                "sara", "daftar_produk", "gratis", "basa_basi"}
+                "sara", "daftar_produk", "gratis", "basa_basi", "nomor_dibagikan"}
 
 
 class State(TypedDict, total=False):
@@ -259,7 +260,7 @@ def send_node(state: State, config) -> dict:
     conv, d, check = state["conv"], state["draft"], state["check"]
     msg = sender.send(db, conv, d.text, check=check, pengirim="ai", trace_id=state["trace_id"], sources=d.sources,
                       biaya_rp=(d.llm_result.biaya_rp if d.llm_result else 0) + check.biaya_rp,
-                      inbound_at=state["inbound_at"])
+                      inbound_at=state["inbound_at"], minta_nomor=d.minta_nomor)
     approval_id = _order_approval(db, state) if d.order_draft_id else None
     conv.status = "otomatis"
     return {"sent": [msg], "approval_id": approval_id}
@@ -321,7 +322,7 @@ def escalate_node(state: State, config) -> dict:
     if hold_check.verdict == claimguard.ALLOWED:
         sent.append(sender.send(db, conv, hold_text, check=hold_check, pengirim="ai", trace_id=state["trace_id"],
                                 sources=d.sources if hold_text == d.text else [drafter._template_source("pesan tunggu")],
-                                inbound_at=state["inbound_at"]))
+                                inbound_at=state["inbound_at"], minta_nomor=d.minta_nomor and hold_text == d.text))
     conv.status = "eskalasi" if decision == "eskalasi" else "ditahan"
     return {"sent": sent, "approval_id": ap.id}
 
@@ -370,13 +371,20 @@ class PipelineResult:
 
 def get_or_create_conversation(db: Session, channel: str, external_user_id: str,
                                telepon: str | None = None) -> Conversation:
+    if telepon:
+        from ..prospects.mapper import wa_number as normalisasi_hp
+
+        telepon = normalisasi_hp(telepon)
     contact = db.scalar(select(Contact).where(Contact.channel == channel, Contact.external_user_id == external_user_id))
     if contact is None:
         contact = Contact(channel=channel, external_user_id=external_user_id, wa_number=telepon, nama_toko=None, opt_in=False)
         db.add(contact)
         db.flush()
     elif telepon and not contact.wa_number:
+        # Nomor dibagikan pembeli (mis. tombol Telegram): jembatan ke riwayat pesanan di kanal lain.
         contact.wa_number = telepon
+        ledger.record(db, "kontak_diubah", objek_ref=f"contact:{contact.id}", aktor="pembeli", model=None,
+                      ringkasan=f"Nomor HP dibagikan pembeli lewat {channel}", data={"field": "wa_number"})
     conv = db.scalar(select(Conversation).where(Conversation.contact_id == contact.id).order_by(Conversation.id.desc()))
     if conv is None:
         conv = Conversation(contact_id=contact.id, kanal=channel, status="otomatis", konteks={})
@@ -411,6 +419,10 @@ def handle_inbound(db: Session, *, channel: str, external_user_id: str, text: st
         {"conv": conv, "contact": conv.contact, "text": text, "trace_id": trace, "inbound_at": inbound_at},
         config={"configurable": {"db": db}},
     )
+    _merge_konteks(conv, {
+        "tahap": tahap_baru(conv.konteks.get("tahap"), state["intent"], state["text"], conv.konteks),
+        "sinyal": sinyal_baru(state["text"], state["intent"]),
+    })
     db.commit()
     check = state.get("check")
     inbound = state.get("inbound_check")

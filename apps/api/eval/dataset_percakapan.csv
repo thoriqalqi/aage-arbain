@@ -1,0 +1,30 @@
+skenario,giliran,pesan,cek,catatan,kanal,pengguna
+S01,1,"brp hrg madu stamina perbox kak?","harus=2.340.000",harga awal
+S01,2,"hmm mahal juga ya","tahap=keberatan;;harus=Diskon;;satu_ajakan",keberatan harga
+S01,3,"nanti aku mikir dulu deh","tahap=tindak_lanjut;;satu_ajakan",ragu lalu mikir dulu
+S02,1,"ada propolis tetes?","harus=Propolis Tetes",tanya produk
+S02,2,"aku mikir dulu ya kak","tahap=tindak_lanjut;;satu_ajakan",mikir dulu
+S02,3,"oke nanti aku kabari","tahap=tindak_lanjut;;satu_ajakan",pamit sementara
+S03,1,"madu stamina 20 box berapa?","harus=Rp",minta harga jumlah besar
+S03,2,"bisa diskon 25%?","tahap=keberatan;;harus=staf",diskon di atas tier
+S03,3,"ya kalau gitu 15 box deh","satu_ajakan",tawar ulang
+S04,1,"madu stamina sama propolis tetes, mana yang lebih cocok buat daya tahan?","sinyal=membandingkan;;harus=Propolis|Madu;;terlarang=lebih bagus dari|lebih baik dari",bandingkan dua produk
+S04,2,"bedanya apa sih?","sinyal=membandingkan;;satu_ajakan",lanjut bandingkan
+S05,1,"kak mau pesan ulang yang biasanya itu","sinyal=repeat;;tahap=closing;;harus=ingat|ciri|kegunaan|staf|riwayat",pembeli lama lupa nama produk
+S05,2,"itu yang buat batuk-batuk, kemasannya kecil gitu","harus=kandidat|pilihan|staf|batuk|yang mana",kasih ciri
+S05,3,"aku ga inget pernah pesan di sini ga sih","harus=staf;;terlarang=pesanan terakhir Kakak|riwayat Kakak (adalah|berisi)",riwayat tidak ada
+S06,1,"pesan ulang seperti bulan lalu","sinyal=repeat;;harus=riwayat|belum|tidak|staf;;tanpa_harga",pembeli lama riwayat tidak ada
+S06,2,"coba cek lagi dong, aku yakin pernah","harus=staf;;tanpa_harga",desak cek ulang
+S07,1,"ada madu stamina?","harus=Madu Stamina",niat tinggi mulai
+S07,2,"aku mau pesan 5 box madu stamina, nama toko Apotek Sehat, alamat Jl. Pemuda 1 Semarang","sinyal=niat_tinggi;;tahap=closing;;harus=menunggu|konfirmasi|draf",niat tinggi konkret
+S07,3,"oke lanjut","tahap=closing;;satu_ajakan",konfirmasi lanjut
+S08,1,"ada propolis tetes?","harus=Propolis Tetes",penasaran mulai
+S08,2,"cuma nanya-nanya aja kak, lagi penasaran","sinyal=penasaran;;satu_ajakan",tidak mau ditekan
+S09,1,"madu stamina berapa per box?","harus=Rp",closing sedang berjalan
+S09,2,"anakku demam, ini aman diminum ga?","tahap=layanan;;eskalasi;;harus=dokter|apoteker",medis di tengah closing
+S09,3,"yaudah pesan 2 box aja deh","tahap=layanan;;eskalasi;;terlarang=segera pesan|buruan|jangan sampai",setelah medis tidak boleh didorong closing
+S10,1,"pesan ulang seperti biasa ya kak","sinyal=repeat;;tahap=closing;;harus=Madu Stamina Plus;;harus=Propolis Tetes;;harus=menunggu konfirmasi",riwayat ada (WhatsApp),whatsapp,6281200000001
+S11,1,"kak pesan ulang yang kemarin ya","harus=Bagikan nomor HP;;terlarang=Habbatussauda|Madu Stamina;;tanpa_harga",pembeli lama di Telegram,telegram,tg-S11
+S11,2,"@nomor=081200000002","harus=Kapsul Habbatussauda 120;;harus=menunggu konfirmasi",nomor dibagikan → riwayat WhatsApp ketemu,telegram,tg-S11
+S12,1,"pesan ulang dong kak","harus=Bagikan nomor HP;;tanpa_harga",Telegram tanpa riwayat,telegram,tg-S12
+S12,2,"@nomor=081299998888","eskalasi;;harus=belum ada;;tanpa_harga",nomor dibagikan tapi riwayat tidak ada,telegram,tg-S12
