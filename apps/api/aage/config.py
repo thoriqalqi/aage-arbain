@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     wa_phone_number_id: str = ""
     wa_graph_version: str = "v21.0"
     wa_reminder_template: str = ""
+    ambil_alih_jam: float = 4.0  # percakapan yang diambil alih staf kembali ke AI setelah sekian jam tanpa aktivitas staf
 
     # Penyedia WhatsApp: "meta" | "wati" | kosong = otomatis (wati bila WATI_API_KEY terisi, selain itu meta)
     wa_provider: str = ""
@@ -63,6 +64,11 @@ class Settings(BaseSettings):
     wati_webhook_token: str = ""  # wajib di luar env=dev; webhook: /api/webhook/wati?token=...
     wati_channel_number: str = ""  # opsional, untuk akun multi-nomor: target "Channel:PhoneNumber"
     wati_allowlist: str = ""  # nomor uji dipisah koma; bila terisi, HANYA nomor ini yang benar-benar dikirimi
+
+    # Telegram Bot API — jalur uji live sebelum WhatsApp. Token dari @BotFather, tidak pernah dicetak ke log.
+    telegram_bot_token: str = ""
+    telegram_webhook_secret: str = ""  # wajib di luar env=dev; dikirim Telegram di header X-Telegram-Bot-Api-Secret-Token
+    telegram_allowlist: str = ""  # chat id dipisah koma; bila terisi, HANYA chat ini yang diproses & dibalas
 
     # Fonnte (gateway WhatsApp lokal) untuk kirim invoice yang disetujui staf
     fonnte_token: str = ""

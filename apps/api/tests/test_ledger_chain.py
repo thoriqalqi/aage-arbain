@@ -9,7 +9,7 @@ from aage.models import LedgerImmutableError
 
 
 def test_new_events_are_sealed_and_chain_is_intact(db):
-    handle_inbound(db, wa_number="t-rantai", text="ada produk untuk stamina?", kanal="webchat")
+    handle_inbound(db, external_user_id="t-rantai", text="ada produk untuk stamina?", channel="webchat")
     db.commit()
     r = ledger_chain.verify(db)
     assert r["utuh"] and r["belum_disegel"] == 0 and r["diperiksa"] == r["jumlah_event"] > 0

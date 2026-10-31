@@ -8,6 +8,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -126,10 +127,16 @@ class Chunk(Base):
 
 
 class Contact(Base):
+    """Pelanggan diidentifikasi (channel, external_user_id) — orang yang sama di dua kanal = dua kontak."""
+
     __tablename__ = "contacts"
+    __table_args__ = (Index("uq_contact_kanal_id", "channel", "external_user_id", unique=True),)
     id: Mapped[int] = mapped_column(primary_key=True)
-    wa_number: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    channel: Mapped[str] = mapped_column(String(16), default="whatsapp")  # whatsapp | telegram | webchat
+    external_user_id: Mapped[str] = mapped_column(String(64))  # nomor WA / chat id Telegram / sesi web chat
+    wa_number: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)  # nomor telepon bila diketahui
     nama_toko: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    nama_wa: Mapped[str | None] = mapped_column(String(120), nullable=True)  # nama profil pembeli di kanal
     tipe_toko: Mapped[str | None] = mapped_column(String(40), nullable=True)
     alamat: Mapped[str | None] = mapped_column(Text, nullable=True)
     opt_in: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -141,9 +148,12 @@ class Conversation(Base):
     __tablename__ = "conversations"
     id: Mapped[int] = mapped_column(primary_key=True)
     contact_id: Mapped[int] = mapped_column(ForeignKey("contacts.id"), index=True)
-    kanal: Mapped[str] = mapped_column(String(16), default="whatsapp")  # whatsapp | webchat
-    status: Mapped[str] = mapped_column(String(16), default="otomatis")  # otomatis | eskalasi | ditahan
+    kanal: Mapped[str] = mapped_column(String(16), default="whatsapp")  # = contact.channel
+    status: Mapped[str] = mapped_column(String(16), default="otomatis")  # otomatis | eskalasi | ditahan | ditangani_staf
     intent_terakhir: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    ditangani_oleh: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    ditangani_sejak: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    aktivitas_staf_terakhir: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     konteks: Mapped[dict] = mapped_column(JSON, default=dict)
     diperbarui_pada: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
@@ -159,7 +169,7 @@ class Message(Base):
     pengirim: Mapped[str] = mapped_column(String(8), default="pembeli")  # pembeli | ai | staf
     teks: Mapped[str] = mapped_column(Text)
     status_kirim: Mapped[str] = mapped_column(String(16), default="diterima")
-    wa_message_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    external_message_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)  # id di kanal
     verdict: Mapped[str | None] = mapped_column(String(16), nullable=True)
     sumber: Mapped[list] = mapped_column(JSON, default=list)
     biaya_rp: Mapped[float] = mapped_column(Float, default=0)
@@ -238,7 +248,11 @@ class Prospect(Base):
     alasan_skor: Mapped[list] = mapped_column(JSON, default=list)
     draf_pesan: Mapped[str] = mapped_column(Text, default="")
     draf_verdict: Mapped[str | None] = mapped_column(String(16), nullable=True)
-    status: Mapped[str] = mapped_column(String(16), default="baru")  # baru | dihubungi | merespons | menolak
+    status: Mapped[str] = mapped_column(String(16), default="baru")  # baru | dihubungi | merespons | pelanggan | menolak
+    catatan: Mapped[str | None] = mapped_column(Text, nullable=True)
+    tindak_lanjut_pada: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    pic: Mapped[str | None] = mapped_column(String(80), nullable=True)  # staf penanggung jawab
+    jaringan: Mapped[str | None] = mapped_column(String(80), nullable=True)  # jaringan nasional (brand OSM / nama)
     sumber: Mapped[str] = mapped_column(String(24))  # osm (OpenStreetMap Overpass, data nyata)
     eksternal_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)  # mis. "osm:node/123"
     jam_buka: Mapped[str | None] = mapped_column(String(200), nullable=True)  # tag opening_hours

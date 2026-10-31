@@ -168,7 +168,7 @@ def test_product_answer_gets_full_catalog_facts(db, monkeypatch):
 
     seen = {}
 
-    def fake_llm_answer(question, sources, instruction):
+    def fake_llm_answer(question, sources, instruction, conv=None):
         seen["sources"] = sources
         return None  # paksa jalur template agar tes tidak butuh LLM
 

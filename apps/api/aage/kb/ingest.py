@@ -157,7 +157,8 @@ def rows_from_products_json(data: dict) -> tuple[list[dict], list[dict]]:
         isi = m["isi_per_box_botol"]
         rows.append({
             "sku": p["id"], "nama": p["nama_produk"], "kategori": p["kategori"],
-            "komposisi": "; ".join(p["bahan_aktif"]), "kemasan": f"{p['kemasan']}; box isi {isi} botol",
+            "komposisi": "; ".join(p["bahan_aktif"]),
+            "kemasan": f"{p['kemasan']}; box isi {isi} {'kotak' if p['kemasan'].lower().startswith('kotak') else 'botol'}",
             "satuan_grosir": "box", "no_izin_edar": p["nomor_izin_edar_bpom"],
             "harga_dasar": m["harga_dasar_b2b_per_botol"] * isi, "moq": m["moq_minimal_box"],
             "kata_kunci": p.get("kata_kunci", ""), "klaim_disetujui": "|".join(p["klaim_khasiat_resmi_bpom"]),

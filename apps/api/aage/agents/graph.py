@@ -7,6 +7,7 @@
 Setiap node menulis event ke Ledger dengan trace_id yang sama, sehingga satu pesan keluar
 bisa ditelusuri sampai dokumen sumbernya."""
 
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, TypedDict
@@ -15,20 +16,24 @@ from langgraph.graph import END, StateGraph
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .. import claimguard, clock, ledger, llm, settings_store
+from .. import claimguard, clock, inbox, ledger, llm, settings_store
 from ..channels import sender
-from ..kb.retriever import Hit, retrieve
+from ..kb.retriever import Hit, find_products, retrieve
 from ..models import Approval, Contact, Conversation, Message, Product
-from . import drafter
-from .router import INTENTS, route
+from . import drafter, normalisasi, penjaga
+from .router import INTENTS, RouteResult, jelas_jualan, route
+from .sales import parse_order_lines
 
-NO_RETRIEVAL = {"salam", "medis_personal", "minta_staf"}
+NO_RETRIEVAL = {"salam", "medis_personal", "minta_staf", "perlu_staf", "minta_dokumen", "identitas", "luar_topik",
+                "media", "manipulasi", "perusahaan", "pembanding", "ambigu", "darurat", "sensitif", "marah", "tuduhan",
+                "sara", "daftar_produk", "gratis", "basa_basi"}
 
 
 class State(TypedDict, total=False):
     conv: Conversation
     contact: Contact
-    text: str
+    text: str  # teks yang dipahami (dirapikan); teks asli ada di Message
+    bahasa: str
     trace_id: str
     inbound_at: datetime
     inbound_check: claimguard.CheckResult
@@ -56,9 +61,45 @@ def _merge_konteks(conv: Conversation, updates: dict) -> None:
 # ------------------------------------------------------------------ nodes
 
 
+# Intent dari aturan yang boleh dinilai ulang penjaga topik. Aturan keras (klaim, medis, keluhan, manipulasi, minta
+# staf, dll.) tidak pernah masuk sini. "tanya_produk" hanya bila tertangkap kata umum ("ada", "rekomendasi").
+GERBANG = {"lainnya", "tanya_produk"}
+_INGGRIS = re.compile(r"\b(how much|price|do you|is there|have you|available|please|thanks|thank you|what is|"
+                      r"can i|i want|i need)\b", re.IGNORECASE)
+CATATAN_BAHASA = "(Sorry, I can only reply in Indonesian for now.)"
+
+
+def _rute(db: Session, text: str, inbound: claimguard.CheckResult, konteks: dict):
+    mentions = bool(find_products(db, text))
+    r = route(text, inbound_verdict=inbound.verdict, inbound_rules=inbound.rules_triggered, konteks=konteks,
+              mentions_product=mentions, multi_item=len(parse_order_lines(db, text)) >= 2)
+    return r, mentions
+
+
+def _penjaga_topik(db: Session, text: str, r: RouteResult, inbound: claimguard.CheckResult,
+                   konteks: dict) -> tuple[RouteResult, str]:
+    """LLM menilai pesan yang tidak jelas-jelas soal jualan. Gagal/mati → hasil aturan dipakai apa adanya."""
+    put = penjaga.periksa(text)
+    if put is None:
+        return r, text
+    alasan = f"LLM: penjaga topik → {put.kategori}"
+    # Semua belokan ini menuju jalur aman (tolak sopan, jujur, empati, atau staf) — tidak ada yang melonggarkan.
+    if put.kategori in ("luar_topik", "identitas", "perusahaan", "marah", "sensitif", "darurat"):
+        return RouteResult(put.kategori, alasan, r.slots, put.llm_result.model, put.llm_result), text
+    if put.kategori == "jualan" and r.intent == "lainnya":
+        teks = put.teks_rapi or text
+        r2, _ = _rute(db, teks, inbound, konteks) if teks != text else (r, None)
+        if r2.intent == "lainnya" and put.intent:
+            r2 = RouteResult(put.intent, alasan + f" ({put.intent})", r2.slots)
+        return RouteResult(r2.intent, f"{alasan}; {r2.reason}", r2.slots, put.llm_result.model, put.llm_result), teks
+    # "tidak_jelas", atau "jualan" untuk pesan yang sudah dirutekan aturan → aturan tetap dipakai.
+    return RouteResult(r.intent, f"{r.reason} ({alasan})", r.slots, put.llm_result.model, put.llm_result), text
+
+
 def router_node(state: State, config) -> dict:
     db = _db(config)
-    conv, text, trace = state["conv"], state["text"], state["trace_id"]
+    conv, asli, trace = state["conv"], state["text"], state["trace_id"]
+    text = normalisasi.rapikan(asli)  # "brp hrg" → "berapa harga"; teks asli tetap tersimpan di pesan & Ledger
     inbound = claimguard.check(db, text, use_llm=False)
     if inbound.verdict != claimguard.ALLOWED:
         ledger.record(
@@ -68,12 +109,17 @@ def router_node(state: State, config) -> dict:
             model=inbound.model, latensi_ms=inbound.duration_ms,
             data={"sentences": inbound.to_dict()["sentences"], "safe_text": inbound.safe_text},
         )
-    r = route(text, inbound_verdict=inbound.verdict, inbound_rules=inbound.rules_triggered, konteks=conv.konteks or {})
+    konteks = conv.konteks or {}
+    r, mentions = _rute(db, text, inbound, konteks)
+    if r.intent in GERBANG and not jelas_jualan(text, mentions_product=mentions, konteks=konteks):
+        r, text = _penjaga_topik(db, text, r, inbound, konteks)
     ledger.record_llm(db, "intent", r.llm_result, trace_id=trace, conversation_id=conv.id,
                       objek_ref=f"conversation:{conv.id}", ringkasan=f"Intent: {INTENTS.get(r.intent, r.intent)}",
-                      alasan=r.reason, data={"intent": r.intent, "slots": r.slots})
+                      alasan=r.reason, data={"intent": r.intent, "slots": r.slots,
+                                             **({"teks_dipahami": text} if text != asli else {})})
     conv.intent_terakhir = r.intent
-    return {"inbound_check": inbound, "intent": r.intent, "slots": r.slots}
+    return {"inbound_check": inbound, "intent": r.intent, "slots": r.slots, "text": text,
+            "bahasa": "en" if _INGGRIS.search(asli) else "id"}
 
 
 def retriever_node(state: State, config) -> dict:
@@ -99,7 +145,10 @@ def drafter_node(state: State, config) -> dict:
     db = _db(config)
     conv = state["conv"]
     d = _run_handler(db, state)
-    _merge_konteks(conv, d.konteks)
+    if state.get("bahasa") == "en" and d.text:
+        d.text = f"{d.text}\n\n{CATATAN_BAHASA}"  # sebelum ClaimGuard, jadi tetap ikut diperiksa
+    # Tawaran "balas ya untuk staf" hanya berlaku untuk pesan berikutnya, bukan "ya" kapan pun sesudahnya.
+    _merge_konteks(conv, {"tawar_staf": False, **d.konteks})
     ledger.record_llm(
         db, "draf_jawaban", d.llm_result, trace_id=state["trace_id"], conversation_id=conv.id,
         product_id=(d.product_ids or [None])[0], objek_ref=f"conversation:{conv.id}", sumber_ref=d.sources,
@@ -152,6 +201,13 @@ def _apply_autonomy(db: Session, reason: str) -> tuple[str, str]:
 def policy_node(state: State, config) -> dict:
     db = _db(config)
     d, check = state["draft"], state.get("check")
+    if inbox.staff_active(state["conv"]):
+        conv = state["conv"]
+        reason = f"Percakapan sedang ditangani {conv.ditangani_oleh or 'staf'} — AI hanya menyiapkan saran."
+        ledger.record(db, "kebijakan", trace_id=state["trace_id"], conversation_id=conv.id,
+                      objek_ref=f"conversation:{conv.id}", ringkasan="Keputusan: staf", alasan=reason, outcome="staf",
+                      verdict=check.verdict if check else None, model=llm.OFFLINE_MODEL)
+        return {"decision": "staf", "hold_reason": reason}
     if d.escalate:
         decision, reason = "eskalasi", d.escalate_reason
     elif check is None:
@@ -184,27 +240,50 @@ def _summary(db: Session, conv: Conversation, intent: str, d: drafter.Draft) -> 
     return head + "\n" + "\n".join(lines)
 
 
+def _order_approval(db: Session, state: State) -> int:
+    conv, d, sc = state["conv"], state["draft"], state.get("staff_check")
+    ap = Approval(objek_tipe="order_draft", objek_id=d.order_draft_id, conversation_id=conv.id,
+                  alasan="Draf pesanan harus dikonfirmasi staf (stok & tagihan).",
+                  ringkasan=_summary(db, conv, state["intent"], d), intent=state["intent"],
+                  draf=d.staff_draft or "", verdict=sc.verdict if sc else None, trace_id=state["trace_id"])
+    db.add(ap)
+    db.flush()
+    ledger.record(db, "approval_dibuat", trace_id=state["trace_id"], conversation_id=conv.id,
+                  objek_ref=f"approval:{ap.id}", ringkasan="Konfirmasi draf pesanan oleh staf",
+                  alasan=ap.alasan, verdict=ap.verdict, outcome="menunggu", model=llm.OFFLINE_MODEL)
+    return ap.id
+
+
 def send_node(state: State, config) -> dict:
     db = _db(config)
     conv, d, check = state["conv"], state["draft"], state["check"]
     msg = sender.send(db, conv, d.text, check=check, pengirim="ai", trace_id=state["trace_id"], sources=d.sources,
                       biaya_rp=(d.llm_result.biaya_rp if d.llm_result else 0) + check.biaya_rp,
                       inbound_at=state["inbound_at"])
-    approval_id = None
-    if d.order_draft_id:
-        sc = state.get("staff_check")
-        ap = Approval(objek_tipe="order_draft", objek_id=d.order_draft_id, conversation_id=conv.id,
-                      alasan="Draf pesanan harus dikonfirmasi staf (stok & tagihan).",
-                      ringkasan=_summary(db, conv, state["intent"], d), intent=state["intent"],
-                      draf=d.staff_draft or "", verdict=sc.verdict if sc else None, trace_id=state["trace_id"])
-        db.add(ap)
-        db.flush()
-        approval_id = ap.id
-        ledger.record(db, "approval_dibuat", trace_id=state["trace_id"], conversation_id=conv.id,
-                      objek_ref=f"approval:{ap.id}", ringkasan="Konfirmasi draf pesanan oleh staf",
-                      alasan=ap.alasan, verdict=ap.verdict, outcome="menunggu", model=llm.OFFLINE_MODEL)
+    approval_id = _order_approval(db, state) if d.order_draft_id else None
     conv.status = "otomatis"
     return {"sent": [msg], "approval_id": approval_id}
+
+
+def staff_node(state: State, config) -> dict:
+    """Staf sedang memegang percakapan: tidak ada pesan keluar. Draf AI (hanya yang lolos ClaimGuard) disimpan
+    sebagai saran yang bisa dipakai staf dengan satu klik."""
+    db = _db(config)
+    conv, d, check = state["conv"], state["draft"], state.get("check")
+    if check is not None and check.verdict == claimguard.ALLOWED and not d.escalate:
+        saran, verdict = d.text, check.verdict
+    else:
+        sc = state.get("staff_check")
+        saran = d.staff_draft if sc is not None and sc.verdict == claimguard.ALLOWED else None
+        verdict = sc.verdict if saran else None
+    _merge_konteks(conv, {"saran_ai": {"teks": saran, "verdict": verdict, "intent": state["intent"],
+                                       "trace_id": state["trace_id"], "catatan": d.escalate_reason or None,
+                                       "waktu": clock.now().isoformat()}})
+    ledger.record(db, "saran_ai", trace_id=state["trace_id"], conversation_id=conv.id, objek_ref=f"conversation:{conv.id}",
+                  ringkasan=(saran or "(tidak ada saran yang lolos ClaimGuard)")[:280], verdict=verdict,
+                  alasan=state.get("hold_reason"), sumber_ref=d.sources, model=llm.OFFLINE_MODEL)
+    approval_id = _order_approval(db, state) if d.order_draft_id else None
+    return {"sent": [], "approval_id": approval_id}
 
 
 def escalate_node(state: State, config) -> dict:
@@ -248,7 +327,7 @@ def escalate_node(state: State, config) -> dict:
 
 
 def _after_policy(state: State) -> str:
-    return "send" if state["decision"] == "kirim" else "escalate"
+    return {"kirim": "send", "staf": "staff"}.get(state["decision"], "escalate")
 
 
 def build_graph():
@@ -260,14 +339,16 @@ def build_graph():
     g.add_node("policy", policy_node)
     g.add_node("send", send_node)
     g.add_node("escalate", escalate_node)
+    g.add_node("staff", staff_node)
     g.set_entry_point("router")
     g.add_edge("router", "retriever")
     g.add_edge("retriever", "drafter")
     g.add_edge("drafter", "claimguard")
     g.add_edge("claimguard", "policy")
-    g.add_conditional_edges("policy", _after_policy, {"send": "send", "escalate": "escalate"})
+    g.add_conditional_edges("policy", _after_policy, {"send": "send", "escalate": "escalate", "staff": "staff"})
     g.add_edge("send", END)
     g.add_edge("escalate", END)
+    g.add_edge("staff", END)
     return g.compile()
 
 
@@ -287,33 +368,44 @@ class PipelineResult:
     extra: dict[str, Any] = field(default_factory=dict)
 
 
-def get_or_create_conversation(db: Session, wa_number: str, kanal: str) -> Conversation:
-    contact = db.scalar(select(Contact).where(Contact.wa_number == wa_number))
+def get_or_create_conversation(db: Session, channel: str, external_user_id: str,
+                               telepon: str | None = None) -> Conversation:
+    contact = db.scalar(select(Contact).where(Contact.channel == channel, Contact.external_user_id == external_user_id))
     if contact is None:
-        contact = Contact(wa_number=wa_number, nama_toko=None, opt_in=False)
+        contact = Contact(channel=channel, external_user_id=external_user_id, wa_number=telepon, nama_toko=None, opt_in=False)
         db.add(contact)
         db.flush()
-    conv = db.scalar(select(Conversation).where(Conversation.contact_id == contact.id, Conversation.kanal == kanal)
-                     .order_by(Conversation.id.desc()))
+    elif telepon and not contact.wa_number:
+        contact.wa_number = telepon
+    conv = db.scalar(select(Conversation).where(Conversation.contact_id == contact.id).order_by(Conversation.id.desc()))
     if conv is None:
-        conv = Conversation(contact_id=contact.id, kanal=kanal, status="otomatis", konteks={})
+        conv = Conversation(contact_id=contact.id, kanal=channel, status="otomatis", konteks={})
         db.add(conv)
         db.flush()
     return conv
 
 
-def handle_inbound(db: Session, *, wa_number: str, text: str, kanal: str = "whatsapp",
-                   wa_message_id: str | None = None, nama: str | None = None) -> PipelineResult:
-    conv = get_or_create_conversation(db, wa_number, kanal)
+def handle_inbound(db: Session, *, channel: str, external_user_id: str, text: str,
+                   external_message_id: str | None = None, nama: str | None = None,
+                   telepon: str | None = None) -> PipelineResult:
+    """Titik masuk netral kanal: adapter (WhatsApp, Telegram, web chat) cukup menormalisasi pesan ke parameter ini."""
+    conv = get_or_create_conversation(db, channel, external_user_id, telepon)
+    if nama and not conv.contact.nama_wa:
+        conv.contact.nama_wa = nama[:120]
+    if conv.contact.wa_number:
+        from ..prospects.mapper import link_contact
+
+        link_contact(db, conv.contact)
+    inbox.expire_if_idle(db, conv)
     trace = ledger.new_trace_id()
     inbound_at = clock.now()
     msg = Message(conversation_id=conv.id, arah="masuk", pengirim="pembeli", teks=text, status_kirim="diterima",
-                  wa_message_id=wa_message_id, trace_id=trace)
+                  external_message_id=external_message_id, trace_id=trace)
     db.add(msg)
     db.flush()
     conv.diperbarui_pada = inbound_at
     ledger.record(db, "pesan_masuk", trace_id=trace, conversation_id=conv.id, objek_ref=f"message:{msg.id}",
-                  ringkasan=text[:280], aktor="pembeli", data={"kanal": kanal}, model=None)
+                  ringkasan=text[:280], aktor="pembeli", data={"kanal": channel}, model=None)
 
     state = GRAPH.invoke(
         {"conv": conv, "contact": conv.contact, "text": text, "trace_id": trace, "inbound_at": inbound_at},

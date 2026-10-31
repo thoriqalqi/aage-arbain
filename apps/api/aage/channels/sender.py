@@ -1,14 +1,11 @@
-"""Satu-satunya jalur pesan keluar ke pembeli. Wajib membawa hasil ClaimGuard berstatus Diizinkan."""
+"""Satu-satunya jalur pesan keluar ke pembeli, untuk kanal apa pun. Wajib membawa hasil ClaimGuard berstatus Diizinkan."""
 
 from sqlalchemy.orm import Session
 
 from .. import clock, ledger
 from ..claimguard import ALLOWED, CheckResult
 from ..models import Conversation, Message
-from ..config import get_settings
-from . import wati, whatsapp
-
-settings = get_settings()
+from . import registry
 
 
 class ClaimGuardRequired(RuntimeError):
@@ -38,18 +35,13 @@ def send(
     db.add(msg)
     db.flush()
 
-    if conv.kanal == "whatsapp":
-        channel = wati if settings.wa_channel == "wati" else whatsapp
-        if template:
-            ok, wa_id, err = channel.send_template(conv.contact.wa_number, template[0], template[1])
-        else:
-            ok, wa_id, err = channel.send_text(conv.contact.wa_number, text)
-        simulated = err == "WhatsApp belum dikonfigurasi" or (err or "").startswith(wati.SIMULASI_PREFIX)
-        msg.status_kirim = "terkirim" if ok else ("simulasi" if simulated else "gagal")
-        msg.wa_message_id = wa_id
+    adapter = registry.get(conv.kanal)
+    target = conv.contact.external_user_id
+    if template:
+        res = adapter.send_template(target, template[0], template[1], text)
     else:
-        msg.status_kirim = "terkirim"
-        err = None
+        res = adapter.send_text(target, text)
+    msg.status_kirim, msg.external_message_id, err = res.status, res.external_message_id, res.error
 
     now = clock.now()
     latency = int((now - clock.aware(inbound_at)).total_seconds() * 1000) if inbound_at else None

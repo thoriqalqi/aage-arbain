@@ -40,6 +40,12 @@ EVENT_TYPES = {
     "pengaturan_diubah": "Pengaturan diubah",
     "evaluasi_dimulai": "Evaluasi dimulai",
     "evaluasi_selesai": "Evaluasi selesai",
+    "ambil_alih": "Percakapan diambil alih staf",
+    "ambil_alih_selesai": "Percakapan dikembalikan ke AI",
+    "saran_ai": "Saran AI untuk staf",
+    "kontak_diubah": "Profil toko diubah",
+    "prospek_diperbarui": "Prospek diperbarui",
+    "prospek_ditautkan": "Prospek ditautkan ke percakapan",
 }
 
 

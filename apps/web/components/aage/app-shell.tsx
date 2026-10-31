@@ -57,7 +57,7 @@ export const NAV_GROUPS: { label: string | null; items: NavItem[] }[] = [
     label: "Penjualan",
     items: [
       { href: "/leads", label: "Leads", icon: MapPinned },
-      { href: "/inbox", label: "Inbox WhatsApp", icon: Inbox, count: "inbox" },
+      { href: "/inbox", label: "Inbox", icon: Inbox, count: "inbox" },
     ],
   },
   {
@@ -279,6 +279,8 @@ function UserMenu() {
 function Topbar({ onOpenCommand, onOpenNav }: { onOpenCommand: () => void; onOpenNav: () => void }) {
   const { data: status } = useSWR<Status>("/api/status", fetcher, { refreshInterval: 30000 })
   const counts = useCounts()
+  // Web chat selalu aktif (simulator), jadi tidak dihitung sebagai kanal live.
+  const liveChannels = Object.entries(status?.kanal ?? {}).filter(([k, v]) => k !== "webchat" && v.aktif).map(([, v]) => v.label)
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-line bg-background/90 px-4 backdrop-blur md:px-8">
       <button type="button" onClick={onOpenNav} className="flex size-9 items-center justify-center rounded-[10px] border border-line bg-card lg:hidden" aria-label="Buka navigasi">
@@ -297,10 +299,10 @@ function Topbar({ onOpenCommand, onOpenNav }: { onOpenCommand: () => void; onOpe
       <div className="ml-auto flex items-center gap-1.5">
         <span
           className="hidden h-8 items-center gap-1.5 rounded-full border border-line bg-card px-3 text-[12px] text-muted-foreground md:inline-flex"
-          title={status?.whatsapp.aktif ? "WhatsApp Business terhubung" : "Belum terhubung ke WhatsApp — memakai simulator"}
+          title={liveChannels.length ? `Kanal live: ${liveChannels.join(", ")}` : "Belum ada kanal live — memakai simulator"}
         >
-          <span className={cn("size-1.5 rounded-full", status?.whatsapp.aktif ? "bg-brand-500" : "bg-gold-500")} aria-hidden />
-          {status?.whatsapp.aktif ? "WhatsApp aktif" : "WhatsApp: simulator"}
+          <span className={cn("size-1.5 rounded-full", liveChannels.length ? "bg-brand-500" : "bg-gold-500")} aria-hidden />
+          {liveChannels.length ? `${liveChannels.join(" + ")} aktif` : "Kanal: simulator"}
         </span>
         <Link href="/approval" className="relative flex size-9 items-center justify-center rounded-[10px] text-muted-foreground hover:bg-soft" aria-label="Approval menunggu">
           <Bell className="size-[18px]" />

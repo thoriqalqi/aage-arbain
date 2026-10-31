@@ -1,9 +1,10 @@
 "use client"
 
-import { ShieldAlert, ShieldCheck, ShieldX, Sparkles, UserRoundCheck, type LucideIcon } from "lucide-react"
+import { Globe, Hand, MessageCircle, Send, ShieldAlert, ShieldCheck, ShieldX, Sparkles, UserRoundCheck, type LucideIcon } from "lucide-react"
 import { motion } from "motion/react"
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { channelLabel } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { Verdict } from "@/lib/types"
 
@@ -69,6 +70,7 @@ const CONV: Record<string, { label: string; icon: LucideIcon; dot: string; cls: 
   otomatis: { label: "Dijawab AI", icon: Sparkles, dot: "bg-info", cls: "bg-info-bg text-info" },
   eskalasi: { label: "Menunggu staf", icon: UserRoundCheck, dot: "bg-escalate", cls: "bg-escalate-bg text-escalate" },
   ditahan: { label: "Ditahan", icon: ShieldAlert, dot: "bg-review", cls: "bg-review-bg text-review" },
+  ditangani_staf: { label: "Ditangani staf", icon: Hand, dot: "bg-forest-700", cls: "bg-brand-50 text-forest-700" },
 }
 
 export function ConversationStatus({ status, compact = false }: { status: string; compact?: boolean }) {
@@ -87,6 +89,13 @@ export function ConversationStatus({ status, compact = false }: { status: string
       <Icon className="size-3.5" strokeWidth={1.75} aria-hidden /> {s.label}
     </span>
   )
+}
+
+const CHANNEL_ICON: Record<string, LucideIcon> = { whatsapp: MessageCircle, telegram: Send, webchat: Globe }
+
+export function ChannelIcon({ kanal, className }: { kanal: string; className?: string }) {
+  const Icon = CHANNEL_ICON[kanal] ?? MessageCircle
+  return <Icon className={cn("size-3 text-subtle-foreground", className)} aria-label={channelLabel(kanal)} />
 }
 
 export function CostChip({ value, className }: { value: number | null | undefined; className?: string }) {

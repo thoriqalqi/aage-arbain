@@ -28,24 +28,34 @@ export type Message = {
   waktu: string
 }
 
+export type Channel = "whatsapp" | "telegram" | "webchat"
+
 export type Contact = {
   id: number
-  wa_number: string
+  channel: Channel
+  external_user_id: string
+  wa_number: string | null
   nama_toko: string | null
+  nama_wa: string | null
   tipe_toko: string | null
   alamat: string | null
   opt_in: boolean
+  prospect_id: number | null
 }
 
 export type ConversationSummary = {
   id: number
-  kanal: "whatsapp" | "webchat"
-  status: "otomatis" | "eskalasi" | "ditahan"
+  kanal: Channel
+  status: "otomatis" | "eskalasi" | "ditahan" | "ditangani_staf"
   intent_terakhir: string | null
   diperbarui_pada: string
   contact: Contact
   pesan_terakhir: Message | null
   approval_menunggu: number
+  menunggu_sejak: string | null
+  ditangani_oleh: string | null
+  ditangani_sejak: string | null
+  aktivitas_staf_terakhir: string | null
 }
 
 export type LedgerEvent = {
@@ -109,6 +119,9 @@ export type ConversationDetail = ConversationSummary & {
   pesanan_terakhir: OrderDraft | null
   approvals: Approval[]
   konteks: Record<string, unknown>
+  saran_ai: { teks: string | null; verdict: Verdict | null; intent: string; catatan: string | null; waktu: string } | null
+  jendela: { berlaku: boolean; terbuka: boolean; berakhir: string | null; jam: number | null }
+  prospek: { id: number; nama: string; status: string; skor: number } | null
 }
 
 export type RuleHit = { id: string; label: string; severity: Verdict; match: string; alasan: string }
@@ -193,7 +206,13 @@ export type Prospect = {
   alasan_skor: ScoreReason[]
   draf_pesan: string
   draf_verdict: Verdict | null
-  status: "baru" | "dihubungi" | "merespons" | "menolak"
+  status: "baru" | "dihubungi" | "merespons" | "pelanggan" | "menolak"
+  wa: string | null
+  conversation_id: number | null
+  catatan: string | null
+  tindak_lanjut_pada: string | null
+  pic: string | null
+  jaringan: string | null
   sumber: string
   osm_id: string | null
   jam_buka: string | null
@@ -378,6 +397,7 @@ export type Kpi = {
 export type Status = {
   llm: { aktif: boolean; model: string; judge: string | null }
   whatsapp: { aktif: boolean; kanal_cadangan: string }
+  kanal: Record<Channel, { label: string; aktif: boolean; jendela_balas_jam: number | null }>
   prospek: { google_places: boolean; osm: boolean }
   anggaran: { harian_rp: number; bulanan_rp: number; terpakai_hari_ini_rp: number; terpakai_bulan_ini_rp: number }
 }
@@ -395,5 +415,8 @@ export const INTENT_LABEL: Record<string, string> = {
   keluhan: "Keluhan",
   minta_staf: "Minta staf",
   kebijakan: "Kebijakan",
+  spesifikasi: "Isi & kandungan",
+  minta_dokumen: "Minta katalog",
+  perlu_staf: "Di luar wewenang AI",
   lainnya: "Lainnya",
 }

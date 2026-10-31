@@ -70,7 +70,7 @@ def seed_base(db) -> None:
         ingest_document(db, judul=title, text=path.read_text(encoding="utf-8"), tipe="teks", aktor="seed")
 
     for wa, toko, tipe, alamat, opt_in, orders in DEMO_CONTACTS:
-        c = Contact(wa_number=wa, nama_toko=toko, tipe_toko=tipe, alamat=alamat, opt_in=opt_in)
+        c = Contact(channel="whatsapp", external_user_id=wa, wa_number=wa, nama_toko=toko, tipe_toko=tipe, alamat=alamat, opt_in=opt_in)
         db.add(c)
         db.flush()
         if orders:
@@ -105,7 +105,7 @@ def seed_history(db, days: int = 14) -> None:
             last = None
             for text in script:
                 with clock.frozen_at(t):
-                    last = handle_inbound(db, wa_number=wa, text=text, kanal="whatsapp")
+                    last = handle_inbound(db, channel="whatsapp", external_user_id=wa, text=text, telepon=wa)
                 t += timedelta(minutes=rng.randint(1, 6))
             # Sebagian besar approval diputus staf (agar funnel/KPI realistis), sisanya tetap menunggu.
             if last and last.approval_id and day < days - 1:

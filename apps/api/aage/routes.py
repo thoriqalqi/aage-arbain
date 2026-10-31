@@ -2,7 +2,7 @@
 
 import hmac
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, PlainTextResponse, Response
@@ -10,13 +10,14 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from . import agent_status, claimguard, eval_api, kpi, ledger, ledger_chain, llm
+from . import agent_status, claimguard, clock, eval_api, inbox, kpi, ledger, ledger_chain, llm
 from . import approvals as approval_svc
 from . import serializers as ser
 from .agents.drafter import _template_source
 from .agents.graph import handle_inbound
 from .agents.sales import last_order
-from .channels import sender, wati, whatsapp
+from .channels import registry, sender, telegram, wati, whatsapp
+from .channels.base import InboundMessage
 from .config import get_settings
 from .content import audit as audit_svc
 from .content import studio
@@ -74,6 +75,7 @@ def status():
         "llm": {"aktif": settings.llm_enabled, "model": settings.llm_model if settings.llm_enabled else llm.OFFLINE_MODEL,
                 "judge": settings.llm_judge_model if settings.llm_enabled else None},
         "whatsapp": {"aktif": settings.wa_enabled, "penyedia": settings.wa_channel, "kanal_cadangan": "webchat"},
+        "kanal": registry.status(),
         "prospek": {"sumber": "OpenStreetMap Overpass (tanpa API key)", "timeout_s": settings.overpass_timeout_s,
                     "maks_hasil": settings.prospek_max_results},
         "anggaran": {"harian_rp": settings.budget_daily_rp, "bulanan_rp": settings.budget_monthly_rp,
@@ -82,7 +84,7 @@ def status():
     }
 
 
-# ------------------------------------------------------------------ WhatsApp webhook & web chat
+# ------------------------------------------------------------------ Webhook kanal & web chat
 
 
 @router.get("/webhook/whatsapp")
@@ -93,17 +95,23 @@ def wa_verify(hub_mode: str = Query(None, alias="hub.mode"), hub_token: str = Qu
     raise HTTPException(403, "Token verifikasi tidak cocok")
 
 
-def _process_wa(messages: list[dict]) -> None:
+def _process_inbound(messages: list[InboundMessage]) -> None:
     with SessionLocal() as db:
         for m in messages:
-            if db.scalar(select(Message).where(Message.wa_message_id == m["id"])):
-                continue  # Meta bisa mengirim ulang webhook yang sama
+            if db.scalar(select(Message.id).where(Message.external_message_id == m.external_message_id)):
+                continue  # kanal bisa mengirim ulang webhook yang sama
+            registry.get(m.channel).typing(m.external_user_id)
             try:
-                handle_inbound(db, wa_number=m["from"], text=m["text"], kanal="whatsapp", wa_message_id=m["id"],
-                               nama=m.get("name"))
+                handle_inbound(db, channel=m.channel, external_user_id=m.external_user_id, text=m.text,
+                               external_message_id=m.external_message_id, nama=m.nama, telepon=m.telepon)
             except Exception:
-                log.exception("Gagal memproses pesan WA %s", m["id"])
+                log.exception("Gagal memproses pesan %s", m.external_message_id)
                 db.rollback()
+
+
+def _wa_inbound(m: dict) -> InboundMessage:
+    return InboundMessage(channel="whatsapp", external_user_id=m["from"], external_message_id=m["id"], text=m["text"],
+                          nama=m.get("name"), telepon=m["from"])
 
 
 @router.post("/webhook/whatsapp")
@@ -112,9 +120,9 @@ async def wa_webhook(request: Request, background: BackgroundTasks):
     if not whatsapp.verify_signature(raw, request.headers.get("X-Hub-Signature-256")):
         raise HTTPException(401, "Signature webhook tidak valid")
     payload = await request.json()
-    msgs = whatsapp.parse_messages(payload)
+    msgs = [_wa_inbound(m) for m in whatsapp.parse_messages(payload)]
     if msgs:
-        background.add_task(_process_wa, msgs)
+        background.add_task(_process_inbound, msgs)
     return {"diterima": len(msgs)}
 
 
@@ -131,11 +139,31 @@ async def wati_webhook(request: Request, background: BackgroundTasks, token: str
     except ValueError:
         raise HTTPException(400, "Body webhook bukan JSON")
     items = payload if isinstance(payload, list) else [payload]
-    msgs = [m for m in (wati.parse_message(p) for p in items if isinstance(p, dict)) if m]
+    msgs = [_wa_inbound(m) for m in (wati.parse_message(p) for p in items if isinstance(p, dict)) if m]
     if msgs:
-        background.add_task(_process_wa, msgs)
+        background.add_task(_process_inbound, msgs)
     # Selalu 200 untuk event yang tidak relevan, agar WATI tidak mengulang hingga 144x.
     return {"diterima": len(msgs)}
+
+
+@router.post("/webhook/telegram")
+async def telegram_webhook(request: Request, background: BackgroundTasks):
+    # Secret dari setWebhook(secret_token=...) dikirim Telegram di header ini pada setiap update.
+    secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+    if settings.telegram_webhook_secret:
+        if not hmac.compare_digest(secret.encode(), settings.telegram_webhook_secret.encode()):
+            raise HTTPException(401, "Secret webhook Telegram tidak valid")
+    elif settings.env != "dev":
+        raise HTTPException(403, "TELEGRAM_WEBHOOK_SECRET wajib diisi di luar mode dev")
+    try:
+        payload = await request.json()
+    except ValueError:
+        raise HTTPException(400, "Body webhook bukan JSON")
+    m = telegram.parse_update(payload) if isinstance(payload, dict) else None
+    if m:
+        background.add_task(_process_inbound, [m])
+    # Selalu 200 untuk update yang tidak relevan, agar Telegram tidak mengulang.
+    return {"diterima": int(m is not None)}
 
 
 class SimulateIn(BaseModel):
@@ -145,7 +173,7 @@ class SimulateIn(BaseModel):
 
 @router.post("/chat/simulate")
 def chat_simulate(body: SimulateIn, db: Session = Depends(get_db)):
-    r = handle_inbound(db, wa_number=f"web:{body.session}", text=body.text, kanal="webchat")
+    r = handle_inbound(db, channel="webchat", external_user_id=body.session, text=body.text)
     return {"trace_id": r.trace_id, "conversation_id": r.conversation_id, "intent": r.intent, "keputusan": r.decision,
             "verdict": r.verdict, "verdict_masuk": r.inbound_verdict, "approval_id": r.approval_id,
             "balasan": [ser.message(m) for m in r.replies]}
@@ -153,7 +181,7 @@ def chat_simulate(body: SimulateIn, db: Session = Depends(get_db)):
 
 @router.get("/chat/simulate/{session}/messages")
 def chat_messages(session: str, after_id: int = 0, db: Session = Depends(get_db)):
-    contact = db.scalar(select(Contact).where(Contact.wa_number == f"web:{session}"))
+    contact = db.scalar(select(Contact).where(Contact.channel == "webchat", Contact.external_user_id == session))
     if contact is None:
         return {"pesan": []}
     conv_ids = select(Conversation.id).where(Conversation.contact_id == contact.id)
@@ -171,35 +199,101 @@ def conversations(status: str | None = None, q: str | None = None, user: User = 
     if status:
         stmt = stmt.where(Conversation.status == status)
     convs = list(db.scalars(stmt))
-    pending = dict(db.execute(select(Approval.conversation_id, func.count()).where(Approval.status == "menunggu")
-                              .group_by(Approval.conversation_id)).all())
+    pending = {cid: (n, oldest) for cid, n, oldest in db.execute(
+        select(Approval.conversation_id, func.count(), func.min(Approval.dibuat_pada))
+        .where(Approval.status == "menunggu").group_by(Approval.conversation_id)).all()}
     out = []
     for c in convs:
         last = db.scalar(select(Message).where(Message.conversation_id == c.id).order_by(Message.id.desc()))
-        if q and q.lower() not in f"{c.contact.nama_toko or ''} {last.teks if last else ''}".lower():
+        if q and q.lower() not in f"{c.contact.nama_toko or ''} {c.contact.nama_wa or ''} {last.teks if last else ''}".lower():
             continue
-        out.append(ser.conversation(c, user, last, pending.get(c.id, 0)))
+        n, oldest = pending.get(c.id, (0, None))
+        out.append(ser.conversation(c, user, last, n, menunggu_sejak=oldest))
     counts = dict(db.execute(select(Conversation.status, func.count()).group_by(Conversation.status)).all())
     return {"items": out, "jumlah_per_status": counts}
 
 
-@router.get("/conversations/{conv_id}")
-def conversation_detail(conv_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def _get_conv(db: Session, conv_id: int) -> Conversation:
     c = db.get(Conversation, conv_id)
     if c is None:
         raise HTTPException(404, "Percakapan tidak ditemukan")
+    if inbox.expire_if_idle(db, c):
+        db.commit()
+    return c
+
+
+def _jendela(db: Session, c: Conversation) -> dict:
+    """Batas balas teks bebas kanal (WhatsApp: 24 jam sejak pesan terakhir pembeli; di luar itu wajib template)."""
+    window = registry.get(c.kanal).reply_window_h
+    if window is None:
+        return {"berlaku": False, "terbuka": True, "berakhir": None, "jam": None}
+    last_in = db.scalar(select(func.max(Message.dibuat_pada)).where(Message.conversation_id == c.id, Message.arah == "masuk"))
+    berakhir = clock.aware(last_in) + timedelta(hours=window) if last_in else None
+    return {"berlaku": True, "terbuka": bool(berakhir and clock.now() < berakhir), "berakhir": ser.ts(berakhir),
+            "jam": window}
+
+
+@router.get("/conversations/{conv_id}")
+def conversation_detail(conv_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    c = _get_conv(db, conv_id)
     events = list(db.scalars(select(LedgerEvent).where(LedgerEvent.conversation_id == c.id).order_by(LedgerEvent.id)))
     lo = last_order(db, c.contact_id)
     aps = list(db.scalars(select(Approval).where(Approval.conversation_id == c.id).order_by(Approval.id.desc())))
+    waiting = [a.dibuat_pada for a in aps if a.status == "menunggu"]
+    prospect = db.get(Prospect, c.contact.prospect_id) if c.contact.prospect_id else None
     return {
-        **ser.conversation(c, user),
+        **ser.conversation(c, user, pending=len(waiting), menunggu_sejak=min(waiting) if waiting else None),
         "pesan": [ser.message(m) for m in c.messages],
         "ledger": [ser.ledger_event(e) for e in events],
         "biaya_total_rp": round(sum(e.biaya_rp or 0 for e in events), 2),
         "pesanan_terakhir": ser.order(lo) if lo else None,
         "approvals": [ser.approval(a, c, user) for a in aps],
         "konteks": c.konteks,
+        "saran_ai": (c.konteks or {}).get("saran_ai") if c.status == inbox.DITANGANI_STAF else None,
+        "jendela": _jendela(db, c),
+        "prospek": {"id": prospect.id, "nama": prospect.nama, "status": prospect.status, "skor": prospect.skor}
+        if prospect else None,
     }
+
+
+@router.post("/conversations/{conv_id}/ambil-alih")
+def conversation_take_over(conv_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    c = _get_conv(db, conv_id)
+    inbox.take_over(db, c, user.nama)
+    db.commit()
+    return ser.conversation(c, user)
+
+
+@router.post("/conversations/{conv_id}/kembalikan")
+def conversation_release(conv_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    c = _get_conv(db, conv_id)
+    if c.status == inbox.DITANGANI_STAF:
+        inbox.release(db, c, aktor=f"staf:{user.nama}", alasan="Staf mengembalikan percakapan ke AI")
+        db.commit()
+    return ser.conversation(c, user)
+
+
+class ContactPatch(BaseModel):
+    nama_toko: str | None = Field(None, max_length=160)
+    tipe_toko: str | None = Field(None, max_length=40)
+    alamat: str | None = Field(None, max_length=500)
+
+
+@router.patch("/contacts/{contact_id}")
+def contact_patch(contact_id: int, body: ContactPatch, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    c = db.get(Contact, contact_id)
+    if c is None:
+        raise HTTPException(404, "Kontak tidak ditemukan")
+    changes = {k: v.strip() or None for k, v in body.model_dump(exclude_unset=True).items() if v is not None}
+    before = {k: getattr(c, k) for k in changes}
+    for k, v in changes.items():
+        setattr(c, k, v)
+    if changes:
+        ledger.record(db, "kontak_diubah", objek_ref=f"contact:{c.id}", aktor=f"staf:{user.nama}", model=None,
+                      ringkasan=f"Profil {c.nama_toko or c.wa_number or c.external_user_id} diubah: {', '.join(changes)}",
+                      data={"sebelum": before, "sesudah": changes})
+    db.commit()
+    return ser.contact(c, user)
 
 
 class ReplyIn(BaseModel):
@@ -208,9 +302,7 @@ class ReplyIn(BaseModel):
 
 @router.post("/conversations/{conv_id}/reply")
 def conversation_reply(conv_id: int, body: ReplyIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    c = db.get(Conversation, conv_id)
-    if c is None:
-        raise HTTPException(404, "Percakapan tidak ditemukan")
+    c = _get_conv(db, conv_id)
     check = claimguard.check(db, body.text, product_ids=(c.konteks or {}).get("last_product_ids") or None)
     trace = ledger.new_trace_id()
     ledger.record(db, "claimguard", trace_id=trace, conversation_id=c.id, objek_ref=f"conversation:{c.id}",
@@ -221,6 +313,8 @@ def conversation_reply(conv_id: int, body: ReplyIn, user: User = Depends(current
     if check.verdict != claimguard.ALLOWED:
         db.commit()
         raise HTTPException(422, {"pesan": f"ClaimGuard: {check.label}. Balasan tidak dikirim.", "claimguard": check.to_dict()})
+    # Staf yang membalas otomatis memegang percakapan, agar AI tidak menyela.
+    inbox.take_over(db, c, user.nama, alasan="Staf membalas manual")
     m = sender.send(db, c, body.text, check=check, pengirim="staf", trace_id=trace, aktor=f"staf:{user.nama}",
                     sources=[_template_source("balasan manual staf")])
     db.commit()
@@ -646,26 +740,44 @@ def _prospect_query(wilayah: str | None, tipe: str | None, status: str | None):
 @router.get("/prospects")
 def prospects_list(wilayah: str | None = None, tipe: str | None = None, status: str | None = None,
                    user: User = Depends(current_user), db: Session = Depends(get_db)):
-    items = [ser.prospect(p) for p in db.scalars(_prospect_query(wilayah, tipe, status))]
+    prospects = list(db.scalars(_prospect_query(wilayah, tipe, None)))
+    convs = _prospect_conversations(db)
+    items = [ser.prospect(p, convs.get(p.id)) for p in prospects if not status or p.status == status]
     sedang = bool(wilayah and tipe and tipe in mapper.JENIS_TOKO and mapper.background_running(" ".join(wilayah.split()), tipe))
     wilayah_list = [w for (w,) in db.execute(select(Prospect.wilayah).where(Prospect.sumber == "osm").distinct())]
+    now = clock.now()
+    jatuh_tempo = sum(1 for p in prospects if p.tindak_lanjut_pada and clock.aware(p.tindak_lanjut_pada) <= now
+                      and p.status not in ("pelanggan", "menolak"))
     return {"items": items, "wilayah": wilayah_list, "jenis_toko": list(mapper.JENIS_TOKO), "pindaian_latar": sedang,
+            "funnel": {**mapper.funnel(prospects), "tindak_lanjut_jatuh_tempo": jatuh_tempo},
             "gudang": {"nama": settings.gudang_nama, "lat": settings.gudang_lat, "lng": settings.gudang_lng}}
 
 
+def _prospect_conversations(db: Session) -> dict[int, int]:
+    """prospect_id → percakapan terbaru dari kontak yang tertaut ke prospek tersebut."""
+    rows = db.execute(select(Contact.prospect_id, func.max(Conversation.id)).join(Conversation, Conversation.contact_id == Contact.id)
+                      .where(Contact.prospect_id.is_not(None)).group_by(Contact.prospect_id)).all()
+    return {pid: cid for pid, cid in rows}
+
+
 class ProspectPatch(BaseModel):
-    status: str
+    status: str | None = None
+    catatan: str | None = Field(None, max_length=2000)
+    tindak_lanjut_pada: datetime | None = None
+    pic: str | None = Field(None, max_length=80)
 
 
 @router.patch("/prospects/{prospect_id}")
 def prospects_patch(prospect_id: int, body: ProspectPatch, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    fields = body.model_fields_set - {"status"}
     try:
-        p = mapper.update_status(db, prospect_id, body.status, f"staf:{user.nama}")
+        p = mapper.update(db, prospect_id, f"staf:{user.nama}", status=body.status, catatan=body.catatan,
+                          tindak_lanjut_pada=body.tindak_lanjut_pada, pic=body.pic, fields=fields)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from None
     except LookupError as exc:
         raise HTTPException(404, str(exc)) from None
-    return ser.prospect(p)
+    return ser.prospect(p, _prospect_conversations(db).get(p.id))
 
 
 @router.post("/prospects/{prospect_id}/riset")
@@ -714,7 +826,7 @@ def reminders(body: ReminderIn, user: User = Depends(current_user), db: Session 
             continue
         conv = db.scalar(select(Conversation).where(Conversation.contact_id == c.id).order_by(Conversation.id.desc()))
         if conv is None:
-            conv = Conversation(contact_id=c.id, kanal="whatsapp", status="otomatis", konteks={})
+            conv = Conversation(contact_id=c.id, kanal=c.channel, status="otomatis", konteks={})
             db.add(conv)
             db.flush()
         trace = ledger.new_trace_id()

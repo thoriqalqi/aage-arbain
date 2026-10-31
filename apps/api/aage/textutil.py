@@ -27,7 +27,7 @@ SYNONYMS = {
     "stamina": ["stamina", "bugar", "energi", "tenaga", "vitalitas", "lelah"],
     "imunitas": ["imunitas", "daya", "tahan", "tubuh", "imun"],
     "pencernaan": ["pencernaan", "perut", "lambung", "kembung", "maag"],
-    "tidur": ["tidur", "rileks", "tenang"],
+    "tidur": ["tidur", "rileks", "tenang", "nyenyak", "istirahat"],
     "sendi": ["sendi", "pegal", "linu", "otot"],
     "masuk": ["masuk", "angin", "hangat", "meriang"],
     "kulit": ["kulit", "wajah", "rambut"],

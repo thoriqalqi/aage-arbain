@@ -2,7 +2,8 @@
 
 // Drawer detail prospek dengan 3 tab: Informasi Dasar · Live AI Search Audit · Next Best Action.
 
-import { Compass, Copy, ExternalLink, Globe2, Info, LoaderCircle, MapPin, Newspaper, PlugZap, RefreshCw, Sparkles } from "lucide-react"
+import { Compass, Copy, ExternalLink, Globe2, Info, LoaderCircle, MapPin, MessageCircle, Newspaper, PlugZap, RefreshCw, Send, Sparkles } from "lucide-react"
+import Link from "next/link"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 
@@ -19,7 +20,78 @@ export const STATUS: Record<Prospect["status"], { label: string; cls: string }> 
   baru: { label: "Baru", cls: "bg-soft text-muted-foreground" },
   dihubungi: { label: "Dihubungi", cls: "bg-info-bg text-info" },
   merespons: { label: "Merespons", cls: "bg-ok-bg text-ok" },
+  pelanggan: { label: "Pelanggan", cls: "bg-brand-50 text-forest-700" },
   menolak: { label: "Menolak", cls: "bg-blocked-bg text-blocked" },
+}
+
+/** wa.me hanya membuka WhatsApp staf dengan draf terisi — staf yang menekan Kirim (bukan pesan massal). */
+export function waLink(p: Prospect): string | null {
+  return p.wa ? `https://wa.me/${p.wa}?text=${encodeURIComponent(p.draf_pesan)}` : null
+}
+
+function toLocalInput(iso: string | null): string {
+  if (!iso) return ""
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function FollowUp({ p, onUpdated }: { p: Prospect; onUpdated: (p: Prospect) => void }) {
+  const [catatan, setCatatan] = useState(p.catatan ?? "")
+  const [pic, setPic] = useState(p.pic ?? "")
+  const [tanggal, setTanggal] = useState(toLocalInput(p.tindak_lanjut_pada))
+  const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    setCatatan(p.catatan ?? "")
+    setPic(p.pic ?? "")
+    setTanggal(toLocalInput(p.tindak_lanjut_pada))
+  }, [p.id, p.catatan, p.pic, p.tindak_lanjut_pada])
+
+  async function save() {
+    setBusy(true)
+    try {
+      const updated = await api<Prospect>(`/api/prospects/${p.id}`, {
+        method: "PATCH",
+        json: { catatan: catatan || null, pic: pic || null, tindak_lanjut_pada: tanggal ? new Date(tanggal).toISOString() : null },
+      })
+      onUpdated(updated)
+      toast.success("Rencana tindak lanjut disimpan")
+    } catch {
+      toast.error("Gagal menyimpan tindak lanjut")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const input = "mt-0.5 h-9 w-full rounded-md border border-line bg-white px-2 text-[13px] outline-none focus:border-brand-500"
+  return (
+    <section>
+      <h3 className="mb-2 text-[13px] font-semibold">Rencana tindak lanjut</h3>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <label className="text-[12px] text-muted-foreground">
+          PIC sales
+          <input value={pic} onChange={(e) => setPic(e.target.value)} className={input} placeholder="Nama staf" />
+        </label>
+        <label className="text-[12px] text-muted-foreground">
+          Tindak lanjut pada
+          <input type="datetime-local" value={tanggal} onChange={(e) => setTanggal(e.target.value)} className={input} />
+        </label>
+      </div>
+      <label className="mt-2 block text-[12px] text-muted-foreground">
+        Catatan kunjungan / percakapan
+        <textarea
+          value={catatan}
+          onChange={(e) => setCatatan(e.target.value)}
+          rows={3}
+          className="mt-0.5 w-full rounded-md border border-line bg-white p-2 text-[13px] outline-none focus:border-brand-500"
+          placeholder="Mis. pemilik minta katalog, datang lagi Kamis"
+        />
+      </label>
+      <AButton size="sm" className="mt-2" disabled={busy} onClick={save}>
+        Simpan tindak lanjut
+      </AButton>
+    </section>
+  )
 }
 
 type Tab = "dasar" | "market" | "nba"
@@ -81,9 +153,15 @@ function StatusButtons({ p, onStatus }: { p: Prospect; onStatus: (p: Prospect, s
   )
 }
 
-function TabDasar({ p }: { p: Prospect }) {
+function TabDasar({ p, onStatus, onUpdated }: { p: Prospect; onStatus: (p: Prospect, s: Prospect["status"]) => void; onUpdated: (p: Prospect) => void }) {
+  const link = waLink(p)
   return (
     <div className="space-y-6">
+      {p.conversation_id && (
+        <Link href={`/inbox?id=${p.conversation_id}`} className="flex items-center gap-2 rounded-md bg-ok-bg px-3 py-2 text-[13px] font-medium text-ok">
+          <MessageCircle className="size-4" /> Prospek ini sudah chat lewat WhatsApp — buka percakapan
+        </Link>
+      )}
       <section>
         <div className="mb-2 flex items-end justify-between">
           <h3 className="text-[13px] font-semibold">Opportunity Score</h3>
@@ -94,13 +172,15 @@ function TabDasar({ p }: { p: Prospect }) {
             <li key={r.faktor} className="text-[13px]">
               <div className="flex justify-between">
                 <span>{r.faktor}</span>
-                <span className="tabular font-medium">
-                  +{r.poin.toLocaleString("id-ID")}/{r.maks}
+                <span className={cn("tabular font-medium", r.poin < 0 && "text-blocked")}>
+                  {r.poin < 0 ? r.poin.toLocaleString("id-ID") : `+${r.poin.toLocaleString("id-ID")}/${r.maks}`}
                 </span>
               </div>
-              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-line">
-                <div className="h-full rounded-full bg-brand-500" style={{ width: `${(r.poin / r.maks) * 100}%` }} />
-              </div>
+              {r.maks > 0 && (
+                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-line">
+                  <div className="h-full rounded-full bg-brand-500" style={{ width: `${(r.poin / r.maks) * 100}%` }} />
+                </div>
+              )}
               <div className="mt-0.5 text-[12px] text-muted-foreground">{r.keterangan}</div>
             </li>
           ))}
@@ -115,15 +195,32 @@ function TabDasar({ p }: { p: Prospect }) {
           <VerdictBadge verdict={p.draf_verdict} />
         </div>
         <p className="rounded-lg bg-brand-50 p-3 text-[13px] leading-6">{p.draf_pesan}</p>
-        <AButton
-          variant="outline"
-          size="sm"
-          className="mt-2"
-          onClick={() => navigator.clipboard.writeText(p.draf_pesan).then(() => toast.success("Draf disalin — kirim manual oleh staf"))}
-        >
-          <Copy className="size-3.5" /> Salin draf
-        </AButton>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {link ? (
+            <a
+              href={link}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => p.status === "baru" && onStatus(p, "dihubungi")}
+              className="btn-liquid inline-flex h-8 items-center gap-1.5 rounded-[10px] px-3 text-[13px] font-medium"
+            >
+              <Send className="size-3.5" /> Buka di WhatsApp
+            </a>
+          ) : (
+            <span className="text-[12px] text-subtle-foreground">Tidak ada nomor di OSM — kunjungi langsung atau cari nomor toko.</span>
+          )}
+          <AButton
+            variant="outline"
+            size="sm"
+            onClick={() => navigator.clipboard.writeText(p.draf_pesan).then(() => toast.success("Draf disalin — kirim manual oleh staf"))}
+          >
+            <Copy className="size-3.5" /> Salin draf
+          </AButton>
+        </div>
+        {link && <p className="mt-1 text-[12px] text-subtle-foreground">WhatsApp staf terbuka dengan draf terisi; status otomatis jadi “Dihubungi”.</p>}
       </section>
+      <StatusButtons p={p} onStatus={onStatus} />
+      <FollowUp p={p} onUpdated={onUpdated} />
     </div>
   )
 }
@@ -328,11 +425,12 @@ export function ProspectDrawer({
                   </a>
                 )}
                 {p.sudah_pelanggan && <Pill className="bg-ok-bg text-ok">Sudah pelanggan</Pill>}
+                {p.jaringan && <Pill className="bg-review-bg text-review">Jaringan {p.jaringan}</Pill>}
               </div>
               <TabsHeader active={activeTab} onChange={setActiveTab} />
             </SheetHeader>
             <div className="px-4 pb-8">
-              {activeTab === "dasar" && <TabDasar p={p} />}
+              {activeTab === "dasar" && <TabDasar p={p} onStatus={onStatus} onUpdated={onUpdated} />}
               {activeTab === "market" && <TabMarket p={p} busy={busy} onRun={runResearch} />}
               {activeTab === "nba" && <TabNba p={p} busy={busy} onRun={runResearch} onStatus={onStatus} />}
             </div>
