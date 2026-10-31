@@ -26,8 +26,11 @@ def user(u: User) -> dict:
 
 
 def contact(c: Contact, viewer: User | None) -> dict:
-    return {"id": c.id, "wa_number": mask_phone(c.wa_number, viewer) if viewer else c.wa_number,
-            "nama_toko": c.nama_toko, "tipe_toko": c.tipe_toko, "alamat": c.alamat, "opt_in": c.opt_in}
+    return {"id": c.id, "channel": c.channel,
+            "external_user_id": mask_phone(c.external_user_id, viewer) if viewer else c.external_user_id,
+            "wa_number": mask_phone(c.wa_number, viewer) if viewer else c.wa_number,
+            "nama_toko": c.nama_toko, "nama_wa": c.nama_wa, "tipe_toko": c.tipe_toko, "alamat": c.alamat,
+            "opt_in": c.opt_in, "prospect_id": c.prospect_id}
 
 
 def message(m: Message) -> dict:
@@ -36,10 +39,13 @@ def message(m: Message) -> dict:
             "biaya_rp": m.biaya_rp, "trace_id": m.trace_id, "waktu": ts(m.dibuat_pada)}
 
 
-def conversation(c: Conversation, viewer: User | None, last: Message | None = None, pending: int = 0) -> dict:
+def conversation(c: Conversation, viewer: User | None, last: Message | None = None, pending: int = 0,
+                 menunggu_sejak=None) -> dict:
     return {"id": c.id, "kanal": c.kanal, "status": c.status, "intent_terakhir": c.intent_terakhir,
             "diperbarui_pada": ts(c.diperbarui_pada), "contact": contact(c.contact, viewer),
-            "pesan_terakhir": message(last) if last else None, "approval_menunggu": pending}
+            "pesan_terakhir": message(last) if last else None, "approval_menunggu": pending,
+            "menunggu_sejak": ts(menunggu_sejak), "ditangani_oleh": c.ditangani_oleh,
+            "ditangani_sejak": ts(c.ditangani_sejak), "aktivitas_staf_terakhir": ts(c.aktivitas_staf_terakhir)}
 
 
 def approval(a: Approval, conv: Conversation | None, viewer: User | None) -> dict:
@@ -85,8 +91,11 @@ def content(d: ContentDraft, full: bool = True) -> dict:
     return out
 
 
-def prospect(p: Prospect) -> dict:
-    return {"id": p.id, "nama": p.nama, "alamat": p.alamat, "wilayah": p.wilayah, "lat": p.lat, "lng": p.lng,
+def prospect(p: Prospect, conversation_id: int | None = None) -> dict:
+    from .prospects.mapper import wa_number
+
+    return {"id": p.id, "nama": p.nama, "wa": wa_number(p.telepon), "conversation_id": conversation_id,
+            "catatan": p.catatan, "tindak_lanjut_pada": ts(p.tindak_lanjut_pada), "pic": p.pic, "jaringan": p.jaringan, "alamat": p.alamat, "wilayah": p.wilayah, "lat": p.lat, "lng": p.lng,
             "tipe": p.tipe, "telepon": p.telepon, "website": p.website, "rating": p.rating,
             "jumlah_ulasan": p.jumlah_ulasan, "jarak_km": p.jarak_km, "sudah_pelanggan": p.sudah_pelanggan,
             "skor": p.skor, "alasan_skor": p.alasan_skor, "draf_pesan": p.draf_pesan, "draf_verdict": p.draf_verdict,

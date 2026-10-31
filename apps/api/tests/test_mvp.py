@@ -51,7 +51,7 @@ def test_ledger_is_append_only(db):
 # ---------------------------------------------------------------- M2 Sales Assistant
 
 def test_catalog_answer_is_sourced(db):
-    r = handle_inbound(db, wa_number="t-katalog", text="ada produk untuk stamina?", kanal="webchat")
+    r = handle_inbound(db, external_user_id="t-katalog", text="ada produk untuk stamina?", channel="webchat")
     assert r.decision == "kirim"
     reply = r.replies[0]
     assert "POM" in reply.teks and any(s.get("chunk_id") for s in reply.sumber)
@@ -62,22 +62,22 @@ def test_catalog_answer_is_sourced(db):
 
 
 def test_discount_above_tier_escalates(db):
-    handle_inbound(db, wa_number="t-nego", text="harga 50 karton propolis tetes berapa?", kanal="webchat")
-    r = handle_inbound(db, wa_number="t-nego", text="Bisa diskon 30%?", kanal="webchat")
+    handle_inbound(db, external_user_id="t-nego", text="harga 50 karton propolis tetes berapa?", channel="webchat")
+    r = handle_inbound(db, external_user_id="t-nego", text="Bisa diskon 30%?", channel="webchat")
     assert r.intent == "negosiasi" and r.decision == "eskalasi" and r.approval_id
     conv = db.get(Conversation, r.conversation_id)
     assert conv.status == "eskalasi"
 
 
 def test_health_claim_question_is_refused(db):
-    r = handle_inbound(db, wa_number="t-klaim", text="bisa sembuhkan hipertensi?", kanal="webchat")
+    r = handle_inbound(db, external_user_id="t-klaim", text="bisa sembuhkan hipertensi?", channel="webchat")
     assert r.inbound_verdict == "blocked"
     assert r.verdict == "allowed"
     assert "tidak dapat memberikan klaim" in r.replies[0].teks
 
 
 def test_repeat_order_creates_draft(db):
-    r = handle_inbound(db, wa_number="6281200000001", text="pesan ulang seperti bulan lalu", kanal="webchat")
+    r = handle_inbound(db, channel="whatsapp", external_user_id="6281200000001", text="pesan ulang seperti bulan lalu")
     assert r.intent == "pesan_ulang" and r.approval_id
     assert "menunggu konfirmasi staf" in r.replies[0].teks
 
@@ -123,7 +123,7 @@ def test_kpi_from_ledger(client, auth):
 
 def test_staff_role_sees_masked_numbers(client, auth):
     items = client.get("/api/conversations", headers=auth).json()["items"]
-    wa = [i["contact"]["wa_number"] for i in items if i["contact"]["wa_number"].startswith("6281")]
+    wa = [i["contact"]["wa_number"] for i in items if (i["contact"]["wa_number"] or "").startswith("6281")]
     assert all("•" in w for w in wa)
 
 

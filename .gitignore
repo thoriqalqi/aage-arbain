@@ -11,6 +11,8 @@ __pycache__/
 *.db
 *.db-shm
 *.db-wal
+*.sqlite
+*.sqlite3
 
 # node / next
 node_modules/
@@ -24,3 +26,6 @@ next-env.d.ts
 Thumbs.db
 .vscode/
 .idea/
+
+# keluaran eval yang ditulis ulang setiap run
+apps/api/eval/hasil/kirim_stub.log

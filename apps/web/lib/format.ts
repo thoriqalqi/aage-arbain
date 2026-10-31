@@ -62,8 +62,31 @@ export function relativeTime(v: string | Date | null | undefined): string {
   return formatDateTime(v)
 }
 
-export function contactName(c: { nama_toko: string | null; wa_number: string } | null | undefined): string {
+export const CHANNEL_LABEL: Record<string, string> = { whatsapp: "WhatsApp", telegram: "Telegram", webchat: "Web chat" }
+
+export function channelLabel(kanal: string | null | undefined): string {
+  return (kanal && CHANNEL_LABEL[kanal]) || kanal || "Kanal"
+}
+
+type ContactLike = { nama_toko: string | null; nama_wa?: string | null; wa_number: string | null; channel?: string; external_user_id?: string }
+
+export function contactName(c: ContactLike | null | undefined): string {
   if (!c) return "Pembeli"
   if (c.nama_toko) return c.nama_toko
-  return c.wa_number.startsWith("web:") ? `Pengunjung web chat · ${c.wa_number.slice(-4)}` : c.wa_number
+  if (c.nama_wa) return c.nama_wa
+  if (c.wa_number) return c.wa_number
+  const id = c.external_user_id ?? ""
+  return c.channel === "webchat" ? `Pengunjung web chat · ${id.slice(-4)}` : `${channelLabel(c.channel)} · ${id.slice(-4)}`
+}
+
+/** Lama menunggu dalam menit (untuk SLA balasan staf). */
+export function minutesSince(v: string | null | undefined): number | null {
+  if (!v) return null
+  return Math.max(0, Math.floor((Date.now() - toDate(v).getTime()) / 60_000))
+}
+
+export function formatWait(min: number): string {
+  if (min < 60) return `${min} mnt`
+  if (min < 1440) return `${Math.floor(min / 60)} j ${min % 60} m`
+  return `${Math.floor(min / 1440)} hari`
 }

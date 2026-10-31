@@ -119,7 +119,7 @@ export function ScoreBar({ score, reasons, className }: { score: number; reasons
         <ul className="space-y-0.5">
           {reasons.map((r) => (
             <li key={r.faktor}>
-              +{r.poin}/{r.maks} {r.faktor}: {r.keterangan}
+              {r.poin < 0 ? r.poin : `+${r.poin}/${r.maks}`} {r.faktor}: {r.keterangan}
             </li>
           ))}
         </ul>

@@ -121,7 +121,7 @@ def test_webhook_processes_customer_message_once(client, db, monkeypatch):
     r = client.post("/api/webhook/wati?token=token-uji", json=payload)
     assert r.status_code == 200 and r.json()["diterima"] == 1
     client.post("/api/webhook/wati?token=token-uji", json=payload)  # WATI mengirim ulang
-    rows = db.scalars(select(Message).where(Message.wa_message_id == "wati:uji-webhook-1")).all()
+    rows = db.scalars(select(Message).where(Message.external_message_id == "wati:uji-webhook-1")).all()
     assert len(rows) == 1 and rows[0].arah == "masuk"
 
 
@@ -135,8 +135,8 @@ def test_sender_routes_whatsapp_through_wati(db, wati_on, monkeypatch):
 
     sent = []
     monkeypatch.setattr(wati, "send_text", lambda to, text: sent.append((to, text)) or (True, "wati:x", None))
-    r = handle_inbound(db, wa_number="6287700000002", text="ada produk untuk stamina?", kanal="whatsapp")
+    r = handle_inbound(db, external_user_id="6287700000002", text="ada produk untuk stamina?", channel="whatsapp")
     assert r.decision == "kirim"
     assert sent and sent[0][0] == "6287700000002"
-    assert r.replies[0].status_kirim == "terkirim" and r.replies[0].wa_message_id == "wati:x"
+    assert r.replies[0].status_kirim == "terkirim" and r.replies[0].external_message_id == "wati:x"
     db.rollback()

@@ -1,8 +1,8 @@
 "use client"
 
-import { AlertTriangle, Clock, Download, LoaderCircle, MapPinned, Phone, Radar } from "lucide-react"
+import { AlertTriangle, CalendarClock, ChevronRight, Clock, Download, LoaderCircle, MapPinned, MessageCircle, Phone, Radar } from "lucide-react"
 import dynamic from "next/dynamic"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import useSWR from "swr"
 
@@ -124,6 +124,27 @@ export default function ProspekPage() {
   }
 
   const zonaEmas = shown.filter((p) => p.skor_geo === 70).length
+  const funnel = useMemo(() => {
+    const urutan: Record<string, number> = { baru: 0, dihubungi: 1, merespons: 2, pelanggan: 3 }
+    const at = (n: number) => shown.filter((p) => (urutan[p.status] ?? -1) >= n).length
+    return [
+      { label: "Dipindai", n: shown.length },
+      { label: "Dihubungi", n: at(1) },
+      { label: "Merespons", n: at(2) },
+      { label: "Pelanggan", n: at(3) },
+    ]
+  }, [shown])
+  const jatuhTempo = shown.filter(
+    (p) => p.tindak_lanjut_pada && new Date(p.tindak_lanjut_pada) <= new Date() && p.status !== "pelanggan" && p.status !== "menolak",
+  )
+
+  // Tautan dari Inbox: /leads?prospek=ID membuka drawer prospek tersebut.
+  useEffect(() => {
+    const id = Number(new URLSearchParams(window.location.search).get("prospek"))
+    if (!id || selected) return
+    const found = shown.find((p) => p.id === id)
+    if (found) setSelected(found)
+  }, [shown]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-5">
@@ -131,6 +152,36 @@ export default function ProspekPage() {
         title="Leads"
         description="Pemetaan apotek, toko obat, dan minimarket dari OpenStreetMap, dinilai dengan Opportunity Score 0–100. Hanya kontak inbound/opt-in yang dihubungi."
       />
+
+      {shown.length > 0 && (
+        <Panel className="flex flex-wrap items-stretch gap-2 p-3">
+          {funnel.map((f, i) => (
+            <div key={f.label} className="flex min-w-[8rem] flex-1 items-center gap-2">
+              <div className="flex-1 rounded-xl bg-soft px-3 py-2">
+                <div className="text-[12px] text-muted-foreground">{f.label}</div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="tabular text-[22px] font-semibold">{f.n}</span>
+                  {i > 0 && funnel[i - 1].n > 0 && (
+                    <span className="text-[12px] text-subtle-foreground">{Math.round((f.n / funnel[i - 1].n) * 100)}%</span>
+                  )}
+                </div>
+              </div>
+              {i < funnel.length - 1 && <ChevronRight className="size-4 shrink-0 text-subtle-foreground" aria-hidden />}
+            </div>
+          ))}
+          <button
+            onClick={() => jatuhTempo[0] && setSelected(jatuhTempo[0])}
+            disabled={!jatuhTempo.length}
+            className={cn(
+              "flex min-w-[9rem] flex-col justify-center rounded-xl px-3 py-2 text-left",
+              jatuhTempo.length ? "bg-escalate-bg text-escalate" : "bg-soft text-muted-foreground",
+            )}
+          >
+            <span className="flex items-center gap-1 text-[12px]"><CalendarClock className="size-3.5" /> Tindak lanjut jatuh tempo</span>
+            <span className="tabular text-[22px] font-semibold">{jatuhTempo.length}</span>
+          </button>
+        </Panel>
+      )}
 
       <Panel className="flex flex-wrap items-end gap-3 p-4">
         <label className="grid gap-1 text-[12px] text-muted-foreground">
@@ -252,7 +303,11 @@ export default function ProspekPage() {
                     <ScoreBar score={p.skor} reasons={p.alasan_skor} />
                   </td>
                   <td className="px-3 py-2.5">
-                    <div className="font-medium">{p.nama}</div>
+                    <div className="flex items-center gap-1.5 font-medium">
+                      {p.nama}
+                      {p.jaringan && <span className="rounded-full bg-review-bg px-1.5 text-[11px] font-medium text-review">Jaringan</span>}
+                      {p.conversation_id && <MessageCircle className="size-3.5 text-ok" aria-label="Sudah chat WhatsApp" />}
+                    </div>
                     <div className={cn("line-clamp-1 text-[12px]", p.alamat_jalan_ada ? "text-muted-foreground" : "text-subtle-foreground italic")}>{p.alamat}</div>
                   </td>
                   <td className="tabular px-3 py-2.5 whitespace-nowrap">{p.jarak_km != null ? `${p.jarak_km.toLocaleString("id-ID")} km` : "—"}</td>
@@ -272,6 +327,11 @@ export default function ProspekPage() {
                   </td>
                   <td className="px-3 py-2.5">
                     <span className={cn("inline-flex h-6 items-center rounded-full px-2 text-[12px] font-medium", STATUS[p.status].cls)}>{STATUS[p.status].label}</span>
+                    {p.tindak_lanjut_pada && p.status !== "pelanggan" && p.status !== "menolak" && (
+                      <div className={cn("mt-0.5 text-[11.5px]", new Date(p.tindak_lanjut_pada) <= new Date() ? "font-semibold text-escalate" : "text-subtle-foreground")}>
+                        Follow-up {formatDateTime(p.tindak_lanjut_pada)}
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

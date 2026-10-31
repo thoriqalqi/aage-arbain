@@ -7,6 +7,7 @@ Staf yang menghubungi prospek — sistem tidak mengirim pesan massal."""
 import csv
 import io
 import logging
+import re
 import threading
 import time
 
@@ -23,7 +24,8 @@ BACKGROUND_BUDGET_S = 120.0
 _bg_lock = threading.Lock()
 _bg_running: set[tuple[str, str]] = set()
 
-STATUSES = ["baru", "dihubungi", "merespons", "menolak"]
+STATUSES = ["baru", "dihubungi", "merespons", "pelanggan", "menolak"]
+_URUTAN = {s: i for i, s in enumerate(STATUSES[:4])}  # tahap funnel; "menolak" di luar urutan
 _LEGACY_TIPE = {"Apotek": "apotek", "Toko Obat": "toko obat", "Minimarket": "minimarket"}
 
 
@@ -96,7 +98,10 @@ def background_running(wilayah: str, jenis: str) -> bool:
 
 
 def _store(db: Session, res: "lead_service.ScoutResult", wilayah: str, jenis: str, aktor: str, started: float) -> dict:
-    customers = {(c.nama_toko or "").strip().lower() for c in db.scalars(select(Contact)) if c.nama_toko}
+    contacts = list(db.scalars(select(Contact)))
+    customers = {(c.nama_toko or "").strip().lower() for c in contacts if c.nama_toko}
+    customer_phones = {c.wa_number for c in contacts if c.wa_number}
+    linked = {c.prospect_id for c in contacts if c.prospect_id}
     trace = ledger.new_trace_id()
     stored: list[Prospect] = []
     baru = 0
@@ -116,7 +121,9 @@ def _store(db: Session, res: "lead_service.ScoutResult", wilayah: str, jenis: st
         p.rating, p.jumlah_ulasan = None, None  # OSM tidak menyediakan rating — tidak dikarang
         p.jarak_km, p.skor, p.skor_geo, p.skor_data = s["jarak_km"], s["skor"], s["skor_geo"], s["skor_data"]
         p.alasan_skor = s["alasan"]
-        p.sudah_pelanggan = lead["name"].strip().lower() in customers
+        p.jaringan = s["jaringan"]
+        p.sudah_pelanggan = (lead["name"].strip().lower() in customers or p.id in linked
+                             or (wa_number(p.telepon) or "-") in customer_phones)
         p.sumber = "osm"
         p.terakhir_dipindai = lead["last_scanned_at"]
         if is_new or not p.draf_pesan:
@@ -139,19 +146,91 @@ def _store(db: Session, res: "lead_service.ScoutResult", wilayah: str, jenis: st
             "prospects": stored}
 
 
-def update_status(db: Session, prospect_id: int, status: str, aktor: str) -> Prospect:
+def wa_number(phone: str | None) -> str | None:
+    """Nomor OSM ("+62 812-…", "0812 …", "024 …") → format WhatsApp 62xxxxxxxxxx. None bila tidak masuk akal."""
+    if not phone:
+        return None
+    digits = re.sub(r"\D", "", phone.split(";")[0])
+    if digits.startswith("0"):
+        digits = "62" + digits[1:]
+    elif digits.startswith("8"):
+        digits = "62" + digits
+    return digits if digits.startswith("62") and 10 <= len(digits) <= 15 else None
+
+
+def _set_status(db: Session, p: Prospect, status: str, aktor: str, alasan: str | None = None) -> None:
     if status not in STATUSES:
         raise ValueError(f"Status harus salah satu dari: {', '.join(STATUSES)}")
+    if status == p.status:
+        return
+    old = p.status
+    p.status = status
+    if status == "pelanggan":
+        p.sudah_pelanggan = True
+    ledger.record(db, "prospek_status", objek_ref=f"prospect:{p.id}", aktor=aktor, alasan=alasan or "",
+                  ringkasan=f"{p.nama}: {old} → {status}", outcome=status, model=None,
+                  data={"dari": old, "ke": status, "wilayah": p.wilayah})
+
+
+def update_status(db: Session, prospect_id: int, status: str, aktor: str) -> Prospect:
+    return update(db, prospect_id, aktor, status=status)
+
+
+def update(db: Session, prospect_id: int, aktor: str, *, status: str | None = None, catatan: str | None = None,
+           tindak_lanjut_pada=None, pic: str | None = None, fields: set[str] | None = None) -> Prospect:
+    """Perbarui status/catatan/tindak lanjut/PIC. `fields` = kolom yang dikirim (agar bisa dikosongkan)."""
     p = db.get(Prospect, prospect_id)
     if p is None:
         raise LookupError("Prospek tidak ditemukan")
-    old = p.status
-    p.status = status
-    ledger.record(db, "prospek_status", objek_ref=f"prospect:{p.id}", aktor=aktor,
-                  ringkasan=f"{p.nama}: {old} → {status}", outcome=status, model=None,
-                  data={"dari": old, "ke": status, "wilayah": p.wilayah})
+    if status is not None:
+        _set_status(db, p, status, aktor)
+    fields = fields or set()
+    changed = {}
+    for key, val in (("catatan", catatan), ("tindak_lanjut_pada", tindak_lanjut_pada), ("pic", pic)):
+        if key in fields and getattr(p, key) != val:
+            setattr(p, key, val)
+            changed[key] = val.isoformat() if hasattr(val, "isoformat") else val
+    if changed:
+        ledger.record(db, "prospek_diperbarui", objek_ref=f"prospect:{p.id}", aktor=aktor, model=None,
+                      ringkasan=f"{p.nama}: {', '.join(changed)} diperbarui", data=changed)
     db.commit()
     return p
+
+
+def link_contact(db: Session, contact: Contact) -> Prospect | None:
+    """Pesan WA dari nomor prospek → tautkan kontak ke prospek dan naikkan status ke "merespons"."""
+    if contact.prospect_id or not contact.wa_number.isdigit():
+        return None
+    for p in db.scalars(select(Prospect).where(Prospect.telepon.is_not(None))):
+        if wa_number(p.telepon) == contact.wa_number:
+            contact.prospect_id = p.id
+            contact.nama_toko = contact.nama_toko or p.nama
+            contact.tipe_toko = contact.tipe_toko or p.tipe
+            ledger.record(db, "prospek_ditautkan", objek_ref=f"prospect:{p.id}", aktor="sistem", model=None,
+                          ringkasan=f"{p.nama} menghubungi lewat WhatsApp", outcome=p.status,
+                          data={"contact_id": contact.id})
+            if _URUTAN.get(p.status, 99) < _URUTAN["merespons"]:
+                _set_status(db, p, "merespons", "sistem", "Prospek mengirim pesan WhatsApp")
+            return p
+    return None
+
+
+def mark_customer(db: Session, contact: Contact, aktor: str) -> None:
+    """Draf pesanan prospek dikonfirmasi staf → prospek menjadi pelanggan."""
+    p = db.get(Prospect, contact.prospect_id) if contact.prospect_id else None
+    if p is not None and p.status != "pelanggan":
+        _set_status(db, p, "pelanggan", aktor, "Pesanan pertama dikonfirmasi staf")
+
+
+def funnel(prospects: list[Prospect]) -> dict:
+    tahap = {"dipindai": len(prospects), "dihubungi": 0, "merespons": 0, "pelanggan": 0}
+    for p in prospects:
+        u = _URUTAN.get(p.status, -1)
+        tahap["dihubungi"] += u >= _URUTAN["dihubungi"]
+        tahap["merespons"] += u >= _URUTAN["merespons"]
+        tahap["pelanggan"] += u >= _URUTAN["pelanggan"]
+    tahap["menolak"] = sum(p.status == "menolak" for p in prospects)
+    return tahap
 
 
 def to_csv(prospects: list[Prospect]) -> str:
@@ -166,4 +245,5 @@ def to_csv(prospects: list[Prospect]) -> str:
     return buf.getvalue()
 
 
-__all__ = ["JENIS_TOKO", "STATUSES", "ScoutError", "scout_and_store", "to_csv", "update_status"]
+__all__ = ["JENIS_TOKO", "STATUSES", "ScoutError", "funnel", "link_contact", "mark_customer", "scout_and_store",
+           "to_csv", "update", "update_status", "wa_number"]

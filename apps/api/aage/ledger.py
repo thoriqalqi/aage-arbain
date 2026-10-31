@@ -35,9 +35,17 @@ EVENT_TYPES = {
     "agen_hitl": "Agen: menunggu persetujuan manusia",
     "agen_claimguard": "Agen ClaimGuard: audit",
     "invoice_dikirim": "Invoice dikirim",
+    "compliance_audit": "ClaimGuard Compliance Check",
+    "compliance_tindakan": "Tindakan manusia atas draf (Compliance)",
     "pengaturan_diubah": "Pengaturan diubah",
     "evaluasi_dimulai": "Evaluasi dimulai",
     "evaluasi_selesai": "Evaluasi selesai",
+    "ambil_alih": "Percakapan diambil alih staf",
+    "ambil_alih_selesai": "Percakapan dikembalikan ke AI",
+    "saran_ai": "Saran AI untuk staf",
+    "kontak_diubah": "Profil toko diubah",
+    "prospek_diperbarui": "Prospek diperbarui",
+    "prospek_ditautkan": "Prospek ditautkan ke percakapan",
 }
 
 

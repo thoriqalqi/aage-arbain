@@ -65,6 +65,62 @@ def _add_missing_columns() -> None:
                 conn.execute(text(f'ALTER TABLE {table.name} ADD COLUMN "{col.name}" {ddl}'))
 
 
+def _rebuild_sqlite_table(table) -> None:
+    """SQLite tidak bisa mengubah constraint kolom: buat tabel baru → salin → hapus lama → ganti nama
+    (prosedur resmi SQLite "ALTER TABLE" §7), dengan foreign key dimatikan sementara."""
+    from sqlalchemy import inspect
+    from sqlalchemy.schema import CreateIndex, CreateTable
+
+    old_cols = {c["name"] for c in inspect(engine).get_columns(table.name)}
+    cols = ", ".join(f'"{c.name}"' for c in table.columns if c.name in old_cols)
+    tmp = f"{table.name}_baru"
+    create = str(CreateTable(table).compile(engine)).strip().replace(f"CREATE TABLE {table.name} ", f"CREATE TABLE {tmp} ", 1)
+    indexes = "".join(f"{str(CreateIndex(i).compile(engine)).strip()};" for i in table.indexes)
+    raw = engine.raw_connection()
+    try:
+        cur = raw.cursor()
+        cur.execute("PRAGMA foreign_keys=OFF")
+        cur.executescript(f"BEGIN; {create}; INSERT INTO {tmp} ({cols}) SELECT {cols} FROM {table.name}; "
+                          f"DROP TABLE {table.name}; ALTER TABLE {tmp} RENAME TO {table.name}; {indexes} COMMIT;")
+        cur.execute("PRAGMA foreign_keys=ON")
+    finally:
+        raw.close()
+
+
+def _migrate_channel_identity() -> None:
+    """Migrasi 31 Okt 2026: kontak diidentifikasi (channel, external_user_id), bukan lagi wa_number yang wajib & unik;
+    Message.wa_message_id → external_message_id. Idempoten, dijalankan setiap start setelah _add_missing_columns."""
+    from sqlalchemy import inspect
+
+    from .models import Contact
+
+    insp = inspect(engine)
+    if not insp.has_table("contacts"):
+        return
+    with engine.begin() as conn:
+        conn.execute(text(
+            "UPDATE contacts SET channel = CASE WHEN wa_number LIKE 'web:%' THEN 'webchat' ELSE 'whatsapp' END, "
+            "external_user_id = CASE WHEN wa_number LIKE 'web:%' THEN substr(wa_number, 5) ELSE wa_number END "
+            "WHERE external_user_id IS NULL"))
+    wa = next((c for c in insp.get_columns("contacts") if c["name"] == "wa_number"), None)
+    if wa is not None and not wa["nullable"]:
+        if IS_POSTGRES:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE contacts ALTER COLUMN wa_number DROP NOT NULL"))
+                conn.execute(text("DROP INDEX IF EXISTS ix_contacts_wa_number"))  # indeks UNIQUE lama
+                conn.execute(text("CREATE INDEX ix_contacts_wa_number ON contacts (wa_number)"))
+        else:
+            _rebuild_sqlite_table(Contact.__table__)
+    with engine.begin() as conn:
+        conn.execute(text("UPDATE contacts SET wa_number = NULL WHERE channel = 'webchat' AND wa_number LIKE 'web:%'"))
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_contact_kanal_id ON contacts (channel, external_user_id)"))
+        if insp.has_table("messages"):
+            if "wa_message_id" in {c["name"] for c in insp.get_columns("messages")}:
+                conn.execute(text("UPDATE messages SET external_message_id = wa_message_id "
+                                  "WHERE external_message_id IS NULL AND wa_message_id IS NOT NULL"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_messages_external_message_id ON messages (external_message_id)"))
+
+
 def init_db(drop: bool = False) -> None:
     from . import ledger_chain, models, settings_store  # noqa: F401  (registrasi tabel)
 
@@ -75,6 +131,7 @@ def init_db(drop: bool = False) -> None:
         Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
     _add_missing_columns()
+    _migrate_channel_identity()
     if IS_POSTGRES:
         with engine.begin() as conn:
             conn.execute(text(LEDGER_GUARD_SQL))

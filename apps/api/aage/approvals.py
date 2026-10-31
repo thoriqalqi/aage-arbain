@@ -4,7 +4,7 @@ diperiksa ClaimGuard — staf pun tidak bisa mengirim klaim yang diblokir."""
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import claimguard, clock, ledger
+from . import claimguard, clock, inbox, ledger
 from .channels import sender
 from .models import Approval, ContentDraft, Conversation, LedgerEvent, OrderDraft, User
 
@@ -77,11 +77,18 @@ def decide(db: Session, approval_id: int, *, aksi: str, user: User, teks: str | 
             sender.send(db, conv, text, check=check, pengirim="staf", trace_id=ap.trace_id, aktor=actor,
                         approval_id=ap.id, sources=[{"jenis": "approval", "approval_id": ap.id}],
                         inbound_at=ap.dibuat_pada)
-            conv.status = "otomatis"
+            if conv.status == inbox.DITANGANI_STAF:
+                conv.aktivitas_staf_terakhir = clock.now()
+            else:
+                conv.status = "otomatis"
         if ap.objek_tipe == "order_draft" and ap.objek_id:
             od = db.get(OrderDraft, ap.objek_id)
             if od:
                 od.status = "dikonfirmasi staf"
+                if conv is not None:
+                    from .prospects.mapper import mark_customer
+
+                    mark_customer(db, conv.contact, actor)
         ap.status = "disetujui"
         if aksi == "edit":
             ap.draf = text

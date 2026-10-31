@@ -5,9 +5,12 @@
         2–8 km   zona emas → 70 penuh
         > 8 km   turun linear dari 70 ke 0 di SKOR_JARAK_NOL_KM (30 km)
     Data Completeness (maks 30)  telepon +10 · jam operasional +10 · nama jalan (addr:street) +10
+    Penyesuaian jaringan (−25)  cabang jaringan nasional (Kimia Farma, K-24, Guardian, Indomaret, …) umumnya
+                                 membeli lewat kantor pusat, jadi bukan target utama sales lapangan distributor
 """
 
 import math
+import re
 
 from ..config import get_settings
 
@@ -38,11 +41,26 @@ def data_completeness(phone: str | None, opening_hours: str | None, has_street: 
     return (10.0 if phone else 0.0) + (10.0 if opening_hours else 0.0) + (10.0 if has_street else 0.0)
 
 
+PENALTI_JARINGAN = 25
+_JARINGAN = {
+    r"kimia\s*farma": "Kimia Farma", r"\bk[\s-]?24\b|apotek\s*k24": "K-24", r"guardian": "Guardian",
+    r"century": "Century", r"watsons": "Watsons", r"\broxy\b": "Roxy", r"indomaret": "Indomaret", r"alfa\s*(?:mart|midi|express)": "Alfamart",
+    r"lawson": "Lawson", r"family\s*mart": "FamilyMart", r"circle\s*k": "Circle K", r"superindo": "Superindo",
+}
+
+
+def national_chain(name: str, brand: str | None = None) -> str | None:
+    hay = f"{name} {brand or ''}".lower()
+    return next((label for pola, label in _JARINGAN.items() if re.search(pola, hay)), None)
+
+
 def opportunity_score(lead: dict) -> dict:
     """Kembalikan skor total + rincian transparan untuk ditampilkan di popup/tabel."""
     jarak = haversine_km(settings.gudang_lat, settings.gudang_lng, lead["latitude"], lead["longitude"])
     geo = geographic_fit(jarak)
     data = data_completeness(lead.get("phone"), lead.get("opening_hours"), lead.get("has_street", False))
+    jaringan = national_chain(lead.get("name", ""), lead.get("brand"))
+    penalti = PENALTI_JARINGAN if jaringan else 0
     lo, hi = settings.skor_zona_emas_min_km, settings.skor_zona_emas_max_km
     zona = "zona emas" if lo <= jarak <= hi else ("terlalu dekat gudang" if jarak < lo else "di luar zona emas")
     alasan = [
@@ -55,5 +73,8 @@ def opportunity_score(lead: dict) -> dict:
         {"faktor": "Nama jalan", "poin": 10 if lead.get("has_street") else 0, "maks": 10,
          "keterangan": lead.get("address") if lead.get("has_street") else "tidak ada di OSM"},
     ]
-    return {"skor": int(round(geo + data)), "skor_geo": round(geo, 1), "skor_data": data,
-            "jarak_km": round(jarak, 2), "alasan": alasan}
+    if jaringan:
+        alasan.append({"faktor": "Jaringan nasional", "poin": -penalti, "maks": 0,
+                       "keterangan": f"{jaringan} — pembelian umumnya terpusat di kantor pusat"})
+    return {"skor": max(0, int(round(geo + data - penalti))), "skor_geo": round(geo, 1), "skor_data": data,
+            "jarak_km": round(jarak, 2), "alasan": alasan, "jaringan": jaringan}

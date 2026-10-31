@@ -1,5 +1,6 @@
 """Logika dagang Sales Agent: tier diskon dari `pricing_rules` dan penyusunan draf pesanan."""
 
+import re
 from dataclasses import dataclass
 
 from sqlalchemy import select
@@ -92,6 +93,45 @@ def format_order(items: list[dict], nama_toko: str | None, alamat: str | None, t
         + (f"\nToko: {nama_toko}" if nama_toko else "")
         + (f"\nAlamat: {alamat}" if alamat else "")
     )
+
+
+_SEGMEN_RE = re.compile(r"\s*(?:\+|,|;|\n|&|\bdan\b|\bserta\b)\s*", re.IGNORECASE)
+_ANGKA_RE = re.compile(r"(?<![\w-])(\d{1,4})(?!\w|\s*(?:mg|ml|g|gr|gram|iu|mcg|kapsul|tablet|sachet|%|persen))", re.IGNORECASE)
+
+
+def parse_order_lines(db: Session, text: str) -> list[tuple[Product, int]]:
+    """"10 box jahe merah + 5 box propolis" → [(Jahe Merah…, 10), (Propolis…, 5)]. Angka yang bagian dari nama
+    produk ("Habbatussauda 120", "Omega-3") tidak dianggap jumlah."""
+    from ..kb.retriever import find_products
+    from .router import QTY_RE
+
+    out: list[tuple[Product, int]] = []
+    for seg in _SEGMEN_RE.split(text):
+        found = find_products(db, seg, limit=1) if seg.strip() else []
+        if not found or any(p.id == found[0].id for p, _ in out):
+            continue
+        p = found[0]
+        m = QTY_RE.search(seg)
+        qty = int(m.group(1)) if m else None
+        if qty is None:
+            name_nums = set(re.findall(r"\d+", p.nama))
+            qty = next((int(a.group(1)) for a in _ANGKA_RE.finditer(seg) if a.group(1) not in name_nums), None)
+        if qty:
+            out.append((p, qty))
+    return out
+
+
+def moq_note(lines: list[tuple[Product, int]]) -> str | None:
+    """Kebijakan: MOQ 5 box per produk; pembelian campuran boleh selama total minimal 10 box."""
+    total = sum(q for _, q in lines)
+    kurang = [p for p, q in lines if q < p.moq]
+    if not kurang:
+        return None
+    if len(lines) > 1 and total >= 10:
+        return None
+    if len(lines) > 1:
+        return f"Catatan: pembelian campuran minimal total 10 box (saat ini {total} box)."
+    return f"Catatan: minimum order {kurang[0].moq} {kurang[0].satuan_grosir} per produk."
 
 
 def ensure_contact_details(contact: Contact, slots: dict) -> None:

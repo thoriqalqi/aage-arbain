@@ -1,5 +1,6 @@
 """Retriever RAG hibrida: kemiripan embedding (pgvector di Postgres) + kecocokan kata kunci produk."""
 
+import difflib
 import re
 from dataclasses import dataclass
 
@@ -63,7 +64,12 @@ def retrieve(db: Session, query: str, *, k: int = 4, product_ids: list[int] | No
 
 _UNITS = {"mg", "g", "gr", "ml", "iu", "mcg", "cfu", "kg"}
 _GENERIC = {"kapsul", "madu", "minyak", "teh", "serbuk", "sirup", "susu", "tablet", "herbal", "anak", "sachet", "botol",
-            "instan", "tetes", "kantong", "murni", "plus", "lunak", "isi", "dan"}
+            "instan", "tetes", "kantong", "murni", "plus", "lunak", "isi", "dan",
+            "vitamin"}  # "vitamin E" tidak boleh cocok ke "Vitamin D3" hanya karena kata "vitamin"
+# Kata sehari-hari di nama produk: tidak cukup sendirian untuk menebak produk ("tempat makan" ≠ "Madu Nafsu Makan",
+# "salam kenal" ≠ "Kapsul Daun Salam"). Bila nama disebut lengkap ("daun salam", "nafsu makan") tetap cocok.
+_LEMAH = {"makan", "salam", "putih", "merah", "emas", "asam", "kucing", "tunggal", "besi", "ikan", "beras", "lidah",
+          "daun", "biji", "extra", "kompleks", "rileks", "stamina", "hutan", "dewasa", "buaya"}
 
 
 def _name_tokens(text: str) -> list[str]:
@@ -71,12 +77,35 @@ def _name_tokens(text: str) -> list[str]:
     return [t for t in re.findall(r"[a-z0-9]+", text.lower()) if t not in _UNITS and not t.isdigit()]
 
 
-def find_products(db: Session, text: str, limit: int = 3) -> list[Product]:
+def _fix_typos(text: str, products: list[Product]) -> str:
+    """Koreksi salah ketik nama khas produk ("habatusauda" → "habbatussauda"); hanya token ≥6 huruf, kemiripan ≥0.8.
+    Kata 5 huruf terlalu mudah tertukar dengan kata sehari-hari ("bantu" → "batuk")."""
+    vocab = sorted({t for p in products for t in _name_tokens(p.nama) if t not in _GENERIC and len(t) >= 5})
+    out = []
+    for tok in re.findall(r"[a-z0-9]+", text.lower()):
+        if len(tok) >= 6 and tok not in vocab and (m := difflib.get_close_matches(tok, vocab, n=1, cutoff=0.8)):
+            tok = m[0]
+        out.append(tok)
+    return " ".join(out)
+
+
+def find_products(db: Session, text: str, limit: int = 3, _typo_fixed: bool = False) -> list[Product]:
     """Cari produk yang disebut eksplisit (nama/SKU). Skor = cakupan token khas nama; seri dipecah dengan
     token umum ("kapsul", "teh", "instan") agar "Kapsul Jahe Merah" ≠ "Jahe Merah Instan"."""
     low = text.lower()
     products = list(db.scalars(select(Product).where(Product.aktif.is_(True))))
-    q_all = {stem(t) for t in _name_tokens(text)}
+    if _typo_fixed is False and not _match(low, products):
+        fixed = _fix_typos(text, products)
+        if fixed != " ".join(re.findall(r"[a-z0-9]+", low)):
+            return find_products(db, fixed, limit, _typo_fixed=True)
+    return _match(low, products)[:limit]
+
+
+def _match(low: str, products: list[Product]) -> list[Product]:
+    q_all = {stem(t) for t in _name_tokens(low)}
+    # Huruf tunggal hanya bermakna bila menempel pada "vitamin" ("vitamin c"); "yang B" bukan Vitamin B Kompleks.
+    huruf_vitamin = set(re.findall(r"\bvitamin\s+([a-z])\b", low))
+    lemah = {stem(t) for t in _LEMAH}
     scored = []
     for p in products:
         if p.sku.lower() in low:
@@ -86,12 +115,14 @@ def find_products(db: Session, text: str, limit: int = 3) -> list[Product]:
         name_terms = {t for t in all_terms if t not in _GENERIC}
         if not name_terms:
             continue
-        overlap = len(q_all & name_terms) / len(name_terms)
-        if overlap >= 0.5:
+        shared = q_all & name_terms
+        overlap = len(shared) / len(name_terms)
+        kuat = {t for t in shared - lemah if len(t) > 1 or t in huruf_vitamin}
+        if overlap >= 0.5 and (overlap == 1 or kuat):
             tie = len(q_all & all_terms) / len(all_terms)
             scored.append((overlap, tie, p))
     scored.sort(key=lambda x: (x[0], x[1]), reverse=True)
-    return [p for _, _, p in scored[:limit]]
+    return [p for _, _, p in scored]
 
 
 def document_by_id(db: Session, doc_id: int) -> Document | None:

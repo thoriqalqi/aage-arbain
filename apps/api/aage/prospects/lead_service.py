@@ -99,6 +99,7 @@ def parse_elements(elements: list[dict], scanned_at: datetime) -> tuple[list[dic
             "phone": (tags.get("phone") or tags.get("contact:phone") or "").strip() or None,
             "opening_hours": (tags.get("opening_hours") or "").strip() or None,
             "website": (tags.get("website") or tags.get("contact:website") or "").strip() or None,
+            "brand": (tags.get("brand") or tags.get("operator") or "").strip() or None,
             "last_scanned_at": scanned_at,
         })
     return leads, skipped

@@ -8,6 +8,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -126,10 +127,16 @@ class Chunk(Base):
 
 
 class Contact(Base):
+    """Pelanggan diidentifikasi (channel, external_user_id) — orang yang sama di dua kanal = dua kontak."""
+
     __tablename__ = "contacts"
+    __table_args__ = (Index("uq_contact_kanal_id", "channel", "external_user_id", unique=True),)
     id: Mapped[int] = mapped_column(primary_key=True)
-    wa_number: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    channel: Mapped[str] = mapped_column(String(16), default="whatsapp")  # whatsapp | telegram | webchat
+    external_user_id: Mapped[str] = mapped_column(String(64))  # nomor WA / chat id Telegram / sesi web chat
+    wa_number: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)  # nomor telepon bila diketahui
     nama_toko: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    nama_wa: Mapped[str | None] = mapped_column(String(120), nullable=True)  # nama profil pembeli di kanal
     tipe_toko: Mapped[str | None] = mapped_column(String(40), nullable=True)
     alamat: Mapped[str | None] = mapped_column(Text, nullable=True)
     opt_in: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -141,9 +148,12 @@ class Conversation(Base):
     __tablename__ = "conversations"
     id: Mapped[int] = mapped_column(primary_key=True)
     contact_id: Mapped[int] = mapped_column(ForeignKey("contacts.id"), index=True)
-    kanal: Mapped[str] = mapped_column(String(16), default="whatsapp")  # whatsapp | webchat
-    status: Mapped[str] = mapped_column(String(16), default="otomatis")  # otomatis | eskalasi | ditahan
+    kanal: Mapped[str] = mapped_column(String(16), default="whatsapp")  # = contact.channel
+    status: Mapped[str] = mapped_column(String(16), default="otomatis")  # otomatis | eskalasi | ditahan | ditangani_staf
     intent_terakhir: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    ditangani_oleh: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    ditangani_sejak: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    aktivitas_staf_terakhir: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     konteks: Mapped[dict] = mapped_column(JSON, default=dict)
     diperbarui_pada: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
@@ -159,7 +169,7 @@ class Message(Base):
     pengirim: Mapped[str] = mapped_column(String(8), default="pembeli")  # pembeli | ai | staf
     teks: Mapped[str] = mapped_column(Text)
     status_kirim: Mapped[str] = mapped_column(String(16), default="diterima")
-    wa_message_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    external_message_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)  # id di kanal
     verdict: Mapped[str | None] = mapped_column(String(16), nullable=True)
     sumber: Mapped[list] = mapped_column(JSON, default=list)
     biaya_rp: Mapped[float] = mapped_column(Float, default=0)
@@ -238,7 +248,11 @@ class Prospect(Base):
     alasan_skor: Mapped[list] = mapped_column(JSON, default=list)
     draf_pesan: Mapped[str] = mapped_column(Text, default="")
     draf_verdict: Mapped[str | None] = mapped_column(String(16), nullable=True)
-    status: Mapped[str] = mapped_column(String(16), default="baru")  # baru | dihubungi | merespons | menolak
+    status: Mapped[str] = mapped_column(String(16), default="baru")  # baru | dihubungi | merespons | pelanggan | menolak
+    catatan: Mapped[str | None] = mapped_column(Text, nullable=True)
+    tindak_lanjut_pada: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    pic: Mapped[str | None] = mapped_column(String(80), nullable=True)  # staf penanggung jawab
+    jaringan: Mapped[str | None] = mapped_column(String(80), nullable=True)  # jaringan nasional (brand OSM / nama)
     sumber: Mapped[str] = mapped_column(String(24))  # osm (OpenStreetMap Overpass, data nyata)
     eksternal_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)  # mis. "osm:node/123"
     jam_buka: Mapped[str | None] = mapped_column(String(200), nullable=True)  # tag opening_hours
@@ -286,8 +300,74 @@ class LedgerEvent(Base):
     data: Mapped[dict] = mapped_column(JSON, default=dict)
 
 
+class MarketingDraft(Base):
+    """Draf materi pemasaran yang diperiksa ClaimGuard Compliance Check. Tidak pernah dihapus permanen (status dibuang)."""
+
+    __tablename__ = "marketing_drafts"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), index=True)
+    teks: Mapped[str] = mapped_column(Text)
+    # draf | diblokir | perlu_review | lolos_pemeriksaan | audit_gagal | menunggu_audit_ulang | disetujui | dibuang
+    status: Mapped[str] = mapped_column(String(24), default="draf", index=True)
+    versi: Mapped[int] = mapped_column(Integer, default=1)  # naik setiap teks berubah
+    dibuat_oleh: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    keputusan_oleh: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    keputusan_pada: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    catatan_keputusan: Mapped[str | None] = mapped_column(Text, nullable=True)
+    dibuat_pada: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    diperbarui_pada: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    product: Mapped[Product] = relationship()
+
+
+class ComplianceAudit(Base):
+    """Satu baris per audit ClaimGuard. Append-only di ORM (listener di bawah); teks penuh tidak disimpan di sini —
+    hanya hash + cuplikan bukti. Teks berada di marketing_drafts yang hanya bisa dibaca pengguna terautentikasi."""
+
+    __tablename__ = "compliance_audits"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    audit_id: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(80), unique=True, nullable=True)
+    product_sku: Mapped[str] = mapped_column(String(40), index=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), index=True)
+    draft_id: Mapped[int | None] = mapped_column(ForeignKey("marketing_drafts.id"), nullable=True, index=True)
+    draft_versi: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    input_text_hash: Mapped[str] = mapped_column(String(64))
+    text_length: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String(16), index=True)  # BLOCKED | NEED_REVIEW | ALLOWED | ERROR
+    stage: Mapped[str] = mapped_column(String(16))
+    reason: Mapped[str] = mapped_column(Text, default="")
+    violation_law: Mapped[str | None] = mapped_column(Text, nullable=True)
+    regulatory_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    matched_rules: Mapped[list] = mapped_column(JSON, default=list)
+    evidence: Mapped[list] = mapped_column(JSON, default=list)
+    references: Mapped[list] = mapped_column(JSON, default=list)
+    recommendation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    recommendation_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rules_version: Mapped[str] = mapped_column(String(24))
+    engine_version: Mapped[str] = mapped_column(String(40))
+    model_provider: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    model_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    model_info: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    status_draf_diperbarui: Mapped[bool] = mapped_column(Boolean, default=False)
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0)
+    actor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
+
+
 class LedgerImmutableError(RuntimeError):
     pass
+
+
+@event.listens_for(ComplianceAudit, "before_update")
+def _block_audit_update(*_):
+    raise LedgerImmutableError("compliance_audits bersifat append-only: audit lama disimpan sebagai riwayat")
+
+
+@event.listens_for(ComplianceAudit, "before_delete")
+def _block_audit_delete(*_):
+    raise LedgerImmutableError("compliance_audits bersifat append-only: audit tidak boleh dihapus")
 
 
 @event.listens_for(LedgerEvent, "before_update")

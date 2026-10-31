@@ -87,7 +87,7 @@ def run(offline: bool, rebuild_qa: bool) -> dict:
 
     def ask(session: str, text: str):
         t = time.perf_counter()
-        r = handle_inbound(db, wa_number=session, text=text, kanal="webchat")
+        r = handle_inbound(db, channel="webchat", external_user_id=session, text=text)
         latencies.append((time.perf_counter() - t) * 1000)
         return r
 

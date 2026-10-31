@@ -56,10 +56,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from aage.claimguard.rules import is_negated  # noqa: E402
+from aage.claimguard import registry as cg_registry  # noqa: E402
 from aage.claimguard.service import _product_name_re, _stage1  # noqa: E402  (aturan ClaimGuard yang sama dengan pipeline WA)
 
 PRODUCTS_PATH = Path(os.getenv("AAGE_PRODUCTS_PATH", ROOT / "config" / "mock_products.json"))
-REGULASI_PATH = ROOT / "config" / "regulasi_bpom.json"
 MODEL = os.getenv("AGENT_MODEL", "anthropic/claude-sonnet-5-5")
 GUDANG = {"nama": "Gudang CV Arba'in (contoh) — Semarang", "lat": -6.9932, "lng": 110.4203}
 
@@ -143,7 +143,8 @@ def db() -> ProductDB:
 
 
 def regulasi() -> dict:
-    return json.loads(REGULASI_PATH.read_text(encoding="utf-8"))
+    """Rujukan pasal dari registry terverifikasi (config/claimguard_registry.json)."""
+    return cg_registry.legacy_view()
 
 
 def rupiah(v: float) -> str:
@@ -408,7 +409,7 @@ _SENT = re.compile(r"[^.!?\n]+[.!?]*")
 
 def audit_compliance(text: str, product_id: str | None = None, sumber: str = "konten") -> dict:
     """ClaimGuard deterministik: larangan JSON produk (R20) + aturan regex R01–R19.
-    Kalimat melanggar dipotong; status BLOCKED/REVIEW/PASSED; rujukan pasal Perban BPOM 30/2023 disematkan."""
+    Kalimat melanggar dipotong; status BLOCKED/REVIEW/PASSED; rujukan pasal terverifikasi (Perban BPOM 34/2022 & 30/2023) disematkan."""
     reg = regulasi()
     pasal_map, pasal_def = reg["pemetaan_aturan"], reg["pasal"]
     products = [p for p in [db().get(product_id) if product_id else None] if p] or db().products
@@ -436,7 +437,7 @@ def audit_compliance(text: str, product_id: str | None = None, sumber: str = "ko
         if hits:
             sev = BLOCKED if any(h["severity"] == BLOCKED for h in hits) else REVIEW
             for h in hits:
-                h["pasal"] = [{"kode": k, **pasal_def[k]} for k in pasal_map.get(h["aturan"], ["P2A4"])]
+                h["pasal"] = [{"kode": k, **pasal_def[k]} for k in pasal_map.get(h["aturan"], []) if k in pasal_def]
             pelanggaran.append({"kalimat": s, "status": sev, "temuan": hits})
             worst = BLOCKED if sev == BLOCKED or worst == BLOCKED else REVIEW
             if sev == REVIEW:
@@ -498,7 +499,7 @@ def _make_tools() -> dict[str, list]:
 
     @tool("Audit Kepatuhan BPOM")
     def audit(teks: str, product_id: str = "") -> str:
-        """Audit teks terhadap kata_kunci_larangan_overclaim dan aturan klaim (Perban BPOM 30/2023). Mengembalikan status, pasal, dan teks terpotong."""
+        """Audit teks terhadap kata_kunci_larangan_overclaim dan aturan klaim (Perban BPOM 34/2022 & 30/2023). Mengembalikan status, pasal, dan teks terpotong."""
         return json.dumps(audit_compliance(teks, product_id or None), ensure_ascii=False)
 
     return {
@@ -710,7 +711,7 @@ class AAGECrew:
 
     def guard(self, teks: str, product_id: str | None, sumber: str) -> dict:
         s = self.stream
-        s.emit("claim_guard_agent", f"Menyaring keluaran {AGENT_LABEL.get(sumber, sumber)} terhadap Perban BPOM 30/2023…", "progress")
+        s.emit("claim_guard_agent", f"Menyaring keluaran {AGENT_LABEL.get(sumber, sumber)} terhadap Perban BPOM 34/2022 & 30/2023…", "progress")
         self._pause(0.5)
         audit = audit_compliance(teks, product_id, sumber)
         if audit["status"] == BLOCKED:

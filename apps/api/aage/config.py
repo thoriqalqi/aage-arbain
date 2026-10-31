@@ -4,6 +4,7 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
@@ -21,10 +22,21 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     llm_model: str = "gemini/gemini-2.5-flash"
     llm_judge_model: str = "gemini/gemini-2.5-pro"
-    llm_fallback_models: str = "gemini/gemini-2.0-flash"
+    llm_fallback_models: str = ""  # opsional, dipisah koma; kosong = tidak ada fallback diam-diam ke model lain
     embedding_model: str = "gemini/gemini-embedding-001"
     embedding_dim: int = 384
     llm_timeout_s: float = 8.0
+
+    # Provider: "gemini" (REST Gemini) | "openai_compat" (endpoint /chat/completions, mis. TokenHarbor) |
+    # kosong = otomatis (openai_compat bila LLM_API_KEY + LLM_BASE_URL terisi, selain itu gemini).
+    llm_provider_name: str = ""
+    llm_base_url: str = ""  # mis. https://tokenharbor.ai/v1
+    llm_api_key: str = ""
+    # False = Gemini Flash diminta tidak "berpikir" (thinkingBudget 0), agar token tidak habis untuk reasoning.
+    llm_reasoning: bool = False
+    # Harga per 1 juta token (USD) untuk menghitung biaya & budget cap. Sesuaikan dengan harga model yang dipakai.
+    llm_price_in_usd_per_m: float = 0.30
+    llm_price_out_usd_per_m: float = 2.50
     budget_daily_rp: float = 25_000
     budget_monthly_rp: float = 500_000
     usd_to_idr: float = 16_300
@@ -41,6 +53,7 @@ class Settings(BaseSettings):
     wa_phone_number_id: str = ""
     wa_graph_version: str = "v21.0"
     wa_reminder_template: str = ""
+    ambil_alih_jam: float = 4.0  # percakapan yang diambil alih staf kembali ke AI setelah sekian jam tanpa aktivitas staf
 
     # Penyedia WhatsApp: "meta" | "wati" | kosong = otomatis (wati bila WATI_API_KEY terisi, selain itu meta)
     wa_provider: str = ""
@@ -52,6 +65,11 @@ class Settings(BaseSettings):
     wati_channel_number: str = ""  # opsional, untuk akun multi-nomor: target "Channel:PhoneNumber"
     wati_allowlist: str = ""  # nomor uji dipisah koma; bila terisi, HANYA nomor ini yang benar-benar dikirimi
 
+    # Telegram Bot API — jalur uji live sebelum WhatsApp. Token dari @BotFather, tidak pernah dicetak ke log.
+    telegram_bot_token: str = ""
+    telegram_webhook_secret: str = ""  # wajib di luar env=dev; dikirim Telegram di header X-Telegram-Bot-Api-Secret-Token
+    telegram_allowlist: str = ""  # chat id dipisah koma; bila terisi, HANYA chat ini yang diproses & dibalas
+
     # Fonnte (gateway WhatsApp lokal) untuk kirim invoice yang disetujui staf
     fonnte_token: str = ""
 
@@ -59,6 +77,12 @@ class Settings(BaseSettings):
     agent_model: str = "anthropic/claude-sonnet-5-5"
     anthropic_api_key: str = ""
     agent_mode: str = "auto"  # auto | llm | simulasi
+
+    # ClaimGuard & Compliance Check (src/compliance/claim_guard.py). Versi aturan ada di config/claimguard_registry.json.
+    claimguard_model: str = "claude-sonnet-5-5"  # model Anthropic untuk analisis konteks (Tahap B)
+    claimguard_max_text_length: int = 12_000
+    claimguard_llm_timeout_s: float = 30.0
+    claimguard_llm_failure_status: str = "ERROR"  # ERROR | NEED_REVIEW bila LLM tidak tersedia/gagal; tidak pernah ALLOWED
 
     # Prospek: Live Lead Scouting (OpenStreetMap Overpass, tanpa API key) + Opportunity Score
     serper_api_key: str = ""  # Live AI Search Audit (google.serper.dev); kosong = tidak terhubung
@@ -78,7 +102,16 @@ class Settings(BaseSettings):
 
     @property
     def llm_enabled(self) -> bool:
+        if self.llm_provider == "openai_compat":
+            return bool(self.llm_api_key and self.llm_base_url)
         return bool(self.gemini_api_key)
+
+    @property
+    def llm_provider(self) -> str:
+        name = self.llm_provider_name.strip().lower()
+        if name in ("gemini", "openai_compat"):
+            return name
+        return "openai_compat" if self.llm_api_key and self.llm_base_url else "gemini"
 
     @property
     def meta_enabled(self) -> bool:
@@ -98,6 +131,7 @@ class Settings(BaseSettings):
     @property
     def wa_enabled(self) -> bool:
         return self.wati_enabled if self.wa_channel == "wati" else self.meta_enabled
+
 
 @lru_cache
 def get_settings() -> Settings:

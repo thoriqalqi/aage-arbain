@@ -28,24 +28,34 @@ export type Message = {
   waktu: string
 }
 
+export type Channel = "whatsapp" | "telegram" | "webchat"
+
 export type Contact = {
   id: number
-  wa_number: string
+  channel: Channel
+  external_user_id: string
+  wa_number: string | null
   nama_toko: string | null
+  nama_wa: string | null
   tipe_toko: string | null
   alamat: string | null
   opt_in: boolean
+  prospect_id: number | null
 }
 
 export type ConversationSummary = {
   id: number
-  kanal: "whatsapp" | "webchat"
-  status: "otomatis" | "eskalasi" | "ditahan"
+  kanal: Channel
+  status: "otomatis" | "eskalasi" | "ditahan" | "ditangani_staf"
   intent_terakhir: string | null
   diperbarui_pada: string
   contact: Contact
   pesan_terakhir: Message | null
   approval_menunggu: number
+  menunggu_sejak: string | null
+  ditangani_oleh: string | null
+  ditangani_sejak: string | null
+  aktivitas_staf_terakhir: string | null
 }
 
 export type LedgerEvent = {
@@ -109,6 +119,9 @@ export type ConversationDetail = ConversationSummary & {
   pesanan_terakhir: OrderDraft | null
   approvals: Approval[]
   konteks: Record<string, unknown>
+  saran_ai: { teks: string | null; verdict: Verdict | null; intent: string; catatan: string | null; waktu: string } | null
+  jendela: { berlaku: boolean; terbuka: boolean; berakhir: string | null; jam: number | null }
+  prospek: { id: number; nama: string; status: string; skor: number } | null
 }
 
 export type RuleHit = { id: string; label: string; severity: Verdict; match: string; alasan: string }
@@ -193,7 +206,13 @@ export type Prospect = {
   alasan_skor: ScoreReason[]
   draf_pesan: string
   draf_verdict: Verdict | null
-  status: "baru" | "dihubungi" | "merespons" | "menolak"
+  status: "baru" | "dihubungi" | "merespons" | "pelanggan" | "menolak"
+  wa: string | null
+  conversation_id: number | null
+  catatan: string | null
+  tindak_lanjut_pada: string | null
+  pic: string | null
+  jaringan: string | null
   sumber: string
   osm_id: string | null
   jam_buka: string | null
@@ -233,6 +252,118 @@ export type NextBestAction = {
   metode: string
 }
 
+// ------------------------------------------------------------------ ClaimGuard & Compliance Check
+
+export type AuditStatus = "BLOCKED" | "NEED_REVIEW" | "ALLOWED" | "ERROR"
+
+export type RegulatoryReference = {
+  ref_id: string
+  regulation_id: string
+  regulation_title: string
+  singkat: string
+  article_reference: string
+  ringkasan: string
+  official_source_url: string
+  official_pdf_url: string | null
+  verification_status: "VERIFIED" | "UNVERIFIED"
+  last_verified_at: string
+  berlaku_untuk_produk?: boolean
+}
+
+export type ComplianceRuleMatch = {
+  rule_id: string
+  description: string
+  severity: "blocked" | "review"
+  confidence: string
+  status_aturan: string
+  match: string
+  sentence: string
+  start: number | null
+  end: number | null
+  decisive: boolean
+  references: RegulatoryReference[]
+}
+
+export type ComplianceEvidence = {
+  kutipan: string
+  start: number | null
+  end: number | null
+  sumber: "aturan" | "pencocokan_klaim" | "llm"
+  rule_id: string | null
+  alasan: string
+}
+
+export type ComplianceAudit = {
+  audit_id: string
+  product_id: string
+  draft_id: number | null
+  draft_versi: number | null
+  status: AuditStatus
+  stage: "aturan" | "llm"
+  reason: string
+  violation_law: string | null
+  regulatory_note: string | null
+  matched_rules: ComplianceRuleMatch[]
+  evidence: ComplianceEvidence[]
+  references: RegulatoryReference[]
+  recommendation: string | null
+  recommendation_note: string | null
+  rules_version: string
+  engine_version: string
+  model_provider: string | null
+  model_name: string | null
+  model_info: { provider: string; model: string; latency_ms: number | null; input_tokens: number; output_tokens: number } | null
+  error_code: string | null
+  input_text_hash: string
+  text_length: number
+  status_draf_diperbarui: boolean
+  duration_ms: number
+  actor_id: number | null
+  created_at: string | null
+}
+
+export type DraftStatus =
+  | "draf"
+  | "diblokir"
+  | "perlu_review"
+  | "lolos_pemeriksaan"
+  | "audit_gagal"
+  | "menunggu_audit_ulang"
+  | "disetujui"
+  | "dibuang"
+
+export type MarketingDraft = {
+  id: number
+  product_id: string | null
+  product_name: string | null
+  teks: string
+  status: DraftStatus
+  versi: number
+  catatan_keputusan: string | null
+  keputusan_oleh: number | null
+  keputusan_pada: string | null
+  dibuat_pada: string
+  diperbarui_pada: string
+}
+
+export type LatestAuditResponse = { state: "ada" | "kosong"; audit: ComplianceAudit | null; draft: MarketingDraft | null }
+
+export type ComplianceRegistry = {
+  rules_version: string
+  regulations: {
+    id: string
+    regulation_title: string
+    singkat: string
+    official_source_url: string
+    status_berlaku: string
+    verification_status: string
+    last_verified_at: string
+    catatan_ruang_lingkup: string
+  }[]
+  llm: { provider: string; model: string; dikonfigurasi: boolean; status_bila_gagal: AuditStatus }
+  batas_teks: number
+}
+
 export type Kpi = {
   ringkasan: {
     chat: number
@@ -266,6 +397,7 @@ export type Kpi = {
 export type Status = {
   llm: { aktif: boolean; model: string; judge: string | null }
   whatsapp: { aktif: boolean; kanal_cadangan: string }
+  kanal: Record<Channel, { label: string; aktif: boolean; jendela_balas_jam: number | null }>
   prospek: { google_places: boolean; osm: boolean }
   anggaran: { harian_rp: number; bulanan_rp: number; terpakai_hari_ini_rp: number; terpakai_bulan_ini_rp: number }
 }
@@ -283,5 +415,8 @@ export const INTENT_LABEL: Record<string, string> = {
   keluhan: "Keluhan",
   minta_staf: "Minta staf",
   kebijakan: "Kebijakan",
+  spesifikasi: "Isi & kandungan",
+  minta_dokumen: "Minta katalog",
+  perlu_staf: "Di luar wewenang AI",
   lainnya: "Lainnya",
 }

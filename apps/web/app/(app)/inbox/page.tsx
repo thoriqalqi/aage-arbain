@@ -1,6 +1,6 @@
 "use client"
 
-import { ClipboardCheck, Globe, MessageCircle, PanelRight, Search, Send, Store } from "lucide-react"
+import { Bot, ClipboardCheck, Hand, MapPinned, PanelRight, Search, Send, Store } from "lucide-react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Suspense, useEffect, useMemo, useRef, useState } from "react"
@@ -9,14 +9,15 @@ import useSWR from "swr"
 
 import { AButton } from "@/components/aage/button"
 import { ChatBubble } from "@/components/aage/chat-bubble"
+import { ContactEditor, InlineApprovals, SaranAI, WaitBadge, WindowNotice } from "@/components/aage/inbox-panels"
 import { EmptyState, SkeletonRows } from "@/components/aage/empty-state"
 import { LedgerTimeline } from "@/components/aage/ledger-timeline"
 import { PageHeader } from "@/components/aage/panel"
-import { ConversationStatus, CostChip, Pill, VerdictBadge } from "@/components/aage/status"
+import { ChannelIcon, ConversationStatus, CostChip, Pill, VerdictBadge } from "@/components/aage/status"
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { ApiError, api, fetcher } from "@/lib/api"
-import { contactName, formatRp, relativeTime } from "@/lib/format"
+import { channelLabel, contactName, formatRp, relativeTime } from "@/lib/format"
 import { INTENT_LABEL, type CheckResult, type ConversationDetail, type ConversationSummary } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -25,6 +26,7 @@ const FILTERS = [
   { key: "otomatis", label: "Dijawab AI" },
   { key: "eskalasi", label: "Menunggu staf" },
   { key: "ditahan", label: "Ditahan" },
+  { key: "ditangani_staf", label: "Ditangani staf" },
 ]
 
 function useIsWide(px: number) {
@@ -48,7 +50,7 @@ function ConversationList({ selected, onSelect }: { selected: number | null; onS
     { refreshInterval: 5000 },
   )
   const items = useMemo(
-    () => (data?.items ?? []).filter((c) => !q || `${c.contact.nama_toko ?? ""} ${c.contact.wa_number} ${c.pesan_terakhir?.teks ?? ""}`.toLowerCase().includes(q.toLowerCase())),
+    () => (data?.items ?? []).filter((c) => !q || `${c.contact.nama_toko ?? ""} ${c.contact.nama_wa ?? ""} ${c.contact.wa_number ?? ""} ${c.pesan_terakhir?.teks ?? ""}`.toLowerCase().includes(q.toLowerCase())),
     [data, q],
   )
   return (
@@ -103,8 +105,8 @@ function ConversationList({ selected, onSelect }: { selected: number | null; onS
                     <span className="line-clamp-1 text-[12.5px] text-muted-foreground">{c.pesan_terakhir?.teks}</span>
                     <span className="mt-1 flex items-center gap-2">
                       <ConversationStatus status={c.status} compact />
-                      {c.kanal === "webchat" ? <Globe className="size-3 text-subtle-foreground" aria-label="Web chat" /> : <MessageCircle className="size-3 text-subtle-foreground" aria-label="WhatsApp" />}
-                      {c.approval_menunggu > 0 && <span className="ml-auto rounded-full bg-escalate-bg px-1.5 text-[11px] font-semibold text-escalate">{c.approval_menunggu}</span>}
+                      <ChannelIcon kanal={c.kanal} />
+                      {c.approval_menunggu > 0 && <WaitBadge since={c.menunggu_sejak} className="ml-auto" />}
                     </span>
                   </span>
                 </button>
@@ -117,7 +119,7 @@ function ConversationList({ selected, onSelect }: { selected: number | null; onS
   )
 }
 
-function ContextPanel({ conv }: { conv: ConversationDetail }) {
+function ContextPanel({ conv, onChanged }: { conv: ConversationDetail; onChanged: () => void }) {
   const c = conv.contact
   return (
     <div className="scrollbar-thin h-full space-y-5 overflow-y-auto p-4">
@@ -127,15 +129,26 @@ function ContextPanel({ conv }: { conv: ConversationDetail }) {
           <div className="flex items-center gap-2 font-semibold">
             <Store className="size-4 text-forest-700" /> {c.nama_toko || "Belum diketahui"}
           </div>
-          <div className="font-mono text-[12px] text-muted-foreground">{c.wa_number}</div>
+          {c.nama_wa && <div className="text-[13px] text-muted-foreground">Profil {channelLabel(c.channel)}: {c.nama_wa}</div>}
+          <div className="font-mono text-[12px] text-muted-foreground">
+            {c.wa_number ?? `${channelLabel(c.channel)} ID ${c.external_user_id}`}
+          </div>
           {c.alamat && <div className="text-[13px] text-muted-foreground">{c.alamat}</div>}
           <div className="flex flex-wrap gap-1.5 pt-1">
             {c.tipe_toko && <Pill>{c.tipe_toko}</Pill>}
             <Pill>{c.opt_in ? "Opt-in pengingat" : "Belum opt-in"}</Pill>
             <Pill>Biaya AI {formatRp(conv.biaya_total_rp, { decimals: true })}</Pill>
           </div>
+          <div className="pt-2">
+            <ContactEditor contact={c} onSaved={onChanged} />
+          </div>
         </div>
       </section>
+      {conv.prospek && (
+        <Link href={`/leads?prospek=${conv.prospek.id}`} className="flex items-center gap-2 rounded-md bg-brand-50 px-3 py-2 text-[13px] font-medium text-forest-700">
+          <MapPinned className="size-4" /> Dari Leads: {conv.prospek.nama} · skor {conv.prospek.skor} · {conv.prospek.status}
+        </Link>
+      )}
       {conv.pesanan_terakhir && (
         <section>
           <h3 className="mb-2 text-[12px] font-medium tracking-[0.02em] text-muted-foreground">Pesanan terakhir #{conv.pesanan_terakhir.id}</h3>
@@ -151,9 +164,9 @@ function ContextPanel({ conv }: { conv: ConversationDetail }) {
         </section>
       )}
       {conv.approvals.some((a) => a.status === "menunggu") && (
-        <Link href="/approval" className="flex items-center gap-2 rounded-md bg-escalate-bg px-3 py-2 text-[13px] font-medium text-escalate">
-          <ClipboardCheck className="size-4" /> {conv.approvals.filter((a) => a.status === "menunggu").length} draf menunggu persetujuan
-        </Link>
+        <div className="flex items-center gap-2 rounded-md bg-escalate-bg px-3 py-2 text-[13px] font-medium text-escalate">
+          <ClipboardCheck className="size-4" /> {conv.approvals.filter((a) => a.status === "menunggu").length} draf menunggu — putuskan langsung di chat
+        </div>
       )}
       <section>
         <h3 className="mb-3 text-[12px] font-medium tracking-[0.02em] text-muted-foreground">Ledger percakapan</h3>
@@ -171,6 +184,7 @@ function ChatPanel({ id, onOpenContext, showContextButton }: { id: number; onOpe
   const [text, setText] = useState("")
   const [sending, setSending] = useState(false)
   const [blocked, setBlocked] = useState<CheckResult | null>(null)
+  const [toggling, setToggling] = useState(false)
   const bottom = useRef<HTMLDivElement>(null)
   useEffect(() => {
     bottom.current?.scrollIntoView({ block: "end" })
@@ -196,20 +210,48 @@ function ChatPanel({ id, onOpenContext, showContextButton }: { id: number; onOpe
     }
   }
 
+  async function toggleTakeOver() {
+    if (!data) return
+    setToggling(true)
+    const handled = data.status === "ditangani_staf"
+    try {
+      await api(`/api/conversations/${id}/${handled ? "kembalikan" : "ambil-alih"}`, { method: "POST" })
+      toast.success(handled ? "AI kembali menjawab percakapan ini" : "Anda memegang percakapan ini — AI hanya memberi saran")
+      mutate()
+    } catch {
+      toast.error("Gagal mengubah penanganan")
+    } finally {
+      setToggling(false)
+    }
+  }
+
   if (!data) return <SkeletonRows className="p-4" rows={6} />
+  const handled = data.status === "ditangani_staf"
   const inboundVerdicts = data.ledger.filter((e) => e.tipe_event === "claimguard_inbound")
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 border-b px-4 py-3">
         <div className="min-w-0 flex-1">
           <div className="truncate font-semibold">{contactName(data.contact)}</div>
-          <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-2 text-[12px] whitespace-nowrap text-muted-foreground">
             <ConversationStatus status={data.status} compact />
-            <span>· {data.kanal === "webchat" ? "Web chat" : "WhatsApp"}</span>
-            {data.intent_terakhir && <span>· {INTENT_LABEL[data.intent_terakhir] ?? data.intent_terakhir}</span>}
+            <span className="hidden sm:inline">· {channelLabel(data.kanal)}</span>
+            {data.intent_terakhir && <span className="hidden sm:inline">· {INTENT_LABEL[data.intent_terakhir] ?? data.intent_terakhir}</span>}
+            {handled && data.ditangani_oleh && <span>· oleh {data.ditangani_oleh}</span>}
           </div>
         </div>
-        <CostChip value={data.biaya_total_rp} />
+        <AButton
+          size="sm"
+          variant={handled ? "glass" : "default"}
+          disabled={toggling}
+          onClick={toggleTakeOver}
+          className="shrink-0"
+          aria-label={handled ? "Kembalikan ke AI" : "Ambil alih"}
+        >
+          {handled ? <Bot className="size-3.5" /> : <Hand className="size-3.5" />}
+          <span className="hidden sm:inline">{handled ? "Kembalikan ke AI" : "Ambil alih"}</span>
+        </AButton>
+        <CostChip value={data.biaya_total_rp} className="hidden sm:inline-flex" />
         {showContextButton && (
           <AButton variant="ghost" size="icon" onClick={onOpenContext} aria-label="Panel konteks">
             <PanelRight className="size-4" />
@@ -232,6 +274,9 @@ function ChatPanel({ id, onOpenContext, showContextButton }: { id: number; onOpe
         ))}
         <div ref={bottom} />
       </div>
+      <InlineApprovals approvals={data.approvals} onDone={() => mutate()} />
+      {handled && <SaranAI saran={data.saran_ai} onUse={setText} />}
+      <WindowNotice jendela={data.jendela} />
       {blocked && (
         <div className="mx-3 mb-2 rounded-lg bg-blocked-bg p-3 text-[13px] text-blocked">
           <div className="flex items-center gap-2 font-semibold">
@@ -255,7 +300,7 @@ function ChatPanel({ id, onOpenContext, showContextButton }: { id: number; onOpe
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={2}
-          placeholder="Balas sebagai staf — tetap diperiksa ClaimGuard sebelum terkirim"
+          placeholder={handled ? "Balas sebagai staf — tetap diperiksa ClaimGuard" : "Membalas = mengambil alih percakapan dari AI · tetap diperiksa ClaimGuard"}
           className="min-h-11 flex-1 resize-none bg-transparent px-2 py-1.5 text-[14px] outline-none placeholder:text-subtle-foreground"
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send()
@@ -277,7 +322,7 @@ function InboxInner() {
   const wide = useIsWide(1280)
   const medium = useIsWide(768)
   const [ctxOpen, setCtxOpen] = useState(false)
-  const { data: detail } = useSWR<ConversationDetail>(selected ? `/api/conversations/${selected}` : null, fetcher, { refreshInterval: 4000 })
+  const { data: detail, mutate: refreshDetail } = useSWR<ConversationDetail>(selected ? `/api/conversations/${selected}` : null, fetcher, { refreshInterval: 4000 })
   const select = (id: number) => router.replace(`/inbox?id=${id}`)
 
   const chat = selected ? (
@@ -288,7 +333,7 @@ function InboxInner() {
 
   return (
     <>
-    <PageHeader title="Inbox WhatsApp" description="Percakapan dari WhatsApp dan simulator. Jawaban otomatis hanya bersumber dari Knowledge Base dan selalu diperiksa ClaimGuard." />
+    <PageHeader title="Inbox" description="Percakapan dari WhatsApp, Telegram, dan simulator. Jawaban otomatis hanya bersumber dari Knowledge Base dan selalu diperiksa ClaimGuard." />
     <div className="panel h-[calc(100dvh-13rem)] min-h-[520px] overflow-hidden">
       {!medium ? (
         selected ? (
@@ -312,7 +357,7 @@ function InboxInner() {
             <>
               <ResizableHandle withHandle />
               <ResizablePanel defaultSize="28" minSize="20">
-                {detail ? <ContextPanel conv={detail} /> : <div className="p-4 text-muted-foreground">Panel konteks</div>}
+                {detail ? <ContextPanel conv={detail} onChanged={() => refreshDetail()} /> : <div className="p-4 text-muted-foreground">Panel konteks</div>}
               </ResizablePanel>
             </>
           )}
@@ -321,7 +366,7 @@ function InboxInner() {
       <Sheet open={ctxOpen && !wide} onOpenChange={setCtxOpen}>
         <SheetContent side="right" className="w-full bg-card sm:max-w-md">
           <SheetTitle className="px-4 pt-4">Konteks percakapan</SheetTitle>
-          {detail && <ContextPanel conv={detail} />}
+          {detail && <ContextPanel conv={detail} onChanged={() => refreshDetail()} />}
         </SheetContent>
       </Sheet>
     </div>

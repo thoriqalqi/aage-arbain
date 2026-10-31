@@ -19,7 +19,7 @@ def admin(client):
 
 
 def test_status_lists_six_agents_from_ledger(client, auth, db):
-    handle_inbound(db, wa_number="t-status", text="ada produk untuk stamina?", kanal="webchat")
+    handle_inbound(db, external_user_id="t-status", text="ada produk untuk stamina?", channel="webchat")
     db.commit()
     data = client.get("/api/agents/status", headers=auth).json()
     by_id = {a["id"]: a for a in data["agen"]}
@@ -46,7 +46,7 @@ def test_settings_validation(client, admin):
 def test_setujui_dulu_holds_routine_reply_for_staff(client, admin, db):
     r = client.put("/api/settings", headers=admin, json={"otonomi": {"sales": "setujui"}})
     assert r.status_code == 200 and r.json()["otonomi"]["sales"] == "setujui"
-    res = handle_inbound(db, wa_number="t-setujui", text="ada produk untuk stamina?", kanal="webchat")
+    res = handle_inbound(db, external_user_id="t-setujui", text="ada produk untuk stamina?", channel="webchat")
     assert res.decision == "tahan"
     ap = db.get(Approval, res.approval_id)
     assert "Setujui dulu" in ap.alasan and "Madu Stamina" in ap.draf and ap.verdict == "allowed"
@@ -56,7 +56,7 @@ def test_setujui_dulu_holds_routine_reply_for_staff(client, admin, db):
 
 def test_paused_sales_holds_reply(client, admin, db):
     client.put("/api/settings", headers=admin, json={"jeda": {"sales": True}})
-    res = handle_inbound(db, wa_number="t-jeda", text="ada produk untuk stamina?", kanal="webchat")
+    res = handle_inbound(db, external_user_id="t-jeda", text="ada produk untuk stamina?", channel="webchat")
     assert res.decision == "tahan" and "dijeda" in db.get(Approval, res.approval_id).alasan
     db.rollback()
     status = {a["id"]: a for a in client.get("/api/agents/status", headers=admin).json()["agen"]}
@@ -65,7 +65,7 @@ def test_paused_sales_holds_reply(client, admin, db):
 
 def test_budget_exceeded_falls_back_to_setujui(client, admin, db):
     client.put("/api/settings", headers=admin, json={"anggaran": {"harian_rp": 0}})
-    res = handle_inbound(db, wa_number="t-budget", text="ada produk untuk stamina?", kanal="webchat")
+    res = handle_inbound(db, external_user_id="t-budget", text="ada produk untuk stamina?", channel="webchat")
     assert res.decision == "tahan" and "Budget AI terlampaui" in db.get(Approval, res.approval_id).alasan
     db.rollback()
     sales = {a["id"]: a for a in client.get("/api/agents/status", headers=admin).json()["agen"]}["sales"]
@@ -73,7 +73,7 @@ def test_budget_exceeded_falls_back_to_setujui(client, admin, db):
 
 
 def test_escalation_rules_still_apply_in_otonom(client, admin, db):
-    res = handle_inbound(db, wa_number="t-otonom", text="50 box madu stamina, bisa diskon 25%?", kanal="webchat")
+    res = handle_inbound(db, external_user_id="t-otonom", text="50 box madu stamina, bisa diskon 25%?", channel="webchat")
     assert res.decision == "eskalasi"
     db.rollback()
 
