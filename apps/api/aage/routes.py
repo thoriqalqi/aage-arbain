@@ -15,6 +15,7 @@ from . import approvals as approval_svc
 from . import serializers as ser
 from .agents.drafter import _template_source
 from .agents.graph import handle_inbound
+from .agents.memori import teks as teks_memori
 from .agents.sales import last_order, riwayat_terakhir
 from .channels import registry, sender, telegram, wati, whatsapp
 from .channels.base import InboundMessage
@@ -250,6 +251,7 @@ def conversation_detail(conv_id: int, user: User = Depends(current_user), db: Se
         "pesanan_terakhir": ser.order(lo) if lo else None,
         "approvals": [ser.approval(a, c, user) for a in aps],
         "konteks": c.konteks,
+        "memori": teks_memori((c.konteks or {}).get("memori")),
         "saran_ai": (c.konteks or {}).get("saran_ai") if c.status == inbox.DITANGANI_STAF else None,
         "jendela": _jendela(db, c),
         "prospek": {"id": prospect.id, "nama": prospect.nama, "status": prospect.status, "skor": prospect.skor}

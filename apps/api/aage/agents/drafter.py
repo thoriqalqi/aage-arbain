@@ -12,7 +12,7 @@ from .. import clock, llm
 from ..kb.retriever import Hit, find_products, retrieve
 from ..models import ApprovedClaim, Contact, Conversation, OrderDraft, PricingRule, Product
 from ..textutil import content_tokens, expand, rupiah, split_sentences, stem
-from . import sales
+from . import memori, sales
 
 HOLD_STAF = "Pertanyaan Kakak sudah kami teruskan ke staf penjualan, mohon tunggu sebentar ya 🙏"
 PESANAN_BESAR_BOX = 300  # di atas ini harga disiapkan manajemen, bukan tier otomatis
@@ -41,6 +41,8 @@ class Draft:
     llm_result: llm.LLMResult | None = None
     template: str = ""
     minta_nomor: bool = False  # kanal yang mendukung menampilkan tombol "Bagikan nomor HP"
+    teks_template: str | None = None  # draf template asli bila teks sudah ditulis ulang gaya bahasa LLM
+    gaya_result: llm.LLMResult | None = None
 
 
 def _claims(db: Session, product_id: int) -> list[str]:
@@ -71,7 +73,7 @@ def _product_facts(db: Session, p: Product) -> str:
                else " Stok: belum ada data."))
 
 
-_TANYA_STOK = re.compile(r"\b(stok|stock)\w*\b", re.I)
+_TANYA_STOK = re.compile(r"\b(?:stok|stock|ready)\w*\b", re.I)
 
 
 def _kalimat_stok(p: Product, text: str) -> str:
@@ -121,6 +123,8 @@ def _llm_answer(question: str, sources: list[dict], instruction: str, conv: Conv
         return None
     src = "\n".join(f"[S{i + 1}] {s.get('kutipan') or s.get('judul')}" for i, s in enumerate(sources))
     riwayat = _history(conv)
+    if conv is not None and (catatan := memori.teks((conv.konteks or {}).get("memori"))):
+        riwayat = f"Ringkasan: {catatan}\n{riwayat}"
     prompt = (
         "Anda asisten penjualan B2B CV Arba'in (produk herbal) yang membalas pembeli lewat WhatsApp.\n"
         "Aturan: jawab HANYA dari SUMBER; jangan menambah klaim kesehatan selain 'Klaim disetujui'; "
@@ -231,11 +235,15 @@ def draft_tanya_produk(db: Session, text: str, conv: Conversation, hits: list[Hi
     llm_sources = [{**s, "kutipan": _product_facts(db, p)} for s, p in zip(sources, products)]
     if (policy := _policy_source(db)) is not None:
         llm_sources.append(policy)
-    res = _llm_answer(text, llm_sources, "Sebutkan nama produk, nomor izin edar, klaim disetujui, harga grosir & MOQ.", conv)
+    # Pertanyaan stok dijawab dari data, bukan dirangkai LLM: "ada/tidak" di sini bisa terbaca sebagai janji ketersediaan.
+    tanya_stok = bool(_TANYA_STOK.search(text))
+    res = None if tanya_stok else _llm_answer(
+        text, llm_sources, "Sebutkan nama produk, nomor izin edar, klaim disetujui, harga grosir & MOQ.", conv)
     if res is not None:
         return Draft(res.text, sources=llm_sources, product_ids=[p.id for p in products],
                      konteks={"last_product_ids": [p.id for p in products]}, llm_result=res, template="llm")
-    lines = ["Ada, Kak. Berikut produk dari katalog kami yang sesuai:"]
+    lines = ["Berikut info produk dan stoknya, Kak:" if tanya_stok
+             else "Ada, Kak. Berikut produk dari katalog kami yang sesuai:"]
     for p in products:
         klaim = " ".join(_claims(db, p.id)) or "Belum ada klaim yang disetujui."
         lines.append(

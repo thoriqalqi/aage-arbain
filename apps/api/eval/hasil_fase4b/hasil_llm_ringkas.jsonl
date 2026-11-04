@@ -1,0 +1,1 @@
+{"mode": "llm", "model": "deepseek-v4.1-flash:free (juri ClaimGuard: deepseek-v4.1-flash:free)", "jeda_s": 4.0, "kiriman_stub": 80, "llm": {"panggilan": 41, "berhasil": 33, "error": 0, "rate_limit": 0, "retry": 8}}

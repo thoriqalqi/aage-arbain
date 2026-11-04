@@ -3,6 +3,7 @@
 import {
   ArrowDownLeft,
   ArrowUpRight,
+  Clock,
   ClipboardCheck,
   Compass,
   FileSearch,
@@ -30,6 +31,8 @@ export const EVENT_META: Record<string, { label: string; icon: LucideIcon }> = {
   intent: { label: "Intent dikenali", icon: Compass },
   retrieval: { label: "Pengambilan sumber", icon: FileSearch },
   draf_jawaban: { label: "Draf jawaban", icon: PenLine },
+  gaya_bahasa: { label: "Gaya bahasa (kunci fakta)", icon: PenLine },
+  memori_dihapus: { label: "Memori percakapan kedaluwarsa", icon: Clock },
   claimguard: { label: "ClaimGuard", icon: ShieldCheck },
   claimguard_inbound: { label: "ClaimGuard: klaim diminta", icon: ShieldCheck },
   kebijakan: { label: "Keputusan kebijakan", icon: Gavel },

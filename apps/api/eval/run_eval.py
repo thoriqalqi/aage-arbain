@@ -42,7 +42,7 @@ class OutboundBlocked(RuntimeError):
 def _prepare_env(mode: str, dataset: str = "realistis") -> Path:
     db = Path(tempfile.gettempdir()) / f"aage-eval-{dataset}-{mode}.db"  # per dataset: bisa jalan paralel
     os.environ.update({
-        "DATABASE_URL": f"sqlite:///{db.as_posix()}",
+        "DATABASE_URL": f"sqlite:///{db.as_posix()}", "TELEGRAM_BOT_TOKEN": "",
         "WATI_API_KEY": "", "WA_ACCESS_TOKEN": "", "WA_PHONE_NUMBER_ID": "", "WA_APP_SECRET": "",
         "FONNTE_TOKEN": "", "SERPER_API_KEY": "", "ANTHROPIC_API_KEY": "", "WATI_ALLOWLIST": "",
         "WA_PROVIDER": "wati", "WATI_WEBHOOK_TOKEN": WEBHOOK_TOKEN, "ENV": "dev",
@@ -115,7 +115,8 @@ def _install_guards() -> list[dict]:
 
 
 class LLMMeter:
-    """Bungkus llm.complete: throttle, retry+backoff untuk 429/5xx, dan hitungan per pertanyaan."""
+    """Bungkus llm.complete: throttle, retry+backoff untuk semua kegagalan sementara (429, 5xx, koneksi putus, timeout,
+    jawaban kosong/JSON rusak; budget habis tidak), dan hitungan per pertanyaan."""
 
     def __init__(self, llm_mod, jeda: float):
         self.llm, self.jeda, self.orig = llm_mod, jeda, llm_mod.complete
@@ -142,7 +143,7 @@ class LLMMeter:
                 if err.get("rate_limit"):
                     meter.total["rate_limit"] += 1
                     meter.q["rate_limit"] = meter.q.get("rate_limit", 0) + 1
-                retryable = err.get("rate_limit") or (err.get("status") or 0) >= 500
+                retryable = "Budget" not in (err.get("pesan") or "")
                 if retryable and attempt < len(BACKOFF_S):
                     meter.total["retry"] += 1
                     time.sleep(BACKOFF_S[attempt])
@@ -249,7 +250,8 @@ def _collect(db, wa: str) -> dict:
     # Yang dinilai hanya pesan TERAKHIR (pesan riwayat sebelumnya hanya membangun konteks percakapan).
     last_in = max((i for i, m in enumerate(msgs) if m.arah == "masuk"), default=None)
     trace = msgs[last_in].trace_id if last_in is not None else None
-    ev = {e.tipe_event: e for e in db.scalars(select(LedgerEvent).where(LedgerEvent.trace_id == trace))} if trace else {}
+    ev = {e.tipe_event: e for e in db.scalars(select(LedgerEvent).where(LedgerEvent.trace_id == trace)
+                                              .order_by(LedgerEvent.id))} if trace else {}
     ap = db.scalar(select(Approval).where(Approval.conversation_id == conv.id, Approval.trace_id == trace)
                    .order_by(Approval.id.desc())) if trace else None
     keluar = [m for m in msgs[(last_in or 0) + 1:] if m.arah == "keluar"]
@@ -265,6 +267,7 @@ def _collect(db, wa: str) -> dict:
         "intent_oleh": "LLM" if ev.get("intent") and (ev["intent"].alasan or "").startswith("LLM:") else "aturan",
         "generator": generator,
         "sumber_jawaban": "LLM" if generator == "llm" else "aturan",
+        "gaya": (ev["gaya_bahasa"].data or {}) if "gaya_bahasa" in ev else None,
         "claimguard_oleh": "LLM-judge" if cg_llm else "aturan",
         "keputusan": ev["kebijakan"].outcome if "kebijakan" in ev else None,
         "alasan_kebijakan": ev["kebijakan"].alasan if "kebijakan" in ev else None,
@@ -290,13 +293,16 @@ def main() -> None:
     p.add_argument("--katalog", default="", help="file .xlsx/.csv: ganti katalog lewat jalur impor sebelum eval dimulai")
     p.add_argument("--dataset", choices=["realistis", "holdout", "adversarial", "lapangan", "emosi", "katalog_uji"], default="realistis",
                    help="holdout = pertanyaan yang tidak dipakai untuk menyetel router/template")
+    p.add_argument("--keluaran", default="", help="folder di eval/ untuk hasil & DB terpisah; hasil lama eval/hasil_*.jsonl tidak disentuh")
     args = p.parse_args()
 
     OUT.mkdir(exist_ok=True)
     kat = f"_kat-{Path(args.katalog).stem}" if args.katalog else ""
-    db_path = _prepare_env(args.mode, args.dataset + kat)
+    db_path = _prepare_env(args.mode, args.dataset + kat + (f"-{args.keluaran}" if args.keluaran else ""))
     suffix = ("" if args.dataset == "realistis" else f"_{args.dataset}") + kat
-    result_path = HERE / f"hasil_{args.mode}{suffix}.jsonl"
+    folder = HERE / args.keluaran if args.keluaran else HERE
+    folder.mkdir(exist_ok=True)
+    result_path = folder / f"hasil_{args.mode}{suffix}.jsonl"
     dataset = HERE / f"dataset_{args.dataset}.csv"
     if args.ulang:
         for f in (db_path, result_path):
@@ -345,11 +351,15 @@ def main() -> None:
         KATALOG.extend(n for (n,) in s.query(Product.nama).filter(Product.aktif.is_(True)))
 
     done = set()
+    gagal_sebelumnya: dict[tuple, int] = {}  # baris ERROR tetap tersimpan; pengulangan memakai percakapan baru
     if result_path.exists():
         for line in result_path.read_text(encoding="utf-8").splitlines():
             r = json.loads(line)
+            kunci = (r["id"], r.get("percobaan", 0))
             if r.get("status") != "ERROR":
-                done.add((r["id"], r.get("percobaan", 0)))
+                done.add(kunci)
+            else:
+                gagal_sebelumnya[kunci] = gagal_sebelumnya.get(kunci, 0) + 1
     rows = list(csv.DictReader(dataset.open(encoding="utf-8")))
     todo = [(r, k) for r in rows for k in range(args.percobaan) if (r["id"], k) not in done]
     if args.batas:
@@ -367,16 +377,18 @@ def main() -> None:
             # Tiap percobaan = percakapan baru (nomor berbeda), agar tidak saling memengaruhi.
             wa = (f"6299{k}{rows.index(row):05d}" + ("1" if args.mode == "llm" else "0")
                   + {"": "", "_holdout": "9", "_adversarial": "8", "_lapangan": "7", "_emosi": "5"}.get(suffix, "6"))
+            if ulang_ke := gagal_sebelumnya.get((row["id"], k), 0):
+                wa += f"{ulang_ke:02d}"  # percakapan gagal sebelumnya tidak boleh mencemari konteks pengulangan
 
             def kirim(teks: str, tipe: str = "text"):
                 payload = {"eventType": "message", "id": f"eval-{args.mode}-{row['id']}-{time.time_ns()}", "waId": wa,
                            "text": teks, "type": tipe, "owner": False, "senderName": "Eval"}
                 return client.post(f"/api/webhook/wati?token={WEBHOOK_TOKEN}", json=payload)
 
+            if meter:
+                meter.reset_question()  # sebelum riwayat: LLM gagal saat membangun konteks juga membuat baris ini ERROR
             for teks in filter(None, (x.strip() for x in (row.get("riwayat") or "").split(">>"))):
                 kirim(teks)  # konteks percakapan sebelum pesan yang dinilai
-            if meter:
-                meter.reset_question()
             t0 = time.perf_counter()
             resp = kirim(row["pesan"], row.get("tipe") or "text")
             with SessionLocal() as s:
@@ -402,7 +414,11 @@ def main() -> None:
     summary = {"mode": args.mode, "model": model, "jeda_s": args.jeda, "kiriman_stub": len(sent)}
     if meter:
         summary["llm"] = meter.total
-    (HERE / f"hasil_{args.mode}{suffix}_ringkas.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    if args.keluaran:  # satu baris per ronde, agar hitungan panggilan LLM bisa dijumlahkan
+        with (folder / f"hasil_{args.mode}{suffix}_ringkas.jsonl").open("a", encoding="utf-8") as f:
+            f.write(json.dumps(summary) + "\n")
+    else:
+        (HERE / f"hasil_{args.mode}{suffix}_ringkas.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     print("Selesai:", json.dumps(summary))
 
 

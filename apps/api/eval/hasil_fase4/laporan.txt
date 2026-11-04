@@ -1,0 +1,32 @@
+Regresi LLM · keluaran hasil_fase4 · 1 ronde
+
+realistis    80/80 lolos · salah 0 · ERROR tersisa 0 · belum diproses 0 · pulih setelah diulang 0
+holdout      25/25 lolos · salah 0 · ERROR tersisa 0 · belum diproses 0 · pulih setelah diulang 0
+adversarial  59/59 lolos · salah 0 · ERROR tersisa 0 · belum diproses 0 · pulih setelah diulang 0
+lapangan     25/25 lolos · salah 0 · ERROR tersisa 0 · belum diproses 0 · pulih setelah diulang 0
+emosi        400/400 lolos · salah 0 · ERROR tersisa 0 · belum diproses 0 · pulih setelah diulang 0
+             8 kali: 50/50 pesan lolos semua · konsisten 50/50
+katalog_uji  27/28 lolos · salah 1 · ERROR tersisa 0 · belum diproses 0 · pulih setelah diulang 0
+   ✗ KU27#0 [tanya_produk→kirim] 'stok sirup temulawak anak ada?' | gagal: harus=stok belum ada | 'Kak, untuk stok Sirup Temulawak Anak 120 ml (SKU KB-03) belum ada data. Produk: Sirup Temulawak Anak 120 ml; izin edar POM TR 223300003. Klaim disetujui: membantu memelihara nafsu makan anak. Harga gr'
+percakapan   34/34 lolos · salah 0 · ERROR tersisa 0 · belum diproses 0 · pulih setelah diulang 0
+
+Kunci fakta (gaya bahasa LLM):
+  diterima 189 (lalu dibatalkan ClaimGuard 0) · ditolak 12
+  realistis    diterima 22 · dibatalkan ClaimGuard 0 · ditolak 3
+  holdout      diterima 5 · dibatalkan ClaimGuard 0 · ditolak 1
+  adversarial  diterima 6 · dibatalkan ClaimGuard 0 · ditolak 2
+  lapangan     diterima 4 · dibatalkan ClaimGuard 0 · ditolak 0
+  emosi        diterima 140 · dibatalkan ClaimGuard 0 · ditolak 4
+  katalog_uji  diterima 2 · dibatalkan ClaimGuard 0 · ditolak 1
+  percakapan   diterima 10 · dibatalkan ClaimGuard 0 · ditolak 1
+  Alasan penolakan: {"angka berubah": 8, "frasa kunci hilang: grosir": 6, "frasa kunci hilang: izin edar": 4, "frasa kunci hilang: moq": 3, "teks tebal hilang": 2, "baris daftar berubah": 2, "frasa kunci hilang: diskon": 2, "frasa kunci hilang: staf": 2, "panjang tidak wajar": 2, "nama produk berubah": 1, "frasa kunci hilang: dikonfirmasi staf": 1, "frasa kunci hilang: stok": 1, "frasa kunci hilang: pesan": 1, "frasa kunci hilang: tidak perlu buru-buru": 1}
+  Contoh ditolak: angka berubah: ['20/sachet', '20/sachet', '1/box', '40/kotak', '60/kapsul', '1/box', '60/botol', '450'] → ['20/sachet',  ← Halo Kak, berikut detail produknya ya. *Jahe Merah Instan 20 sachet* • Kemasan: Kotak 20 sachet, 1 box isi 40 kotak • Kandungan: Ekstrak jahe merah (Zingiber of
+  Contoh ditolak: angka berubah: ['10/sachet', '1/box', '60/kotak', '1', '10', '1', '10'] → ['10/sachet', '1/box', '60/kotak', '1', '109', ← Kak, ini info *Probiotik Sachet* ya: • Kemasan: Kotak 10 sachet, 1 box isi 60 kotak • Kandungan: Lactobacillus acidophilus 1×109 CFU; Bifidobacterium lactis 1×1
+  Contoh ditolak: angka berubah: ['rp1860000/box', '5/box', '10/box', '3/%', '25/box', '5/%', '50/box', '7/%', '100/box', '10/%'] → ['rp18 ← Hai Kak, berikut info harga grosir *Kapsul Pegagan*: Rp 1.860.000/box, MOQ 5 box. Untuk
+  Contoh ditolak: angka berubah: ['100', '100/tablet', '1/box', '48/botol', '500'] → ['100', '100/tablet', '1/box']; frasa kunci hilang: m ← Halo Kak, berikut info *Spirulina Tablet 100* ya: • Kemasan: Botol 100 tablet, 1 box is
+  Contoh ditolak: frasa kunci hilang: staf; frasa kunci hilang: izin edar; frasa kunci hilang: grosir; panjang tidak wajar ← Mohon maaf ya, Kak
+  Contoh ditolak: angka berubah: ['150/ml', 'rp1968000/box', '5/box', '10/box', '3/%', '25/box', '5/%', '50/box', '7/%', '100/box', '10/%' ← Kak, ini harga grosir *Madu Herbal Batuk Dewasa 150 ml*: Rp 1.968.000/box, MOQ 5 box. Diskon volume: ≥10 box: s.d. 3%; ≥25 box: s.d. 5%; ≥50 box: s
+
+Panggilan LLM (ronde yang selesai): {'panggilan': 297, 'berhasil': 250, 'error': 0, 'rate_limit': 0, 'retry': 47}
+Error LLM tersisa: 0 baris ERROR, 0 baris belum diproses
+KESIMPULAN: BELUM 100%

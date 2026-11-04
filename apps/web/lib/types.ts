@@ -119,6 +119,8 @@ export type ConversationDetail = ConversationSummary & {
   pesanan_terakhir: OrderDraft | null
   approvals: Approval[]
   konteks: Record<string, unknown>
+  /** Ringkasan percakapan yang disusun aturan (produk, jumlah, kebutuhan, keberatan, tahap). Kosong bila belum ada. */
+  memori: string
   saran_ai: { teks: string | null; verdict: Verdict | null; intent: string; catatan: string | null; waktu: string } | null
   jendela: { berlaku: boolean; terbuka: boolean; berakhir: string | null; jam: number | null }
   prospek: { id: number; nama: string; status: string; skor: number } | null

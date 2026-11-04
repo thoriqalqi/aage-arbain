@@ -12,6 +12,8 @@ EVENT_TYPES = {
     "intent": "Intent dikenali",
     "retrieval": "Pengambilan sumber",
     "draf_jawaban": "Draf jawaban",
+    "gaya_bahasa": "Gaya bahasa LLM (kunci fakta)",
+    "memori_dihapus": "Memori percakapan kedaluwarsa",
     "claimguard": "Keputusan ClaimGuard",
     "claimguard_inbound": "ClaimGuard: klaim yang diminta",
     "kebijakan": "Keputusan kebijakan",

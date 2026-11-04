@@ -108,7 +108,8 @@ def test_llm_prompt_includes_recent_history(db, monkeypatch):
     seen = {}
 
     def fake_complete(messages, **_):
-        seen["prompt"] = messages[0]["content"]
+        if "PESAN ASLI:" not in messages[0]["content"]:  # abaikan permintaan tulis ulang gaya bahasa
+            seen["prompt"] = messages[0]["content"]
         return None
 
     monkeypatch.setattr(llm, "complete", fake_complete)

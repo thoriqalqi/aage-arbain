@@ -20,7 +20,8 @@ from .. import claimguard, clock, inbox, ledger, llm, settings_store
 from ..channels import sender
 from ..kb.retriever import Hit, find_products, retrieve
 from ..models import Approval, Contact, Conversation, Message, Product
-from . import drafter, normalisasi, penjaga
+from ..config import get_settings
+from . import drafter, gaya, memori, normalisasi, penjaga
 from .tahap import sinyal_baru, tahap_baru
 from .router import INTENTS, RouteResult, jelas_jualan, route
 from .sales import parse_order_lines
@@ -148,6 +149,16 @@ def drafter_node(state: State, config) -> dict:
     db = _db(config)
     conv = state["conv"]
     d = _run_handler(db, state)
+    if (get_settings().llm_gaya and d.text and not d.escalate and not d.order_draft_id
+            and d.template in gaya.CAKUPAN and not inbox.staff_active(conv)):
+        g = gaya.tulis_ulang(db, d.text)
+        if g.llm_result is not None:
+            ledger.record_llm(db, "gaya_bahasa", g.llm_result, trace_id=state["trace_id"], conversation_id=conv.id,
+                              objek_ref=f"conversation:{conv.id}", ringkasan=(g.teks or d.text)[:280], alasan=g.alasan,
+                              data={"template": d.template, "dipakai": g.teks is not None,
+                                    "pelanggaran": g.pelanggaran, "teks_ditolak": g.teks_ditolak, "teks_asli": d.text})
+        if g.teks:
+            d.teks_template, d.text, d.gaya_result = d.text, g.teks, g.llm_result
     if state.get("bahasa") == "en" and d.text:
         d.text = f"{d.text}\n\n{CATATAN_BAHASA}"  # sebelum ClaimGuard, jadi tetap ikut diperiksa
     # Tawaran "balas ya untuk staf" hanya berlaku untuk pesan berikutnya, bukan "ya" kapan pun sesudahnya.
@@ -176,6 +187,15 @@ def claimguard_node(state: State, config) -> dict:
         with llm.disabled():
             d = _run_handler(db, state)
         check = claimguard.check(db, d.text, product_ids=d.product_ids or None) if d.text else None
+    elif check is not None and check.verdict != claimguard.ALLOWED and d.teks_template:
+        # Tulis ulang gaya bahasa tidak lolos → kembali ke draf template (catatan bahasa Inggris tetap dipasang).
+        catatan = f"\n\n{CATATAN_BAHASA}" if state.get("bahasa") == "en" else ""
+        ledger.record(db, "gaya_bahasa", trace_id=state["trace_id"], conversation_id=conv.id,
+                      objek_ref=f"conversation:{conv.id}", ringkasan=d.text[:280], model=llm.OFFLINE_MODEL,
+                      alasan=f"ClaimGuard {check.label} membatalkan tulis ulang — template dipakai",
+                      data={"template": d.template, "dipakai": False, "dibatalkan_claimguard": True, "teks_ditolak": d.text})
+        d.text, d.teks_template, d.gaya_result = d.teks_template + catatan, None, None
+        check = claimguard.check(db, d.text, product_ids=d.product_ids or None)
     staff_check = claimguard.check(db, d.staff_draft, product_ids=d.product_ids or None) if d.staff_draft else None
     if check is not None:
         ledger.record(
@@ -240,6 +260,8 @@ def _summary(db: Session, conv: Conversation, intent: str, d: drafter.Draft) -> 
     lines = [f"{'Pembeli' if m.arah == 'masuk' else 'AAGE'}: {' '.join(m.teks.split())[:140]}" for m in reversed(list(recent))]
     names = [p.nama for pid in d.product_ids if (p := db.get(Product, pid))]
     head = f"Intent {INTENTS.get(intent, intent)}" + (f" · produk: {', '.join(names)}" if names else "")
+    if catatan := memori.teks((conv.konteks or {}).get("memori")):
+        head += f"\nRingkasan: {catatan}"
     return head + "\n" + "\n".join(lines)
 
 
@@ -261,7 +283,7 @@ def send_node(state: State, config) -> dict:
     db = _db(config)
     conv, d, check = state["conv"], state["draft"], state["check"]
     msg = sender.send(db, conv, d.text, check=check, pengirim="ai", trace_id=state["trace_id"], sources=d.sources,
-                      biaya_rp=(d.llm_result.biaya_rp if d.llm_result else 0) + check.biaya_rp,
+                      biaya_rp=sum(r.biaya_rp for r in (d.llm_result, d.gaya_result) if r) + check.biaya_rp,
                       inbound_at=state["inbound_at"], minta_nomor=d.minta_nomor)
     approval_id = _order_approval(db, state) if d.order_draft_id else None
     conv.status = "otomatis"
@@ -408,6 +430,11 @@ def handle_inbound(db: Session, *, channel: str, external_user_id: str, text: st
         link_contact(db, conv.contact)
     inbox.expire_if_idle(db, conv)
     trace = ledger.new_trace_id()
+    if memori.kedaluwarsa((conv.konteks or {}).get("memori")):
+        _merge_konteks(conv, {"memori": {}})
+        ledger.record(db, "memori_dihapus", trace_id=trace, conversation_id=conv.id, objek_ref=f"conversation:{conv.id}",
+                      ringkasan="Memori ringkasan percakapan kedaluwarsa dan dihapus", aktor="sistem", model=None,
+                      alasan=f"Tidak ada aktivitas lebih dari {get_settings().memori_retensi_hari} hari")
     inbound_at = clock.now()
     msg = Message(conversation_id=conv.id, arah="masuk", pengirim="pembeli", teks=text, status_kirim="diterima",
                   external_message_id=external_message_id, trace_id=trace)
@@ -421,10 +448,15 @@ def handle_inbound(db: Session, *, channel: str, external_user_id: str, text: st
         {"conv": conv, "contact": conv.contact, "text": text, "trace_id": trace, "inbound_at": inbound_at},
         config={"configurable": {"db": db}},
     )
+    tahap = tahap_baru(conv.konteks.get("tahap"), state["intent"], state["text"], conv.konteks)
+    d = state["draft"]
     _merge_konteks(conv, {
-        "tahap": tahap_baru(conv.konteks.get("tahap"), state["intent"], state["text"], conv.konteks),
+        "tahap": tahap,
         "sinyal": sinyal_baru(state["text"], state["intent"]),
         "sensitif_terbuka": state["intent"] in SENSITIF_TERBUKA or bool(conv.konteks.get("sensitif_terbuka")),
+        "memori": memori.perbarui(db, conv.konteks.get("memori"), text=state["text"], intent=state["intent"],
+                                  slots=state.get("slots", {}), product_ids=d.product_ids, tahap=tahap,
+                                  order_draft_id=d.order_draft_id),
     })
     db.commit()
     check = state.get("check")

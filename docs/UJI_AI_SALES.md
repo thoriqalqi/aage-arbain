@@ -60,6 +60,19 @@ Centang ✅ bila hasil sesuai, ❌ bila tidak — catat jawaban AI-nya.
 | G4 | (setelah G3) `ya` | Diteruskan ke staf |
 | G5 | `asdfgh` lalu `qwerty` | Pertama: minta penjelasan. Kedua berturut-turut: diteruskan ke staf |
 
+## H. Gaya bahasa & memori percakapan (fase 4)
+| # | Ketik | Yang diharapkan |
+|---|---|---|
+| H1 | `madu stamina berapa per box?` | Kalimat lebih luwes, tapi harga, MOQ, nama produk **persis sama** dengan katalog. Di Ledger: event **Gaya bahasa (kunci fakta)** — "dipakai" atau "ditolak" beserta alasannya |
+| H2 | `anakku demam, ini aman diminum ga?` | Tidak ditulis ulang (jalur kesehatan memakai kalimat template yang disetujui) |
+| H3 | `ada produk untuk daya tahan tubuh?` → `harga 8 box madu stamina?` → `mahal kak` | Inbox panel kanan: **Ringkasan percakapan** berisi produk dibahas, jumlah 8, kebutuhan "daya tahan tubuh", keberatan "harga" |
+| H4 | (setelah H3) `saya mau bicara dengan staf` | Kartu approval berisi baris **Ringkasan:** yang sama |
+
+- Gaya bahasa hanya untuk balasan jualan biasa (salam, harga, spesifikasi, izin edar, tindak lanjut, dll.). Pesanan, eskalasi,
+  penolakan klaim, identitas, kebijakan, dan nego tetap memakai template. Matikan dengan `LLM_GAYA=false`.
+- Memori tidak menyimpan isi pertanyaan kesehatan (hanya penanda) dan dihapus setelah `MEMORI_RETENSI_HARI` (default 30) hari
+  tanpa aktivitas.
+
 ## F. Inbox — sisi staf
 1. Buka percakapan dari uji B1 → kartu **Menunggu keputusan staf** muncul di chat, ada penanda menit menunggu.
 2. Klik **Ambil alih** → kirim pesan baru dari simulator (`harga 20 box jahe merah instan?`) →

@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     llm_api_key: str = ""
     # False = Gemini Flash diminta tidak "berpikir" (thinkingBudget 0), agar token tidak habis untuk reasoning.
     llm_reasoning: bool = False
+    # True = balasan jualan biasa ditulis ulang LLM agar lebih luwes (dengan kunci fakta); False = template apa adanya.
+    llm_gaya: bool = True
+    memori_retensi_hari: int = 30  # memori ringkasan percakapan dihapus setelah sekian hari tanpa aktivitas
     # Harga per 1 juta token (USD) untuk menghitung biaya & budget cap. Sesuaikan dengan harga model yang dipakai.
     llm_price_in_usd_per_m: float = 0.30
     llm_price_out_usd_per_m: float = 2.50

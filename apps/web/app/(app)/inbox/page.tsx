@@ -144,6 +144,16 @@ function ContextPanel({ conv, onChanged }: { conv: ConversationDetail; onChanged
           </div>
         </div>
       </section>
+      {conv.memori && (
+        <section>
+          <h3 className="mb-2 text-[12px] font-medium tracking-[0.02em] text-muted-foreground">Ringkasan percakapan</h3>
+          <ul className="space-y-1 text-[13px] text-muted-foreground">
+            {conv.memori.split(" · ").map((b) => (
+              <li key={b}>{b}</li>
+            ))}
+          </ul>
+        </section>
+      )}
       {conv.prospek && (
         <Link href={`/leads?prospek=${conv.prospek.id}`} className="flex items-center gap-2 rounded-md bg-brand-50 px-3 py-2 text-[13px] font-medium text-forest-700">
           <MapPinned className="size-4" /> Dari Leads: {conv.prospek.nama} · skor {conv.prospek.skor} · {conv.prospek.status}
