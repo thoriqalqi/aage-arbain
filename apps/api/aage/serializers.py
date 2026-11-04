@@ -94,14 +94,18 @@ def content(d: ContentDraft, full: bool = True) -> dict:
     return out
 
 
-def prospect(p: Prospect, conversation_id: int | None = None) -> dict:
+def prospect(p: Prospect, viewer: User, conversation_id: int | None = None) -> dict:
     from .prospects.mapper import wa_number
 
-    return {"id": p.id, "nama": p.nama, "wa": wa_number(p.telepon), "conversation_id": conversation_id,
+    wa = wa_number(p.telepon)
+    return {"id": p.id, "nama": p.nama, "wa": wa if viewer.role == "admin" else None, "ada_wa": wa is not None, "conversation_id": conversation_id,
             "catatan": p.catatan, "tindak_lanjut_pada": ts(p.tindak_lanjut_pada), "pic": p.pic, "jaringan": p.jaringan, "alamat": p.alamat, "wilayah": p.wilayah, "lat": p.lat, "lng": p.lng,
-            "tipe": p.tipe, "telepon": p.telepon, "website": p.website, "rating": p.rating,
+            "tipe": p.tipe, "telepon": mask_phone(p.telepon, viewer), "website": p.website, "rating": p.rating,
             "jumlah_ulasan": p.jumlah_ulasan, "jarak_km": p.jarak_km, "sudah_pelanggan": p.sudah_pelanggan,
             "skor": p.skor, "alasan_skor": p.alasan_skor, "draf_pesan": p.draf_pesan, "draf_verdict": p.draf_verdict,
             "status": p.status, "sumber": p.sumber, "osm_id": p.eksternal_id, "jam_buka": p.jam_buka,
             "alamat_jalan_ada": p.alamat_jalan_ada, "skor_geo": p.skor_geo, "skor_data": p.skor_data,
-            "terakhir_dipindai": ts(p.terakhir_dipindai), "market_analysis": p.market_analysis, "nba": p.nba}
+            "terakhir_dipindai": ts(p.terakhir_dipindai), "market_analysis": p.market_analysis, "nba": p.nba,
+            "dikumpulkan_pada": ts(p.dikumpulkan_pada), "diperbarui_pada": ts(p.diperbarui_pada), "confidence": p.confidence, "skor_versi": p.skor_versi,
+            "verifikasi": p.verifikasi, "terakhir_diverifikasi": ts(p.terakhir_diverifikasi), "digabung_ke_id": p.digabung_ke_id,
+            "consent_status": p.consent_status, "consent_sumber": p.consent_sumber, "consent_cakupan": p.consent_cakupan, "consent_pada": ts(p.consent_pada)}

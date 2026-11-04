@@ -10,10 +10,11 @@ import { AButton } from "@/components/aage/button"
 import { ScoreBar } from "@/components/aage/charts"
 import { EmptyState } from "@/components/aage/empty-state"
 import { CardHeader, PageHeader, Panel, Surface } from "@/components/aage/panel"
-import { ProspectDrawer, STATUS } from "@/components/aage/prospect-drawer"
+import { CONSENT, ProspectDrawer, STATUS } from "@/components/aage/prospect-drawer"
 import type { Gudang } from "@/components/aage/prospect-map"
-import { ApiError, api, fetcher, getToken } from "@/lib/api"
+import { ApiError, api, fetcher, unduh } from "@/lib/api"
 import { formatDateTime } from "@/lib/format"
+import { useRole } from "@/lib/rbac"
 import type { Prospect } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -42,6 +43,7 @@ type ScoutResponse = {
 }
 
 export default function ProspekPage() {
+  const { actual } = useRole()
   const { data: initial } = useSWR<{ items: Prospect[]; wilayah: string[]; gudang: Gudang }>("/api/prospects?wilayah=Kota%20Semarang&tipe=Apotek", fetcher)
   const [wilayah, setWilayah] = useState("Kota Semarang")
   const [jenis, setJenis] = useState<(typeof JENIS)[number]>("Apotek")
@@ -113,14 +115,14 @@ export default function ProspekPage() {
   async function exportCsv() {
     const w = result?.wilayah ?? wilayah
     const t = result?.jenis_toko ?? jenis
-    const res = await fetch(`/api/prospects/export.csv?wilayah=${encodeURIComponent(w)}&tipe=${encodeURIComponent(t)}`, {
-      headers: { Authorization: `Bearer ${getToken()}` },
-    })
-    const a = document.createElement("a")
-    a.href = URL.createObjectURL(await res.blob())
-    a.download = `prospek-${w.replace(/\s+/g, "-").toLowerCase()}-${t.replace(/\s+/g, "-").toLowerCase()}.csv`
-    a.click()
-    URL.revokeObjectURL(a.href)
+    try {
+      await unduh(
+        `/api/prospects/export.csv?wilayah=${encodeURIComponent(w)}&tipe=${encodeURIComponent(t)}`,
+        `prospek-${w.replace(/\s+/g, "-").toLowerCase()}-${t.replace(/\s+/g, "-").toLowerCase()}.csv`,
+      )
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Ekspor gagal")
+    }
   }
 
   const zonaEmas = shown.filter((p) => p.skor_geo === 70).length
@@ -217,9 +219,11 @@ export default function ProspekPage() {
               {formatDateTime(result.terakhir_dipindai)}
             </span>
           )}
-          <AButton variant="outline" onClick={exportCsv} disabled={!shown.length}>
-            <Download className="size-4" /> CSV
-          </AButton>
+          {actual === "admin" && (
+            <AButton variant="outline" onClick={exportCsv} disabled={!shown.length}>
+              <Download className="size-4" /> CSV
+            </AButton>
+          )}
         </div>
       </Panel>
 
@@ -294,6 +298,7 @@ export default function ProspekPage() {
                 <th className="px-3 py-2.5 font-medium">Telepon</th>
                 <th className="px-3 py-2.5 font-medium">Jam buka</th>
                 <th className="px-3 py-2.5 font-medium">Status</th>
+                <th className="px-3 py-2.5 font-medium">Consent</th>
               </tr>
             </thead>
             <tbody>
@@ -332,6 +337,9 @@ export default function ProspekPage() {
                         Follow-up {formatDateTime(p.tindak_lanjut_pada)}
                       </div>
                     )}
+                  </td>
+                  <td className="px-3 py-2.5 whitespace-nowrap">
+                    <span className={cn("inline-flex h-6 items-center rounded-full px-2 text-[12px] font-medium", CONSENT[p.consent_status].cls)}>{CONSENT[p.consent_status].label}</span>
                   </td>
                 </tr>
               ))}

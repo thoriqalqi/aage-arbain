@@ -14,6 +14,8 @@ import re
 
 from ..config import get_settings
 
+VERSI_SKOR = "draf-geo-data-v0"  # draf, belum disetujui CV Arba'in
+
 settings = get_settings()
 R_BUMI_KM = 6371.0088
 

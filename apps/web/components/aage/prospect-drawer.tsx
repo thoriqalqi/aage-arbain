@@ -10,6 +10,7 @@ import { toast } from "sonner"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { ApiError, api } from "@/lib/api"
 import { formatDateTime } from "@/lib/format"
+import { useRole } from "@/lib/rbac"
 import type { Prospect } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -24,9 +25,150 @@ export const STATUS: Record<Prospect["status"], { label: string; cls: string }> 
   menolak: { label: "Menolak", cls: "bg-blocked-bg text-blocked" },
 }
 
-/** wa.me hanya membuka WhatsApp staf dengan draf terisi — staf yang menekan Kirim (bukan pesan massal). */
-export function waLink(p: Prospect): string | null {
-  return p.wa ? `https://wa.me/${p.wa}?text=${encodeURIComponent(p.draf_pesan)}` : null
+export const CONSENT: Record<Prospect["consent_status"], { label: string; cls: string }> = {
+  UNKNOWN: { label: "CONSENT_REQUIRED", cls: "bg-review-bg text-review" },
+  GRANTED: { label: "Consent ada", cls: "bg-ok-bg text-ok" },
+  OPTED_OUT: { label: "Opt-out", cls: "bg-blocked-bg text-blocked" },
+}
+
+function Consent({ p, onUpdated }: { p: Prospect; onUpdated: (p: Prospect) => void }) {
+  const { actual } = useRole()
+  const [sumber, setSumber] = useState("")
+  const [tanggal, setTanggal] = useState("")
+  const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    setSumber("")
+    setTanggal("")
+  }, [p.id, p.consent_status])
+
+  async function simpan(json: Record<string, unknown>, pesan: string) {
+    setBusy(true)
+    try {
+      onUpdated(await api<Prospect>(`/api/prospects/${p.id}/consent`, { method: "PUT", json }))
+      toast.success(pesan)
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Gagal menyimpan consent")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const input = "mt-0.5 h-9 w-full rounded-md border border-line bg-white px-2 text-[13px] outline-none focus:border-brand-500"
+  return (
+    <section>
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="text-[13px] font-semibold">Consent promosi WhatsApp</h3>
+        <span className={cn("inline-flex h-6 items-center rounded-full px-2 text-[12px] font-medium", CONSENT[p.consent_status].cls)}>{CONSENT[p.consent_status].label}</span>
+      </div>
+      {p.consent_status !== "UNKNOWN" && (
+        <p className="mb-2 text-[12px] text-muted-foreground">
+          {p.consent_sumber ?? "Tanpa keterangan sumber"} · {formatDateTime(p.consent_pada)}
+        </p>
+      )}
+      {p.consent_status === "OPTED_OUT" ? (
+        actual === "admin" ? (
+          <AButton variant="outline" size="sm" disabled={busy} onClick={() => simpan({ status: "UNKNOWN" }, "Opt-out dicabut, consent perlu dicatat ulang")}>
+            Cabut opt-out
+          </AButton>
+        ) : (
+          <p className="text-[12px] text-subtle-foreground">Lead ini menolak dihubungi. Hanya admin yang bisa mengubahnya.</p>
+        )
+      ) : (
+        <>
+          {p.consent_status === "UNKNOWN" && (
+            <>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className="text-[12px] text-muted-foreground">
+                  Sumber consent
+                  <input value={sumber} onChange={(e) => setSumber(e.target.value)} maxLength={200} className={input} placeholder="Mis. formulir kunjungan" />
+                </label>
+                <label className="text-[12px] text-muted-foreground">
+                  Waktu consent diberikan
+                  <input type="datetime-local" value={tanggal} onChange={(e) => setTanggal(e.target.value)} className={input} />
+                </label>
+              </div>
+              <p className="mt-1 text-[12px] text-subtle-foreground">Skor tinggi atau lead yang chat lebih dulu bukan consent.</p>
+            </>
+          )}
+          <div className="mt-2 flex flex-wrap gap-2">
+            {p.consent_status === "UNKNOWN" && (
+              <AButton
+                size="sm"
+                disabled={busy || !sumber.trim() || !tanggal}
+                onClick={() => simpan({ status: "GRANTED", sumber, cakupan: "promosi_whatsapp", pada: new Date(tanggal).toISOString() }, "Consent dicatat")}
+              >
+                Catat consent
+              </AButton>
+            )}
+            <AButton variant="outline" size="sm" disabled={busy} onClick={() => simpan({ status: "OPTED_OUT", sumber: sumber || null }, "Opt-out dicatat")}>
+              Catat opt-out
+            </AButton>
+          </div>
+        </>
+      )}
+    </section>
+  )
+}
+
+function DrafPembuka({ p, onUpdated }: { p: Prospect; onUpdated: (p: Prospect) => void }) {
+  const [busy, setBusy] = useState(false)
+  const bolehPromosi = p.consent_status === "GRANTED" && p.status !== "menolak"
+
+  /** Server memeriksa ulang consent dan ClaimGuard, lalu memberi tautan. Staf yang menekan Kirim di WhatsApp. */
+  async function bukaWhatsApp() {
+    const tab = window.open("about:blank", "_blank") // dibuka sebelum await agar tidak terkena pemblokir pop-up
+    setBusy(true)
+    try {
+      const res = await api<{ tautan: string; prospek: Prospect }>(`/api/prospects/${p.id}/kontak-promo`, { method: "POST" })
+      if (tab) {
+        tab.opener = null
+        tab.location.href = res.tautan
+      } else {
+        toast.error("Pop-up diblokir browser. Izinkan pop-up lalu coba lagi.")
+      }
+      onUpdated(res.prospek)
+    } catch (err) {
+      tab?.close()
+      toast.error(err instanceof ApiError ? err.message : "Gagal membuka WhatsApp")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section>
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="text-[13px] font-semibold">Draf pesan pembuka WhatsApp</h3>
+        <VerdictBadge verdict={p.draf_verdict} />
+      </div>
+      <p className="rounded-lg bg-brand-50 p-3 text-[13px] leading-6">{p.draf_pesan}</p>
+      {!bolehPromosi ? (
+        <p className="mt-2 rounded-md bg-review-bg px-3 py-2 text-[12px] text-review">
+          {p.consent_status === "OPTED_OUT" || p.status === "menolak" ? "Lead ini menolak dihubungi, draf tidak bisa dipakai." : "CONSENT_REQUIRED: catat consent yang sah dulu sebelum draf ini bisa dipakai."}
+        </p>
+      ) : (
+        <>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {p.ada_wa ? (
+              <AButton size="sm" disabled={busy} onClick={bukaWhatsApp}>
+                <Send className="size-3.5" /> Buka di WhatsApp
+              </AButton>
+            ) : (
+              <span className="text-[12px] text-subtle-foreground">Tidak ada nomor yang valid. Kunjungi langsung atau cari nomor toko.</span>
+            )}
+            <AButton
+              variant="outline"
+              size="sm"
+              onClick={() => navigator.clipboard.writeText(p.draf_pesan).then(() => toast.success("Draf disalin, kirim manual oleh staf"))}
+            >
+              <Copy className="size-3.5" /> Salin draf
+            </AButton>
+          </div>
+          {p.ada_wa && <p className="mt-1 text-[12px] text-subtle-foreground">WhatsApp staf terbuka dengan draf terisi; status otomatis jadi “Dihubungi”.</p>}
+        </>
+      )}
+    </section>
+  )
 }
 
 function toLocalInput(iso: string | null): string {
@@ -154,7 +296,6 @@ function StatusButtons({ p, onStatus }: { p: Prospect; onStatus: (p: Prospect, s
 }
 
 function TabDasar({ p, onStatus, onUpdated }: { p: Prospect; onStatus: (p: Prospect, s: Prospect["status"]) => void; onUpdated: (p: Prospect) => void }) {
-  const link = waLink(p)
   return (
     <div className="space-y-6">
       {p.conversation_id && (
@@ -187,38 +328,11 @@ function TabDasar({ p, onStatus, onUpdated }: { p: Prospect; onStatus: (p: Prosp
         </ul>
         <p className="mt-3 text-[12px] text-subtle-foreground">
           Dipindai {formatDateTime(p.terakhir_dipindai)} · data OpenStreetMap apa adanya (tidak dilengkapi tebakan).
+          {p.skor_versi && ` Model skor sementara: ${p.skor_versi}, belum disetujui CV Arba'in.`}
         </p>
       </section>
-      <section>
-        <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-[13px] font-semibold">Draf pesan pembuka WhatsApp</h3>
-          <VerdictBadge verdict={p.draf_verdict} />
-        </div>
-        <p className="rounded-lg bg-brand-50 p-3 text-[13px] leading-6">{p.draf_pesan}</p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {link ? (
-            <a
-              href={link}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => p.status === "baru" && onStatus(p, "dihubungi")}
-              className="btn-liquid inline-flex h-8 items-center gap-1.5 rounded-[10px] px-3 text-[13px] font-medium"
-            >
-              <Send className="size-3.5" /> Buka di WhatsApp
-            </a>
-          ) : (
-            <span className="text-[12px] text-subtle-foreground">Tidak ada nomor di OSM — kunjungi langsung atau cari nomor toko.</span>
-          )}
-          <AButton
-            variant="outline"
-            size="sm"
-            onClick={() => navigator.clipboard.writeText(p.draf_pesan).then(() => toast.success("Draf disalin — kirim manual oleh staf"))}
-          >
-            <Copy className="size-3.5" /> Salin draf
-          </AButton>
-        </div>
-        {link && <p className="mt-1 text-[12px] text-subtle-foreground">WhatsApp staf terbuka dengan draf terisi; status otomatis jadi “Dihubungi”.</p>}
-      </section>
+      <Consent p={p} onUpdated={onUpdated} />
+      <DrafPembuka p={p} onUpdated={onUpdated} />
       <StatusButtons p={p} onStatus={onStatus} />
       <FollowUp p={p} onUpdated={onUpdated} />
     </div>

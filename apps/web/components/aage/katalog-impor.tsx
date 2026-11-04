@@ -139,7 +139,7 @@ function Pratinjau({ data, onSelesai, onBatal }: { data: KatalogPratinjau; onSel
         <details>
           <summary className="flex cursor-pointer items-center gap-2 text-[13px] font-medium text-review">
             <TriangleAlert className="size-4" aria-hidden /> {data.laporan.jumlah_peringatan} peringatan (tetap diimpor;
-            data kosong dijawab AI "belum ada datanya")
+            data kosong dijawab AI &quot;belum ada datanya&quot;)
           </summary>
           <div className="mt-2">
             <MasalahTabel items={data.laporan.peringatan} tone="warn" />

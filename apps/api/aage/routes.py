@@ -40,8 +40,8 @@ from .models import (
     Prospect,
     User,
 )
-from .prospects import mapper
-from .security import create_token, current_user, require_admin, verify_password
+from .prospects import consent, mapper
+from .security import create_token, current_user, require_admin, require_izin, verify_password
 
 log = logging.getLogger("aage.api")
 settings = get_settings()
@@ -779,14 +779,14 @@ class ScoutIn(BaseModel):
     jenis_toko: str = Field("Apotek", description="Apotek | Toko Obat | Minimarket")
 
 
-def _scout_response(res: dict) -> dict:
+def _scout_response(res: dict, user: User) -> dict:
     meta = {k: (ser.ts(v) if k == "terakhir_dipindai" else v) for k, v in res.items() if k != "prospects"}
     return {**meta, "gudang": {"nama": settings.gudang_nama, "lat": settings.gudang_lat, "lng": settings.gudang_lng},
-            "items": [ser.prospect(p) for p in res["prospects"]]}
+            "items": [ser.prospect(p, user) for p in res["prospects"]]}
 
 
 @router.post("/prospek/scout")
-def prospek_scout(body: ScoutIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def prospek_scout(body: ScoutIn, user: User = Depends(require_izin("leads.ubah")), db: Session = Depends(get_db)):
     """Live Lead Scouting OSM Overpass → Opportunity Score → simpan ke database tanpa duplikat."""
     try:
         res = mapper.scout_and_store(db, wilayah=body.wilayah, jenis_toko=body.jenis_toko, aktor=f"staf:{user.nama}")
@@ -794,7 +794,7 @@ def prospek_scout(body: ScoutIn, user: User = Depends(current_user), db: Session
         raise HTTPException(400, str(exc)) from None
     except mapper.ScoutError as exc:
         raise HTTPException(503, str(exc)) from None
-    return _scout_response(res)
+    return _scout_response(res, user)
 
 
 class ProspectSearchIn(BaseModel):
@@ -803,7 +803,7 @@ class ProspectSearchIn(BaseModel):
 
 
 @router.post("/prospects/search")
-def prospects_search(body: ProspectSearchIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def prospects_search(body: ProspectSearchIn, user: User = Depends(require_izin("leads.ubah")), db: Session = Depends(get_db)):
     """Alias lama — memakai mesin scouting yang sama dengan /api/prospek/scout."""
     return prospek_scout(ScoutIn(wilayah=body.wilayah, jenis_toko=body.tipe), user, db)
 
@@ -821,10 +821,10 @@ def _prospect_query(wilayah: str | None, tipe: str | None, status: str | None):
 
 @router.get("/prospects")
 def prospects_list(wilayah: str | None = None, tipe: str | None = None, status: str | None = None,
-                   user: User = Depends(current_user), db: Session = Depends(get_db)):
+                   user: User = Depends(require_izin("leads.lihat")), db: Session = Depends(get_db)):
     prospects = list(db.scalars(_prospect_query(wilayah, tipe, None)))
     convs = _prospect_conversations(db)
-    items = [ser.prospect(p, convs.get(p.id)) for p in prospects if not status or p.status == status]
+    items = [ser.prospect(p, user, convs.get(p.id)) for p in prospects if not status or p.status == status]
     sedang = bool(wilayah and tipe and tipe in mapper.JENIS_TOKO and mapper.background_running(" ".join(wilayah.split()), tipe))
     wilayah_list = [w for (w,) in db.execute(select(Prospect.wilayah).where(Prospect.sumber == "osm").distinct())]
     now = clock.now()
@@ -850,7 +850,7 @@ class ProspectPatch(BaseModel):
 
 
 @router.patch("/prospects/{prospect_id}")
-def prospects_patch(prospect_id: int, body: ProspectPatch, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def prospects_patch(prospect_id: int, body: ProspectPatch, user: User = Depends(require_izin("leads.ubah")), db: Session = Depends(get_db)):
     fields = body.model_fields_set - {"status"}
     try:
         p = mapper.update(db, prospect_id, f"staf:{user.nama}", status=body.status, catatan=body.catatan,
@@ -859,24 +859,64 @@ def prospects_patch(prospect_id: int, body: ProspectPatch, user: User = Depends(
         raise HTTPException(400, str(exc)) from None
     except LookupError as exc:
         raise HTTPException(404, str(exc)) from None
-    return ser.prospect(p, _prospect_conversations(db).get(p.id))
+    return ser.prospect(p, user, _prospect_conversations(db).get(p.id))
 
 
-@router.post("/prospects/{prospect_id}/riset")
-def prospects_research(prospect_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    """Live AI Search Audit (Serper/Google News) + Next Best Action untuk satu prospek."""
-    from .prospects import market_service
+class ConsentIn(BaseModel):
+    status: str
+    sumber: str | None = Field(None, max_length=200)
+    cakupan: str | None = None
+    pada: datetime | None = None
 
+
+def _ambil_prospek(db: Session, prospect_id: int) -> Prospect:
     p = db.get(Prospect, prospect_id)
     if p is None:
         raise HTTPException(404, "Prospek tidak ditemukan")
-    return ser.prospect(market_service.research(db, p, f"staf:{user.nama}"))
+    return p
+
+
+@router.put("/prospects/{prospect_id}/consent")
+def prospects_consent(prospect_id: int, body: ConsentIn, user: User = Depends(require_izin("leads.ubah")), db: Session = Depends(get_db)):
+    """Catat consent atau opt-out beserta sumber, cakupan, dan waktunya. Setiap perubahan masuk Ledger."""
+    p = _ambil_prospek(db, prospect_id)
+    try:
+        consent.set_consent(db, p, user, status=body.status, sumber=body.sumber, cakupan=body.cakupan, pada=body.pada)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from None
+    except PermissionError as exc:
+        raise HTTPException(403, str(exc)) from None
+    return ser.prospect(p, user, _prospect_conversations(db).get(p.id))
+
+
+@router.post("/prospects/{prospect_id}/kontak-promo")
+def prospects_kontak_promo(prospect_id: int, user: User = Depends(require_izin("leads.kontak")), db: Session = Depends(get_db)):
+    """Tautan WhatsApp berisi draf promosi, hanya bila consent sah. Tidak ada pesan yang dikirim sistem; staf yang menekan Kirim."""
+    p = _ambil_prospek(db, prospect_id)
+    try:
+        tautan = consent.buka_kontak_promo(db, p, user)
+    except consent.KontakDitolak as exc:
+        raise HTTPException(409, {"kode": exc.kode, "pesan": exc.pesan}) from None
+    return {"tautan": tautan, "prospek": ser.prospect(p, user, _prospect_conversations(db).get(p.id))}
+
+
+@router.post("/prospects/{prospect_id}/riset")
+def prospects_research(prospect_id: int, user: User = Depends(require_izin("leads.ubah")), db: Session = Depends(get_db)):
+    """Live AI Search Audit (Serper/Google News) + Next Best Action untuk satu prospek."""
+    from .prospects import market_service
+
+    p = _ambil_prospek(db, prospect_id)
+    return ser.prospect(market_service.research(db, p, f"staf:{user.nama}"), user)
 
 
 @router.get("/prospects/export.csv")
-def prospects_export(wilayah: str | None = None, tipe: str | None = None, user: User = Depends(current_user),
+def prospects_export(wilayah: str | None = None, tipe: str | None = None, user: User = Depends(require_izin("leads.ekspor")),
                      db: Session = Depends(get_db)):
-    data = mapper.to_csv(list(db.scalars(_prospect_query(wilayah, tipe, None))))
+    prospects = list(db.scalars(_prospect_query(wilayah, tipe, None)))
+    data = mapper.to_csv(prospects)
+    ledger.record(db, "prospek_diekspor", aktor=f"staf:{user.nama}", model=None, outcome="diekspor",
+                  ringkasan=f"{len(prospects)} prospek diekspor ke CSV", data={"jumlah": len(prospects), "wilayah": wilayah, "tipe": tipe})
+    db.commit()
     return Response(content="﻿" + data, media_type="text/csv",
                     headers={"Content-Disposition": f'attachment; filename="prospek-{(wilayah or "semua").replace(" ", "-")}.csv"'})
 

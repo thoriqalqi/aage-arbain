@@ -214,6 +214,16 @@ export type Prospect = {
   draf_verdict: Verdict | null
   status: "baru" | "dihubungi" | "merespons" | "pelanggan" | "menolak"
   wa: string | null
+  ada_wa: boolean
+  consent_status: "UNKNOWN" | "GRANTED" | "OPTED_OUT"
+  consent_sumber: string | null
+  consent_cakupan: string | null
+  consent_pada: string | null
+  skor_versi: string | null
+  confidence: number | null
+  verifikasi: string
+  dikumpulkan_pada: string | null
+  diperbarui_pada: string | null
   conversation_id: number | null
   catatan: string | null
   tindak_lanjut_pada: string | null

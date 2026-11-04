@@ -15,7 +15,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .. import claimguard, clock, ledger
-from ..models import Contact, Prospect
+from ..models import Contact, LeadEvidence, Prospect
 from . import lead_service, scoring_service
 from .lead_service import JENIS_TOKO, ScoutError, ScoutTimeout, normalize_jenis
 
@@ -125,12 +125,14 @@ def _store(db: Session, res: "lead_service.ScoutResult", wilayah: str, jenis: st
         p.sudah_pelanggan = (lead["name"].strip().lower() in customers or p.id in linked
                              or (wa_number(p.telepon) or "-") in customer_phones)
         p.sumber = "osm"
-        p.terakhir_dipindai = lead["last_scanned_at"]
+        p.skor_versi = scoring_service.VERSI_SKOR
+        p.terakhir_dipindai = p.dikumpulkan_pada = lead["last_scanned_at"]
         if is_new or not p.draf_pesan:
             msg = opening_message(p.nama, wilayah, jenis)
             chk = claimguard.check(db, msg, use_llm=False)
             p.draf_pesan, p.draf_verdict = (msg if chk.verdict == claimguard.ALLOWED else chk.safe_text), chk.verdict
         db.flush()
+        _catat_bukti(db, p, "osm", ext, p.dikumpulkan_pada, {"server": res.server, "area": res.area_dipakai})
         if is_new:
             ledger.record(db, "prospek_dibuat", trace_id=trace, objek_ref=f"prospect:{p.id}", aktor=aktor,
                           ringkasan=f"{p.nama} · skor {p.skor}", alasan="; ".join(f"{r['faktor']} +{r['poin']}" for r in s["alasan"]),
@@ -144,6 +146,15 @@ def _store(db: Session, res: "lead_service.ScoutResult", wilayah: str, jenis: st
             "durasi_ms": int((time.perf_counter() - started) * 1000), "terakhir_dipindai": clock.now(),
             "server": res.server, "peringatan": None if stored else f"Tidak ada {jenis.lower()} bernama di area OSM \"{wilayah}\".",
             "prospects": stored}
+
+
+def _catat_bukti(db: Session, p: Prospect, source_type: str, reference: str, dikumpulkan_pada, metadata: dict | None = None) -> None:
+    bukti = db.scalar(select(LeadEvidence).where(LeadEvidence.lead_id == p.id, LeadEvidence.source_type == source_type,
+                                                 LeadEvidence.source_reference == reference))
+    if bukti is None:
+        bukti = LeadEvidence(lead_id=p.id, source_type=source_type, source_reference=reference)
+        db.add(bukti)
+    bukti.dikumpulkan_pada, bukti.metadata_sumber = dikumpulkan_pada, metadata
 
 
 def wa_number(phone: str | None) -> str | None:

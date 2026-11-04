@@ -267,6 +267,49 @@ class Prospect(Base):
     market_analysis: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # hasil Live AI Search Audit
     nba: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # Next Best Action
     dibuat_pada: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    diperbarui_pada: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+    dikumpulkan_pada: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)  # 0-1; kosong = belum dihitung
+    skor_versi: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    verifikasi: Mapped[str] = mapped_column(String(16), default="belum", server_default="belum", index=True)  # belum | perlu_tinjauan | terverifikasi | ditolak
+    terakhir_diverifikasi: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    consent_status: Mapped[str] = mapped_column(String(16), default="UNKNOWN", server_default="UNKNOWN", index=True)  # UNKNOWN | GRANTED | OPTED_OUT
+    consent_sumber: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    consent_cakupan: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    consent_pada: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    digabung_ke_id: Mapped[int | None] = mapped_column(ForeignKey("prospects.id"), nullable=True, index=True)
+
+    __table_args__ = (Index("ix_prospects_skor", "skor"), Index("ix_prospects_status", "status"), Index("ix_prospects_sumber", "sumber"))
+
+
+class LeadEvidence(Base):
+    """Asal data satu lead. Satu lead bisa punya banyak sumber; pindai ulang memperbarui baris yang sama."""
+
+    __tablename__ = "lead_evidence"
+    __table_args__ = (UniqueConstraint("lead_id", "source_type", "source_reference", name="uq_lead_evidence_sumber"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    lead_id: Mapped[int] = mapped_column(ForeignKey("prospects.id"), index=True)
+    source_type: Mapped[str] = mapped_column(String(24))
+    source_reference: Mapped[str] = mapped_column(String(500))
+    dikumpulkan_pada: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    metadata_sumber: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    dibuat_pada: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class LeadDuplikat(Base):
+    """Calon duplikat beserta alasan kecocokan dan keputusan staf. Tidak ada penggabungan tanpa baris di sini."""
+
+    __tablename__ = "lead_duplikat"
+    __table_args__ = (UniqueConstraint("lead_id", "lead_cocok_id", name="uq_lead_duplikat_pasangan"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    lead_id: Mapped[int] = mapped_column(ForeignKey("prospects.id"), index=True)
+    lead_cocok_id: Mapped[int] = mapped_column(ForeignKey("prospects.id"), index=True)
+    alasan: Mapped[list] = mapped_column(JSON, default=list)
+    keputusan: Mapped[str] = mapped_column(String(16), default="menunggu", index=True)  # menunggu | digabung | bukan_duplikat
+    diputuskan_oleh: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    diputuskan_pada: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    dibuat_pada: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
 class KatalogImpor(Base):

@@ -120,6 +120,30 @@ def test_migrasi_dari_kosong_sama_dengan_model_dan_terlindungi():
 
 
 @perlu_postgres
+def test_migrasi_0002_mengisi_baris_lead_lama_tanpa_menghapus():
+    engine = create_engine(URL)
+    _kosongkan(engine)
+    h = _alembic("upgrade", "0001")
+    assert h.returncode == 0, h.stderr
+    isi = ("INSERT INTO prospects (nama, alamat, wilayah, tipe, sudah_pelanggan, skor, alasan_skor, draf_pesan, status, sumber, "
+           "eksternal_id, alamat_jalan_ada, skor_geo, skor_data, dibuat_pada) VALUES "
+           "(:nama, '', 'Kota', 'Apotek', false, 10, '[]', '', 'dihubungi', :sumber, :ext, false, 0, 0, now())")
+    with engine.begin() as c:
+        c.execute(text(isi), {"nama": "Asli", "sumber": "osm", "ext": "osm:node/1"})
+        c.execute(text(isi), {"nama": "Demo", "sumber": "sintetis", "ext": None})
+    h = _alembic("upgrade", "head")
+    assert h.returncode == 0, h.stderr
+    with engine.connect() as c:
+        baris = c.execute(text("SELECT nama, status, consent_status, verifikasi, skor_versi, diperbarui_pada IS NOT NULL, "
+                               "dikumpulkan_pada IS NOT NULL FROM prospects ORDER BY id")).all()
+        bukti = c.execute(text("SELECT source_type, source_reference FROM lead_evidence ORDER BY lead_id")).all()
+    assert [tuple(b) for b in baris] == [("Asli", "dihubungi", "UNKNOWN", "belum", "draf-geo-data-v0", True, True),
+                                         ("Demo", "dihubungi", "UNKNOWN", "belum", "draf-geo-data-v0", True, True)]
+    assert [tuple(b) for b in bukti] == [("osm", "osm:node/1"), ("sintetis", "prospect:2")]
+    engine.dispose()
+
+
+@perlu_postgres
 def test_cadangkan_hapus_pulihkan_kembali_sama(tmp_path):
     engine = create_engine(URL)
     _skema_alembic_dan_data(engine)

@@ -132,6 +132,24 @@ def _migrate_channel_identity() -> None:
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_messages_external_message_id ON messages (external_message_id)"))
 
 
+def _isi_kolom_leads() -> None:
+    """Database lokal lama yang kolomnya baru ditambahkan: isi nilai awal dan asal data. Idempoten; online memakai migrasi 0002."""
+    from sqlalchemy import inspect
+
+    if not inspect(engine).has_table("lead_evidence"):
+        return
+    with engine.begin() as conn:
+        conn.execute(text("UPDATE prospects SET consent_status = 'UNKNOWN' WHERE consent_status IS NULL"))
+        conn.execute(text("UPDATE prospects SET verifikasi = 'belum' WHERE verifikasi IS NULL"))
+        conn.execute(text("UPDATE prospects SET diperbarui_pada = dibuat_pada WHERE diperbarui_pada IS NULL"))
+        conn.execute(text("UPDATE prospects SET dikumpulkan_pada = COALESCE(terakhir_dipindai, dibuat_pada) WHERE dikumpulkan_pada IS NULL"))
+        conn.execute(text("UPDATE prospects SET skor_versi = 'draf-geo-data-v0' WHERE skor_versi IS NULL"))
+        conn.execute(text(
+            "INSERT INTO lead_evidence (lead_id, source_type, source_reference, dikumpulkan_pada, dibuat_pada) "
+            "SELECT id, sumber, COALESCE(eksternal_id, 'prospect:' || CAST(id AS TEXT)), dikumpulkan_pada, dikumpulkan_pada FROM prospects p "
+            "WHERE NOT EXISTS (SELECT 1 FROM lead_evidence b WHERE b.lead_id = p.id)"))
+
+
 def versi_skema_kode() -> str:
     """Revisi Alembic terbaru yang dibawa kode ini."""
     from alembic.config import Config
@@ -180,6 +198,7 @@ def init_db(drop: bool = False) -> None:
                 conn.exec_driver_sql(f'ALTER TABLE "{table.name}" ENABLE ROW LEVEL SECURITY')
     _add_missing_columns()
     _migrate_channel_identity()
+    _isi_kolom_leads()
     if IS_POSTGRES:
         with engine.begin() as conn:
             conn.exec_driver_sql(LEDGER_GUARD_SQL)

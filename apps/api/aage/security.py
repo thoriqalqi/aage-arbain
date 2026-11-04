@@ -61,6 +61,26 @@ def require_admin(user: User = Depends(current_user)) -> User:
     return user
 
 
+# Izin sementara dengan hak paling sempit, sampai CV Arba'in menetapkan kebijakannya. Marketing tidak membuka layar Leads.
+IZIN = {
+    "leads.lihat": {"admin", "staf"},
+    "leads.ubah": {"admin", "staf"},
+    "leads.kontak": {"admin", "staf"},
+    "leads.ekspor": {"admin"},
+}
+
+
+def require_izin(izin: str):
+    peran = IZIN[izin]
+
+    def periksa(user: User = Depends(current_user)) -> User:
+        if user.role not in peran:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, f"Peran Anda tidak memiliki izin {izin}")
+        return user
+
+    return periksa
+
+
 def mask_phone(number: str | None, user: User) -> str | None:
     """UU PDP: nomor dimasking untuk peran staf."""
     if not number or user.role == "admin":

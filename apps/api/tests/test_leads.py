@@ -47,7 +47,8 @@ def test_prospect_to_customer_funnel(client, auth, monkeypatch):
     r = client.patch(f"/api/prospects/{target['id']}", headers=auth,
                      json={"status": "dihubungi", "catatan": "Pemilik minta katalog", "pic": "Sari",
                            "tindak_lanjut_pada": "2026-01-01T09:00:00+07:00"})
-    assert r.status_code == 200 and r.json()["catatan"] == "Pemilik minta katalog" and r.json()["wa"] == "6281277770001"
+    assert r.status_code == 200 and r.json()["catatan"] == "Pemilik minta katalog"
+    assert r.json()["wa"] is None and r.json()["ada_wa"] is True and "7777" not in r.json()["telepon"], "nomor disamarkan untuk staf"
 
     # Prospek membalas lewat WhatsApp → tertaut & naik ke "merespons"
     with SessionLocal() as db:
