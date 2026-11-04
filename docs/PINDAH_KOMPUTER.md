@@ -2,6 +2,8 @@
 
 Panduan menyiapkan AAGE di komputer baru dari repositori private `thoriqalqi/aage-arbain`.
 
+Kalau komputer baru memakai database Supabase, baca juga `docs/DATABASE_ONLINE.md`, dan jangan jalankan `python -m aage.seed`.
+
 ## Versi dan dependensi
 
 | Komponen | Versi yang dipakai | File dependensi |

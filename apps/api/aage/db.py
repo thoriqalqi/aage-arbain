@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from pathlib import Path
 
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
@@ -131,11 +132,41 @@ def _migrate_channel_identity() -> None:
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_messages_external_message_id ON messages (external_message_id)"))
 
 
+def versi_skema_kode() -> str:
+    """Revisi Alembic terbaru yang dibawa kode ini."""
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    return ScriptDirectory.from_config(Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))).get_current_head()
+
+
+def versi_skema_database() -> str | None:
+    with engine.connect() as conn:
+        if conn.scalar(text("SELECT to_regclass('alembic_version')")) is None:
+            return None
+        return conn.scalar(text("SELECT version_num FROM alembic_version"))
+
+
+def _pastikan_skema_terbaru() -> None:
+    """Database online hanya diubah lewat Alembic, tidak pernah otomatis saat API start. Versi berbeda berarti API berhenti di sini."""
+    kode, database = versi_skema_kode(), versi_skema_database()
+    if database != kode:
+        raise DatabaseOnlineError(
+            f"Versi skema database ({database or 'belum ada'}) berbeda dengan versi kode ({kode}). Tidak ada data yang diubah. "
+            "Kalau kode lebih baru: cadangkan database, lalu jalankan `python -m alembic upgrade head`. "
+            "Kalau database lebih baru: ambil kode terbaru dengan git pull. Lihat docs/DATABASE_ONLINE.md.")
+
+
 def init_db(drop: bool = False) -> None:
     from . import ledger_chain, models, settings_store  # noqa: F401  (registrasi tabel)
 
     if drop and adalah_online(settings.database_url):
         raise DatabaseOnlineError("Reset database ditolak: DATABASE_URL mengarah ke database online. Tidak ada data yang diubah.")
+    if adalah_online(settings.database_url):
+        _pastikan_skema_terbaru()
+        with SessionLocal() as db:  # segel event yang belum tersegel, kalau ada
+            ledger_chain.backfill(db)
+        return
     if drop:
         Base.metadata.drop_all(engine)
     with engine.begin() as conn:

@@ -2,7 +2,7 @@
 
 Asisten AI sales untuk CV Arba'in: produk herbal/suplemen, penjualan grosir B2B ke apotek dan toko.
 
-- `apps/api`: backend FastAPI, LangGraph, SQLite (`aage.db`). Postgres ada di kode, tetapi belum diuji.
+- `apps/api`: backend FastAPI, LangGraph. Tanpa `DATABASE_URL` memakai SQLite (`aage.db`); data sungguhan ada di Supabase Postgres, lihat `docs/DATABASE_ONLINE.md`.
 - `apps/web`: dashboard Next.js, meneruskan `/api` ke port 8000.
 - LLM: lewat TokenHarbor (DeepSeek), memakai jalur `openai_compat`.
 - Katalog di repo masih simulasi, bukan data resmi mitra.
@@ -48,7 +48,11 @@ npm run lint
 npm run build
 ```
 
-`python -m aage.seed` menghapus isi database lalu mengisi data demo. Jangan dijalankan pada database yang masih dipakai.
+`python -m aage.seed` menghapus isi database lalu mengisi data demo. Jangan dijalankan pada database yang masih dipakai. Pada database online perintah ini ditolak.
+
+### Database online
+
+Skema online hanya diubah lewat Alembic (`migrations/`), dan API menolak start kalau versinya berbeda. Tes dan eval tidak boleh menyentuh database online. Paket gratis tidak punya backup otomatis: buat dengan `scripts/cadangan_db.py buat`. Langkah lengkap ada di `docs/DATABASE_ONLINE.md`.
 
 ### Konfigurasi LLM
 
