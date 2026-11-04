@@ -1,0 +1,31 @@
+Regresi LLM · keluaran hasil_fase4b · 6 ronde
+
+realistis    80/80 lolos · salah 0 · ERROR tersisa 0 · belum diproses 0 · pulih setelah diulang 0
+holdout      25/25 lolos · salah 0 · ERROR tersisa 0 · belum diproses 0 · pulih setelah diulang 0
+adversarial  59/59 lolos · salah 0 · ERROR tersisa 0 · belum diproses 0 · pulih setelah diulang 0
+lapangan     25/25 lolos · salah 0 · ERROR tersisa 0 · belum diproses 0 · pulih setelah diulang 0
+emosi        400/400 lolos · salah 0 · ERROR tersisa 0 · belum diproses 0 · pulih setelah diulang 74
+             8 kali: 50/50 pesan lolos semua · konsisten 50/50
+katalog_uji  28/28 lolos · salah 0 · ERROR tersisa 0 · belum diproses 0 · pulih setelah diulang 0
+percakapan   34/34 lolos · salah 0 · ERROR tersisa 0 · belum diproses 0 · pulih setelah diulang 0
+
+Kunci fakta (gaya bahasa LLM):
+  diterima 209 (lalu dibatalkan ClaimGuard 0) · ditolak 17
+  realistis    diterima 20 · dibatalkan ClaimGuard 0 · ditolak 6
+  holdout      diterima 6 · dibatalkan ClaimGuard 0 · ditolak 0
+  adversarial  diterima 6 · dibatalkan ClaimGuard 0 · ditolak 2
+  lapangan     diterima 3 · dibatalkan ClaimGuard 0 · ditolak 1
+  emosi        diterima 157 · dibatalkan ClaimGuard 0 · ditolak 8
+  katalog_uji  diterima 6 · dibatalkan ClaimGuard 0 · ditolak 0
+  percakapan   diterima 11 · dibatalkan ClaimGuard 0 · ditolak 0
+  Alasan penolakan: {"teks terpotong": 31, "pertanyaan hilang": 14, "angka berubah": 12, "frasa kunci hilang: grosir": 11, "frasa kunci hilang: izin edar": 9, "panjang tidak wajar": 6, "frasa kunci hilang: moq": 4, "frasa kunci hilang: pesan": 3, "baris daftar berubah": 3, "frasa kunci hilang: staf": 3, "frasa kunci hilang: asisten ai": 3, "teks tebal hilang": 2, "frasa kunci hilang: belum ada": 2, "frasa kunci hilang: dikonfirmasi staf": 2, "frasa kunci hilang: stok belum ada": 2, "frasa kunci hilang: belum ada di katalog": 2, "frasa kunci hilang: belum termasuk": 1, "nama produk berubah": 1}
+  Contoh ditolak: angka berubah: ['120', '120/box', 'rp2880000/box', '10/%', 'rp2592000/box', 'rp311040000'] → ['120', '120/box', 'rp28800 ← Kak, ini penawaran *Kapsul Habbatussauda 120* untuk 120 box: • Harga dasar Rp 2.880.000/box • Diskon volume 10% → Rp 2
+  Contoh ditolak: angka berubah: ['30/ml', '30/%', '260006', '30/ml', '72/botol', 'rp3960000/box', '5/box'] → ['30/ml', '30/%']; frasa kun ← Ini info produk dan stoknya ya, Kak: • *Propolis Tetes 30 ml* Membantu memelihara daya tahan tubuh. Komposisi: Ekstrak propolis lebah (Apis mellifera) 30%. Izin
+  Contoh ditolak: angka berubah: ['500', 'rp2160000/box', '5/box', '10/box', '3/%', '25/box', '5/%', '50/box', '7/%', '100/box', '10/%'] → ← Untuk harga grosir *Vitamin C 500 mg + Zinc*, Rp 2.160.000/box dengan MOQ 5 box, Kak. Diskon volume: ≥10 box: s.d. 3%; ≥25 box: s.d. 5%; ≥50 box: s.d. 7%; ≥100
+  Contoh ditolak: angka berubah: ['20/sachet', '20/sachet', '1/box', '40/kotak', '60/kapsul', '1/box', '60/botol', '450'] → ['20/sachet',  ← *Jahe Merah Instan 20 sachet* • Kemasan: Kotak 20 sachet, 1 box isi 40 kotak • Kandungan: Ekstrak jahe merah (Zingiber officinale var. rubrum); Gula aren; Serai
+  Contoh ditolak: angka berubah: ['60/tablet', '1/box', '60/botol', '500', '100'] → ['60/tablet', '1/box', '60/botol', '500']; frasa kunci ← *Kalsium + Magnesium Tablet* • Kemasan: Botol 60 tablet, 1 box isi 60 botol • Kandungan: Kalsium karbonat setara Ca 500 mg;
+  Contoh ditolak: angka berubah: ['10/sachet', '1/box', '60/kotak', '1', '10', '1', '10'] → ['10/sachet', '1/box', '60/kotak', '1', '109', ← *Probiotik Sachet* • Kemasan: Kotak 10 sachet, 1 box isi 60 kotak • Kandungan: Lactobacillus acidophilus 1×109 CFU; Bifidobacterium lactis 1×109 CFU; Inulin Kal
+
+Panggilan LLM (ronde yang selesai): {'panggilan': 1039, 'berhasil': 268, 'error': 169, 'rate_limit': 376, 'retry': 602}
+Error LLM tersisa: 0 baris ERROR, 0 baris belum diproses
+KESIMPULAN: SEMUA LOLOS 100%

@@ -27,6 +27,7 @@ def test_old_sqlite_db_migrates_to_channel_identity(tmp_path, monkeypatch):
     raw.cursor().executescript(OLD_SCHEMA)
     raw.close()
     monkeypatch.setattr(db_module, "engine", eng)
+    monkeypatch.setattr(db_module, "IS_POSTGRES", False)  # DB lama ini selalu SQLite, di mana pun tes dijalankan
 
     for _ in range(2):  # idempoten: start kedua tidak mengubah apa pun
         db_module._add_missing_columns()

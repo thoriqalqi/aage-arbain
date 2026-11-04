@@ -3,6 +3,15 @@
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import make_url
+
+_HOST_LOKAL = {"localhost", "127.0.0.1", "::1", "db"}  # "db" = layanan Postgres di docker compose
+
+
+def adalah_online(url: str) -> bool:
+    """Postgres di luar mesin ini (mis. Supabase): data sungguhan yang tidak boleh terhapus oleh seed, tes, atau eval."""
+    u = make_url(url)
+    return u.get_backend_name() == "postgresql" and (u.host or "localhost") not in _HOST_LOKAL
 
 
 class Settings(BaseSettings):

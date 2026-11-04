@@ -6,7 +6,9 @@ from pathlib import Path
 import pytest
 
 _DB = Path(tempfile.gettempdir()) / f"aage-test-{os.getpid()}.db"
-os.environ["DATABASE_URL"] = f"sqlite:///{_DB.as_posix()}"
+# AAGE_TES_DATABASE_URL opsional: menjalankan tes di Postgres lokal. Isi database itu dihapus, jadi yang online ditolak.
+_URL_TES = os.environ.get("AAGE_TES_DATABASE_URL") or f"sqlite:///{_DB.as_posix()}"
+os.environ["DATABASE_URL"] = _URL_TES
 os.environ["GEMINI_API_KEY"] = ""
 os.environ["LLM_MODEL"] = "gemini/model-tes"
 os.environ["LLM_API_KEY"] = ""  # tes tidak memakai kuota LLM sungguhan (provider mana pun)
@@ -21,6 +23,11 @@ os.environ["WATI_ALLOWLIST"] = ""
 os.environ["WA_PROVIDER"] = ""
 os.environ["ANTHROPIC_API_KEY"] = ""
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from aage.config import adalah_online  # noqa: E402
+
+if adalah_online(_URL_TES):
+    pytest.exit("AAGE_TES_DATABASE_URL mengarah ke database online; tes menghapus isi database.", returncode=2)
 
 
 @pytest.fixture(scope="session")

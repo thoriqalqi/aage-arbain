@@ -29,3 +29,6 @@ Thumbs.db
 
 # keluaran eval yang ditulis ulang setiap run
 apps/api/eval/hasil/kirim_stub.log
+
+# salinan aage.db dan sandi baru dari skrip pindah database
+apps/api/cadangan/

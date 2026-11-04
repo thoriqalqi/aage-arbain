@@ -2,9 +2,11 @@
 
 import pytest
 from sqlalchemy import text
+from sqlalchemy.exc import DBAPIError
 
 from aage import ledger, ledger_chain
 from aage.agents.graph import handle_inbound
+from aage.db import IS_POSTGRES
 from aage.models import LedgerImmutableError
 
 
@@ -27,6 +29,10 @@ def test_each_hash_links_to_previous(db):
 def test_tampering_is_detected(db):
     ev = ledger.record(db, "pesan_keluar", ringkasan="Harga Rp 100.000", aktor="AI")
     db.commit()
+    if IS_POSTGRES:  # lapis pertama: trigger menolak; penyerang harus punya hak mematikannya dulu
+        with pytest.raises(DBAPIError, match="append-only"), db.begin_nested():
+            db.execute(text("UPDATE ledger_events SET ringkasan = 'Harga Rp 1' WHERE id = :i"), {"i": ev.id})
+        db.execute(text("ALTER TABLE ledger_events DISABLE TRIGGER ledger_no_update"))
     # Penyerang mengubah baris langsung lewat SQL (melewati penjaga ORM).
     db.execute(text("UPDATE ledger_events SET ringkasan = 'Harga Rp 1' WHERE id = :i"), {"i": ev.id})
     db.expire_all()

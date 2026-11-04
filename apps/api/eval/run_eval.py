@@ -41,8 +41,15 @@ class OutboundBlocked(RuntimeError):
 
 def _prepare_env(mode: str, dataset: str = "realistis") -> Path:
     db = Path(tempfile.gettempdir()) / f"aage-eval-{dataset}-{mode}.db"  # per dataset: bisa jalan paralel
+    sys.path.insert(0, str(HERE.parent))
+    from aage.config import adalah_online
+
+    # AAGE_EVAL_DATABASE_URL opsional: eval di Postgres lokal (selalu mulai dari kosong). Yang online ditolak.
+    url = os.environ.get("AAGE_EVAL_DATABASE_URL") or f"sqlite:///{db.as_posix()}"
+    if adalah_online(url):
+        sys.exit("AAGE_EVAL_DATABASE_URL mengarah ke database online; eval menghapus isi database.")
     os.environ.update({
-        "DATABASE_URL": f"sqlite:///{db.as_posix()}", "TELEGRAM_BOT_TOKEN": "",
+        "DATABASE_URL": url, "TELEGRAM_BOT_TOKEN": "",
         "WATI_API_KEY": "", "WA_ACCESS_TOKEN": "", "WA_PHONE_NUMBER_ID": "", "WA_APP_SECRET": "",
         "FONNTE_TOKEN": "", "SERPER_API_KEY": "", "ANTHROPIC_API_KEY": "", "WATI_ALLOWLIST": "",
         "WA_PROVIDER": "wati", "WATI_WEBHOOK_TOKEN": WEBHOOK_TOKEN, "ENV": "dev",
@@ -52,7 +59,6 @@ def _prepare_env(mode: str, dataset: str = "realistis") -> Path:
     else:
         # Gemini satu-satunya provider; tanpa fallback ke model lain.
         os.environ.update({"LLM_FALLBACK_MODELS": ""})
-    sys.path.insert(0, str(HERE.parent))
     return db
 
 

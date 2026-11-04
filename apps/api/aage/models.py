@@ -12,6 +12,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
     event,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -228,7 +229,7 @@ class ContentDraft(Base):
     json_ld: Mapped[list] = mapped_column(JSON, default=list)
     claim_verdict: Mapped[str] = mapped_column(String(16), default="review")
     claim_report: Mapped[dict] = mapped_column(JSON, default=dict)
-    status: Mapped[str] = mapped_column(String(16), default="draf")  # draf | disetujui | ditolak
+    status: Mapped[str] = mapped_column(String(24), default="draf")  # draf | menunggu_approval | disetujui | ditolak | diarsipkan
     dibuat_pada: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
@@ -386,6 +387,21 @@ class PermintaanTakTerpenuhi(Base):
     contact_id: Mapped[int | None] = mapped_column(ForeignKey("contacts.id"), nullable=True)
     conversation_id: Mapped[int | None] = mapped_column(ForeignKey("conversations.id"), nullable=True, index=True)
     trace_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    dibuat_pada: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
+
+
+class Laporan(Base):
+    """Laporan penting proyek. Kolom commit wajib: angka di laporan hanya berlaku untuk kode pada commit itu."""
+
+    __tablename__ = "laporan"
+    __table_args__ = (UniqueConstraint("sumber", "commit", name="uq_laporan_sumber_commit"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    jenis: Mapped[str] = mapped_column(String(32), index=True)  # regresi_llm | audit | evaluasi
+    judul: Mapped[str] = mapped_column(String(200))
+    isi: Mapped[str] = mapped_column(Text)
+    commit: Mapped[str] = mapped_column(String(40))
+    sumber: Mapped[str] = mapped_column(String(255))  # path file di repo
+    catatan: Mapped[str] = mapped_column(Text, default="")  # batas berlakunya isi laporan
     dibuat_pada: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
 
 
