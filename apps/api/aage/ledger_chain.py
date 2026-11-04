@@ -7,6 +7,7 @@ hash baris itu (dan rantai sesudahnya) tidak cocok saat diverifikasi.
 
 import hashlib
 import json
+from datetime import timezone
 
 from sqlalchemy import ForeignKey, Integer, String, event, func, select, text
 from sqlalchemy.orm import Mapped, Session, mapped_column
@@ -39,6 +40,7 @@ def _block_delete(*_):
 
 def payload(ev: LedgerEvent) -> str:
     waktu = clock.aware(ev.waktu)
+    waktu = waktu.astimezone(timezone.utc) if waktu else None  # hash tidak boleh bergantung pada zona sesi database
     body = {
         "id": ev.id, "tipe_event": ev.tipe_event, "waktu": waktu.isoformat(timespec="microseconds") if waktu else None,
         "trace_id": ev.trace_id, "conversation_id": ev.conversation_id, "product_id": ev.product_id,

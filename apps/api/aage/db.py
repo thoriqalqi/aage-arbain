@@ -1,6 +1,7 @@
 from collections.abc import Iterator
 
 from sqlalchemy import create_engine, event, text
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from .config import get_settings
@@ -12,6 +13,17 @@ engine = create_engine(settings.database_url, connect_args=_connect_args, pool_p
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 IS_POSTGRES = engine.dialect.name == "postgresql"
+_HOST_LOKAL = {"localhost", "127.0.0.1", "::1", "db"}  # "db" = layanan Postgres di docker compose
+
+
+class DatabaseOnlineError(RuntimeError):
+    """Operasi yang menghapus data ditolak pada database online."""
+
+
+def adalah_online(url: str) -> bool:
+    """Postgres di luar mesin ini (mis. Supabase): data sungguhan yang tidak boleh terhapus oleh seed, tes, atau eval."""
+    u = make_url(url)
+    return u.get_backend_name() == "postgresql" and (u.host or "localhost") not in _HOST_LOKAL
 
 
 if engine.dialect.name == "sqlite":
@@ -44,6 +56,9 @@ END;
 $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS ledger_no_update ON ledger_events;
 CREATE TRIGGER ledger_no_update BEFORE UPDATE OR DELETE ON ledger_events
+  FOR EACH ROW EXECUTE FUNCTION ledger_append_only();
+DROP TRIGGER IF EXISTS ledger_hash_no_update ON ledger_hashes;
+CREATE TRIGGER ledger_hash_no_update BEFORE UPDATE OR DELETE ON ledger_hashes
   FOR EACH ROW EXECUTE FUNCTION ledger_append_only();
 """
 
@@ -124,6 +139,8 @@ def _migrate_channel_identity() -> None:
 def init_db(drop: bool = False) -> None:
     from . import ledger_chain, models, settings_store  # noqa: F401  (registrasi tabel)
 
+    if drop and adalah_online(settings.database_url):
+        raise DatabaseOnlineError("Reset database ditolak: DATABASE_URL mengarah ke database online. Tidak ada data yang diubah.")
     if IS_POSTGRES:
         with engine.begin() as conn:
             conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
@@ -134,6 +151,11 @@ def init_db(drop: bool = False) -> None:
     _migrate_channel_identity()
     if IS_POSTGRES:
         with engine.begin() as conn:
-            conn.execute(text(LEDGER_GUARD_SQL))
+            conn.exec_driver_sql(LEDGER_GUARD_SQL)
+            if adalah_online(settings.database_url):
+                # Supabase membuka skema public lewat REST; tanpa RLS tabel bisa dibaca dengan kunci publik. API memakai
+                # peran pemilik tabel, yang tidak terkena RLS. Diulang tiap start agar tabel baru ikut terlindungi.
+                for table in Base.metadata.sorted_tables:
+                    conn.exec_driver_sql(f'ALTER TABLE "{table.name}" ENABLE ROW LEVEL SECURITY')
     with SessionLocal() as db:  # segel event lama yang tercatat sebelum rantai hash ada
         ledger_chain.backfill(db)
