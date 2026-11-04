@@ -22,8 +22,8 @@ _TINDAK = TINDAK_LANJUT
 
 _SAPA = {"salam", "identitas", "luar_topik", "basa_basi", "sara", "manipulasi", "perusahaan", "media", "pembanding"}
 _LAYANAN = {"darurat", "sensitif", "marah", "medis_personal", "keluhan", "tuduhan", "agama", "klaim_kesehatan",
-            "minta_staf", "perlu_staf", "tunda_closing"}
-_PRODUK = {"harga_moq", "tanya_produk", "spesifikasi", "izin_edar"}
+            "minta_staf", "perlu_staf", "tunda_closing", "lokasi_cabang"}
+_PRODUK = {"harga_moq", "tanya_produk", "spesifikasi", "izin_edar", "aturan_pakai"}
 
 
 def _niat(text: str) -> bool:
@@ -36,7 +36,7 @@ def tahap_baru(sebelumnya: str | None, intent: str, text: str, konteks: dict) ->
         return "layanan"
     if intent in _SAPA:
         return sebelumnya or "sapa"
-    niat = _niat(text) or intent in ("pesan", "pesan_ulang")
+    niat = _niat(text) or intent in ("pesan", "pesan_ulang", "serah_sales")
     if _TINDAK.search(text) and not niat:
         return "tindak_lanjut"
     if niat:

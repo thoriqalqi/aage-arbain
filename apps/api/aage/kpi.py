@@ -3,11 +3,11 @@
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from . import clock
-from .models import LedgerEvent
+from .models import LedgerEvent, PermintaanTakTerpenuhi
 
 FUNNEL = ["Prospek", "Dihubungi", "Merespons", "Minta penawaran", "Draf pesanan"]
 QUOTE_INTENTS = {"harga_moq", "negosiasi"}
@@ -69,6 +69,16 @@ def funnel(events_all: list[LedgerEvent]) -> list[dict]:
     return out
 
 
+def permintaan_tak_terpenuhi(db: Session, start: datetime, end: datetime, n: int = 8) -> dict:
+    """Barang yang paling sering dicari tetapi tidak ada di katalog dalam periode ini."""
+    jumlah = func.count(PermintaanTakTerpenuhi.id)
+    rows = db.execute(select(PermintaanTakTerpenuhi.istilah, jumlah, func.max(PermintaanTakTerpenuhi.dibuat_pada))
+                      .where(PermintaanTakTerpenuhi.dibuat_pada >= start, PermintaanTakTerpenuhi.dibuat_pada < end)
+                      .group_by(PermintaanTakTerpenuhi.istilah).order_by(jumlah.desc(), PermintaanTakTerpenuhi.istilah)).all()
+    return {"total": sum(r[1] for r in rows),
+            "teratas": [{"istilah": r[0], "jumlah": r[1], "terakhir": r[2].isoformat() if r[2] else None} for r in rows[:n]]}
+
+
 def compute(db: Session, start: datetime | None = None, end: datetime | None = None) -> dict:
     end = end or clock.now()
     start = start or end - timedelta(days=14)
@@ -98,6 +108,7 @@ def compute(db: Session, start: datetime | None = None, end: datetime | None = N
     month_start = end.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     biaya_bulan = sum(e.biaya_rp or 0 for e in all_events if _aware(e.waktu) >= month_start)
     return {
+        "permintaan_tak_terpenuhi": permintaan_tak_terpenuhi(db, start, end),
         "periode": {"dari": start.isoformat(), "sampai": end.isoformat()},
         "ringkasan": cur,
         "delta": delta,

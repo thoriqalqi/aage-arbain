@@ -110,6 +110,30 @@ function FunnelPanel({ kpi }: { kpi: Kpi | undefined }) {
   )
 }
 
+function PermintaanPanel({ kpi }: { kpi: Kpi | undefined }) {
+  const data = kpi?.permintaan_tak_terpenuhi
+  return (
+    <Panel className="p-5">
+      <CardHeader title="Dicari, belum ada di katalog" aside={<span className="text-[12px] text-subtle-foreground">{formatNum(data?.total)} permintaan</span>} />
+      {!data ? (
+        <SkeletonRows rows={4} className="mt-4" />
+      ) : data.teratas.length === 0 ? (
+        <EmptyState title="Belum ada permintaan" description="Barang yang dicari pembeli tetapi tidak ada di katalog akan muncul di sini." className="py-8" />
+      ) : (
+        <ul className="mt-3 divide-y divide-line text-[13px]">
+          {data.teratas.map((p) => (
+            <li key={p.istilah} className="flex items-center gap-3 py-2.5">
+              <span className="min-w-0 flex-1 truncate font-medium">{p.istilah}</span>
+              <span className="whitespace-nowrap text-muted-foreground">{p.terakhir ? relativeTime(p.terakhir) : ""}</span>
+              <span className="tabular w-8 text-right font-medium">{formatNum(p.jumlah)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
+  )
+}
+
 function ContentPanel({ items }: { items: ContentDraft[] | undefined }) {
   return (
     <Panel className="overflow-hidden">
@@ -239,6 +263,7 @@ export default function RingkasanPage() {
               <ActionQueue items={ap?.items} />
             </div>
           </div>
+          <PermintaanPanel kpi={kpi} />
         </>
       )}
     </div>

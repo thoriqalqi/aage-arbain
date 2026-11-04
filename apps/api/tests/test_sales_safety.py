@@ -29,9 +29,9 @@ def test_router_intents(text, intent):
 
 
 @pytest.mark.parametrize("text", ["vitamin E ada kak?", "ada kolagen buat kulit kak?", "jual masker atau hand sanitizer gk?"])
-def test_out_of_catalog_is_escalated_not_substituted(db, text):
+def test_out_of_catalog_is_answered_not_escalated(db, text):
     r = handle_inbound(db, external_user_id=f"t-luar-{abs(hash(text))}", text=text, channel="webchat")
-    assert r.decision == "eskalasi" and r.approval_id
+    assert r.decision == "kirim" and not r.approval_id
     teks = r.replies[0].teks
     assert "belum ada di katalog" in teks and "Ada, Kak" not in teks
 
@@ -121,7 +121,7 @@ def test_llm_prompt_includes_recent_history(db, monkeypatch):
 @pytest.mark.parametrize("text,decision", [
     ("ada produk untuk tidur nyenyak?", "kirim"),   # kebutuhan yang dilayani klaim resmi (rileks)
     ("ada produk untuk daya tahan tubuh?", "kirim"),
-    ("ada produk untuk jerawat?", "eskalasi"),     # kebutuhan yang tidak ada di klaim mana pun
+    ("ada produk untuk jerawat?", "kirim"),        # kebutuhan yang tidak ada di klaim mana pun: jujur, staf hanya pilihan
 ])
 def test_need_questions_checked_against_official_claims(db, text, decision):
     r = handle_inbound(db, external_user_id=f"t-kebutuhan-{abs(hash(text))}", text=text, channel="webchat")

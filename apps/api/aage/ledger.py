@@ -14,6 +14,7 @@ EVENT_TYPES = {
     "draf_jawaban": "Draf jawaban",
     "gaya_bahasa": "Gaya bahasa LLM (kunci fakta)",
     "memori_dihapus": "Memori percakapan kedaluwarsa",
+    "permintaan_tak_terpenuhi": "Permintaan di luar katalog",
     "claimguard": "Keputusan ClaimGuard",
     "claimguard_inbound": "ClaimGuard: klaim yang diminta",
     "kebijakan": "Keputusan kebijakan",

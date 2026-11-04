@@ -371,6 +371,7 @@ export type ComplianceRegistry = {
 }
 
 export type Kpi = {
+  permintaan_tak_terpenuhi: { total: number; teratas: { istilah: string; jumlah: number; terakhir: string | null }[] }
   ringkasan: {
     chat: number
     pesan_masuk: number

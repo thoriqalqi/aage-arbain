@@ -21,6 +21,7 @@ Dashboard → **Pengaturan → Katalog → Produk** (khusus admin).
 - Pratinjau lama ditolak bila katalog sudah berubah sejak pratinjau dibuat (unggah ulang).
 - **Data kosong tidak dikarang.** Halal, BKO, izin edar, stok, atau komposisi yang kosong dijawab AI
   "belum ada datanya"; untuk halal & izin edar pertanyaan langsung diteruskan ke staf.
+- Kolom `aturan_pakai` opsional: AI hanya mengutip dosis dari kolom ini; bila kosong, pembeli diarahkan ke label dan dokter/apoteker.
 - Hasil uji BKO **Positif** ditolak. Status halal harus *Bersertifikat Halal*, *Dalam proses*, atau *Tidak bersertifikat*.
 - Angka di kebijakan dipakai AI apa adanya: MOQ campuran ("total minimal N box"), tier diskon awal, gudang, kota gratis
   ongkir, metode bayar (COD/QRIS hanya dianggap berlaku bila disebut di kebijakan).

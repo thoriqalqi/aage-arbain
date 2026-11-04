@@ -375,6 +375,20 @@ class ComplianceAudit(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
 
 
+class PermintaanTakTerpenuhi(Base):
+    """Barang yang dicari pembeli tetapi tidak ada di katalog: bahan keputusan penambahan produk."""
+
+    __tablename__ = "permintaan_tak_terpenuhi"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    istilah: Mapped[str] = mapped_column(String(160), index=True)
+    pesan: Mapped[str] = mapped_column(Text, default="")
+    kanal: Mapped[str] = mapped_column(String(16), default="")
+    contact_id: Mapped[int | None] = mapped_column(ForeignKey("contacts.id"), nullable=True)
+    conversation_id: Mapped[int | None] = mapped_column(ForeignKey("conversations.id"), nullable=True, index=True)
+    trace_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    dibuat_pada: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
+
+
 class LedgerImmutableError(RuntimeError):
     pass
 

@@ -19,16 +19,17 @@ from sqlalchemy.orm import Session
 from .. import claimguard, clock, inbox, ledger, llm, settings_store
 from ..channels import sender
 from ..kb.retriever import Hit, find_products, retrieve
-from ..models import Approval, Contact, Conversation, Message, Product
+from ..models import Approval, Contact, Conversation, Message, PermintaanTakTerpenuhi, Product
 from ..config import get_settings
-from . import drafter, gaya, memori, normalisasi, penjaga
+from . import drafter, gaya, memori, normalisasi, pemahaman, penjaga, tindakan
 from .tahap import sinyal_baru, tahap_baru
 from .router import INTENTS, RouteResult, jelas_jualan, route
-from .sales import parse_order_lines
+from .sales import parse_order_lines, riwayat_terakhir
 
 NO_RETRIEVAL = {"salam", "medis_personal", "minta_staf", "perlu_staf", "minta_dokumen", "identitas", "luar_topik",
                 "media", "manipulasi", "perusahaan", "pembanding", "ambigu", "darurat", "sensitif", "marah", "tuduhan",
-                "sara", "daftar_produk", "gratis", "basa_basi", "nomor_dibagikan", "tindak_lanjut", "tunda_closing"}
+                "sara", "daftar_produk", "gratis", "basa_basi", "nomor_dibagikan", "tindak_lanjut", "tunda_closing",
+                "aturan_pakai", "lokasi_cabang", "serah_sales"}
 # Pertanyaan kesehatan yang belum ditangani staf: selama terbuka, pesanan baru ditunda (jalur sensitif menang).
 SENSITIF_TERBUKA = {"medis_personal", "darurat", "sensitif"}
 
@@ -100,11 +101,21 @@ def _penjaga_topik(db: Session, text: str, r: RouteResult, inbound: claimguard.C
     return RouteResult(r.intent, f"{r.reason} ({alasan})", r.slots, put.llm_result.model, put.llm_result), text
 
 
+def _perbarui_sales(db: Session, conv: Conversation, contact: Contact, konteks: dict, text: str, r: RouteResult) -> dict:
+    produk = [p.nama for p in find_products(db, text)]
+    data = pemahaman.perbarui_sales(konteks.get("sales"), text, r.slots, produk)
+    if not data.get("profil") and r.intent == "kebijakan" and riwayat_terakhir(db, contact) is not None:
+        data = pemahaman.perbarui_sales({"profil": "lama"}, text, r.slots, produk)
+    if data != (konteks.get("sales") or {}):
+        _merge_konteks(conv, {"sales": data})
+    return data
+
+
 def router_node(state: State, config) -> dict:
     db = _db(config)
     conv, asli, trace = state["conv"], state["text"], state["trace_id"]
     text = normalisasi.rapikan(asli)  # "brp hrg" → "berapa harga"; teks asli tetap tersimpan di pesan & Ledger
-    inbound = claimguard.check(db, text, use_llm=False)
+    inbound = claimguard.check(db, pemahaman.samarkan_usaha(text), use_llm=False)
     if inbound.verdict != claimguard.ALLOWED:
         ledger.record(
             db, "claimguard_inbound", trace_id=trace, conversation_id=conv.id, objek_ref=f"conversation:{conv.id}",
@@ -115,6 +126,9 @@ def router_node(state: State, config) -> dict:
         )
     konteks = conv.konteks or {}
     r, mentions = _rute(db, text, inbound, konteks)
+    sales_data = _perbarui_sales(db, conv, state["contact"], konteks, text, r)
+    if alih := pemahaman.arahkan_sales(r.intent, text, r.slots, sales_data, konteks.get("langkah"), mentions):
+        r = RouteResult(alih[0], alih[1], r.slots)
     if r.intent in GERBANG and not jelas_jualan(text, mentions_product=mentions, konteks=konteks):
         r, text = _penjaga_topik(db, text, r, inbound, konteks)
     ledger.record_llm(db, "intent", r.llm_result, trace_id=trace, conversation_id=conv.id,
@@ -145,10 +159,20 @@ def _run_handler(db: Session, state: State) -> drafter.Draft:
                    slots=state.get("slots", {}), hits=state.get("hits", []))
 
 
+def _draf_dengan_tindakan(db: Session, state: State) -> drafter.Draft:
+    return tindakan.terapkan(db, _run_handler(db, state), state["intent"], state["conv"])
+
+
 def drafter_node(state: State, config) -> dict:
     db = _db(config)
     conv = state["conv"]
-    d = _run_handler(db, state)
+    d = _draf_dengan_tindakan(db, state)
+    for istilah in d.permintaan:
+        db.add(PermintaanTakTerpenuhi(istilah=istilah, pesan=state["text"][:280], kanal=conv.kanal, contact_id=conv.contact_id,
+                                      conversation_id=conv.id, trace_id=state["trace_id"]))
+        ledger.record(db, "permintaan_tak_terpenuhi", trace_id=state["trace_id"], conversation_id=conv.id,
+                      objek_ref=f"conversation:{conv.id}", ringkasan=f"Dicari, tidak ada di katalog: {istilah}"[:280],
+                      aktor="AI", model=None)
     if (get_settings().llm_gaya and d.text and not d.escalate and not d.order_draft_id
             and d.template in gaya.CAKUPAN and not inbox.staff_active(conv)):
         g = gaya.tulis_ulang(db, d.text)
@@ -162,7 +186,7 @@ def drafter_node(state: State, config) -> dict:
     if state.get("bahasa") == "en" and d.text:
         d.text = f"{d.text}\n\n{CATATAN_BAHASA}"  # sebelum ClaimGuard, jadi tetap ikut diperiksa
     # Tawaran "balas ya untuk staf" hanya berlaku untuk pesan berikutnya, bukan "ya" kapan pun sesudahnya.
-    _merge_konteks(conv, {"tawar_staf": False, **d.konteks})
+    _merge_konteks(conv, {"tawar_staf": False, "langkah": None, **d.konteks})
     ledger.record_llm(
         db, "draf_jawaban", d.llm_result, trace_id=state["trace_id"], conversation_id=conv.id,
         product_id=(d.product_ids or [None])[0], objek_ref=f"conversation:{conv.id}", sumber_ref=d.sources,
@@ -185,7 +209,7 @@ def claimguard_node(state: State, config) -> dict:
     if check is not None and check.verdict != claimguard.ALLOWED and d.template == "llm":
         # Draf LLM tidak lolos → susun ulang dengan template deterministik bersumber.
         with llm.disabled():
-            d = _run_handler(db, state)
+            d = _draf_dengan_tindakan(db, state)
         check = claimguard.check(db, d.text, product_ids=d.product_ids or None) if d.text else None
     elif check is not None and check.verdict != claimguard.ALLOWED and d.teks_template:
         # Tulis ulang gaya bahasa tidak lolos → kembali ke draf template (catatan bahasa Inggris tetap dipasang).
@@ -262,6 +286,8 @@ def _summary(db: Session, conv: Conversation, intent: str, d: drafter.Draft) -> 
     head = f"Intent {INTENTS.get(intent, intent)}" + (f" · produk: {', '.join(names)}" if names else "")
     if catatan := memori.teks((conv.konteks or {}).get("memori")):
         head += f"\nRingkasan: {catatan}"
+    if data_sales := pemahaman.ringkasan_sales((conv.konteks or {}).get("sales")):
+        head += f"\nData pembeli: {data_sales}"
     return head + "\n" + "\n".join(lines)
 
 

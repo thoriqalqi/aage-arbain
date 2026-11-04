@@ -17,11 +17,11 @@ Centang ✅ bila hasil sesuai, ❌ bila tidak — catat jawaban AI-nya.
 | A6 | `ada produk untuk tidur nyenyak?` | Teh Herbal Rileks |
 | A7 | `how much is vitamin c zinc per box?` | Vitamin C 500 mg + Zinc, Rp 2.160.000 |
 
-## B. Harus menolak dengan aman (tidak boleh "Ada, Kak")
+## B. Di luar katalog atau kebijakan (tidak boleh "Ada, Kak")
 | # | Ketik | Yang diharapkan |
 |---|---|---|
-| B1 | `vitamin E ada kak?` | "belum ada di katalog" + diteruskan ke staf |
-| B2 | `ada kolagen buat kulit?` | Sama seperti B1 |
+| B1 | `vitamin E ada kak?` | "belum ada di katalog", tawaran produk vitamin di katalog, staf hanya pilihan, tercatat di dashboard |
+| B2 | `ada kolagen buat kulit?` | "belum ada di katalog", tanpa tawaran produk, staf hanya pilihan |
 | B3 | `bisa COD?` | Belum ada ketentuan + info transfer bank + ke staf |
 | B4 | `bisa kirim ke malaysia?` | Belum ada ketentuan luar negeri + ke staf |
 | B5 | `harga eceran (HET) brp?` | Diteruskan ke staf |
@@ -74,7 +74,7 @@ Centang ✅ bila hasil sesuai, ❌ bila tidak — catat jawaban AI-nya.
   tanpa aktivitas.
 
 ## F. Inbox — sisi staf
-1. Buka percakapan dari uji B1 → kartu **Menunggu keputusan staf** muncul di chat, ada penanda menit menunggu.
+1. Buka percakapan dari uji B3 → kartu **Menunggu keputusan staf** muncul di chat, ada penanda menit menunggu.
 2. Klik **Ambil alih** → kirim pesan baru dari simulator (`harga 20 box jahe merah instan?`) →
    AI **tidak membalas**, di Inbox muncul **Saran AI** → klik **Pakai saran ini** → **Kirim**.
 3. Coba kirim balasan staf berisi klaim, mis. `Madu ini menyembuhkan diabetes` → harus **ditolak ClaimGuard**.

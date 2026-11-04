@@ -12,7 +12,8 @@ from .. import clock, llm
 from ..kb.retriever import Hit, find_products, retrieve
 from ..models import ApprovedClaim, Contact, Conversation, OrderDraft, PricingRule, Product
 from ..textutil import content_tokens, expand, rupiah, split_sentences, stem
-from . import memori, sales
+from . import memori, pemahaman, sales
+from .pemahaman import KOTA_JATENG, KOTA_LUAR_JATENG
 
 HOLD_STAF = "Pertanyaan Kakak sudah kami teruskan ke staf penjualan, mohon tunggu sebentar ya 🙏"
 PESANAN_BESAR_BOX = 300  # di atas ini harga disiapkan manajemen, bukan tier otomatis
@@ -43,6 +44,7 @@ class Draft:
     minta_nomor: bool = False  # kanal yang mendukung menampilkan tombol "Bagikan nomor HP"
     teks_template: str | None = None  # draf template asli bila teks sudah ditulis ulang gaya bahasa LLM
     gaya_result: llm.LLMResult | None = None
+    permintaan: list[str] = field(default_factory=list)  # barang di luar katalog yang dicari pembeli
 
 
 def _claims(db: Session, product_id: int) -> list[str]:
@@ -172,13 +174,55 @@ def unknown_terms(db: Session, text: str) -> list[str]:
     return out
 
 
-def _di_luar_katalog(terms: list[str]) -> Draft:
-    return Draft(
-        "Mohon maaf, Kak 🙏 Produk tersebut belum ada di katalog CV Arba'in. " + HOLD_STAF,
-        sources=[_template_source("di luar katalog")], escalate=True,
-        escalate_reason=f"Di luar katalog ({', '.join(terms[:3])}) — AI tidak menawarkan produk pengganti.",
-        staff_draft=None, template="luar_katalog",
-    )
+# Kata di nama produk yang terlalu umum untuk dianggap "terdekat".
+_BENTUK = {"kapsul", "tablet", "sachet", "botol", "serbuk", "kantong", "box", "produk", "herbal"}
+# Barang sejenis yang namanya tidak muncul di katalog → kata di nama produk yang sejenis (bentuk minuman saja, tanpa manfaat).
+_KERABAT = {"cincau": ("teh", "wedang", "instan"), "kopi": ("teh", "wedang", "instan"), "minuman": ("teh", "wedang", "instan")}
+_SAPAAN_ISTILAH = {"halo", "hallo", "hai", "min", "kak", "saya", "aku", "kami", "gan", "dong", "ngga", "nggak", "gak", "enggak",
+                   "tidak", "mesen", "sediain", "bisa", "mau", "hanya", "pesen", "cari", "nyari", "ada", "jual"}
+
+
+def _produk_terdekat(db: Session, text: str) -> list[Product]:
+    """1-2 produk yang namanya memang sejenis dengan barang yang dicari. Bila pembeli menyebut kebutuhan yang tidak ada di
+    klaim resmi, tidak ada produk yang ditawarkan: menawarkan produk di situ sama saja mengarang khasiat."""
+    if _KEBUTUHAN_RE.search(text):
+        return []
+    kata = {w for w in re.findall(r"[a-z0-9]+", text.lower()) if len(w) >= 3 and w not in _KATA_TANYA and w not in _BENTUK}
+    for k in list(kata):
+        kata.update(_KERABAT.get(k, ()))
+    kata = {stem(w) for w in kata}
+    out = []
+    for p in db.scalars(select(Product).where(Product.aktif.is_(True)).order_by(Product.id)):
+        nama = {stem(w) for w in re.findall(r"[a-z0-9]+", p.nama.lower()) if w not in _BENTUK}
+        if kata & nama:
+            out.append(p)
+        if len(out) == 2:
+            break
+    return out
+
+
+def _istilah(terms: list[str]) -> str:
+    bersih = [t for t in terms if t.lower() not in _SAPAAN_ISTILAH]
+    return " ".join(dict.fromkeys(bersih or terms))[:160].lower()
+
+
+def _di_luar_katalog(db: Session, text: str, terms: list[str]) -> Draft:
+    """Jawab tuntas tanpa meneruskan ke staf: jujur belum ada, tawarkan yang sejenis, staf hanya pilihan. Tidak pernah
+    membuat draf atau formulir pesanan untuk barang yang tidak ada."""
+    terdekat = _produk_terdekat(db, text)
+    nama = " dan ".join(f"*{p.nama}*" for p in terdekat)
+    if terdekat:
+        lanjut = f"Yang paling dekat di katalog kami: {nama}. Mau saya bantu info harganya?"
+    elif _KEBUTUHAN_RE.search(text):
+        lanjut = "Bila ingin melihat seluruh produk kami, ketik *daftar produk*."
+    else:
+        lanjut = "Kakak sedang mencari untuk kebutuhan apa? Nanti saya bantu cek di katalog kami."
+    konteks = {"tawar_staf": True}
+    if terdekat:
+        konteks["last_product_ids"] = [p.id for p in terdekat]
+    return Draft(f"Mohon maaf, Kak 🙏 Produk tersebut belum ada di katalog CV Arba'in. {lanjut} {TAWAR_STAF}",
+                 sources=[_template_source("di luar katalog")], product_ids=[p.id for p in terdekat], konteks=konteks,
+                 template="luar_katalog", permintaan=[_istilah(terms)])
 
 
 def _best_sentences(text: str, question: str, n: int = 2) -> str:
@@ -214,7 +258,7 @@ def draft_salam(**_) -> Draft:
 def draft_tanya_produk(db: Session, text: str, conv: Conversation, hits: list[Hit], **_) -> Draft:
     products = find_products(db, text)
     if not products and (terms := unknown_terms(db, text)):
-        return _di_luar_katalog(terms)
+        return _di_luar_katalog(db, text, terms)
     if not products:
         seen: list[int] = []
         skor: list[float] = []
@@ -282,10 +326,17 @@ def draft_izin_edar(db: Session, text: str, conv: Conversation, hits: list[Hit],
                  template="izin_edar_tanya")
 
 
+_TANYA_SYARAT = re.compile(r"\b(?:min|minimal|minimum|moq|campur\w*|tier|diskon)\b", re.I)
+_KATA_HARGA = set("harga berapa brp hrg grosir moq minimal minimum min diskon dasar per box karton dus kalau kalo terus total "
+                  "semua sekitar kira mahal murah segitu tadi itu tersebut".split())
+
+
 def draft_harga(db: Session, text: str, conv: Conversation, slots: dict, hits: list[Hit], **_) -> Draft:
     if len(lines := sales.parse_order_lines(db, text)) >= 2:
         return _multi_quote(db, lines, hits)
     products = _context_products(db, text, conv)
+    if not find_products(db, text) and not _TANYA_SYARAT.search(text) and (barang := [t for t in unknown_terms(db, text) if t.removesuffix("nya") not in _KATA_HARGA]):
+        return _di_luar_katalog(db, text, barang)  # "harga kolagen berapa?": barangnya disebut dan tidak ada di katalog
     if not products and not slots.get("qty"):
         doc_hits = [h for h in hits if h.chunk.product_id is None]
         if doc_hits and doc_hits[0].score >= 0.3:
@@ -294,7 +345,7 @@ def draft_harga(db: Session, text: str, conv: Conversation, slots: dict, hits: l
                          sources=[best.source()], template="harga_kebijakan")
     if not products:
         if terms := unknown_terms(db, text):
-            return _di_luar_katalog(terms)
+            return _di_luar_katalog(db, text, terms)
         # Tidak menebak produk: tanyakan balik dengan kandidat dari katalog.
         kandidat = list(dict.fromkeys(db.get(Product, h.chunk.product_id).nama for h in hits if h.chunk.product_id))[:3]
         tanya = (f"Maksud Kakak produk yang mana: {', '.join(kandidat[:-1])} atau {kandidat[-1]}?" if len(kandidat) > 1
@@ -344,7 +395,7 @@ def draft_negosiasi(db: Session, text: str, conv: Conversation, slots: dict, hit
     # "madu stamina diskon 20%" padahal produknya tidak ada di katalog → bukan tanya balik. Hanya bila memang menyebut
     # jenis produk; "kasih diskon dong" / "mahal" tetap ditanya balik.
     if not products and _SEBUT_JENIS.search(text) and (terms := unknown_terms(db, text)):
-        return _di_luar_katalog(terms)
+        return _di_luar_katalog(db, text, terms)
     if not products:
         return Draft(f"{_aturan_diskon(db)} Boleh disebutkan produk dan jumlah box yang ingin dinegosiasikan, Kak?",
                      sources=[_template_source("tanya_produk")], template="nego_tanya")
@@ -422,7 +473,7 @@ def draft_pesan(db: Session, text: str, conv: Conversation, contact: Contact, sl
             pending["product_ids"] = ids
     if (not pending.get("product_ids") and not slots.get("nama_toko") and not slots.get("alamat")
             and (terms := unknown_terms(db, text))):
-        return _di_luar_katalog(terms)
+        return _di_luar_katalog(db, text, terms)
     if slots.get("qty") and not (slots.get("qty_bare") and pending.get("qty")):
         pending["qty"] = slots["qty"]
     elif not pending.get("qty"):
@@ -583,8 +634,12 @@ def draft_nomor_dibagikan(db: Session, text: str, conv: Conversation, contact: C
                  "bantu?", sources=[_template_source("nomor dibagikan")], template="nomor_dibagikan")
 
 
+_MERUJUK = re.compile(r"\b(?:ini|itu|tadi|tersebut)\b", re.I)
+
+
 def draft_klaim(db: Session, text: str, conv: Conversation, hits: list[Hit], **_) -> Draft:
-    products = _context_products(db, text, conv)
+    # Produk dari giliran lalu hanya disebut bila pembeli merujuknya; bila tidak, klaim yang ditolak terkesan terkait produk itu.
+    products = find_products(db, text) or (_context_products(db, text, conv) if _MERUJUK.search(text) else [])
     lines = ["Mohon maaf, Kak 🙏 Produk kami adalah produk herbal/suplemen yang tidak ditujukan untuk mengobati "
              "atau menyembuhkan penyakit, jadi kami tidak dapat memberikan klaim tersebut."]
     sources = [_template_source("penolakan klaim")]
@@ -636,7 +691,7 @@ def draft_spesifikasi(db: Session, text: str, conv: Conversation, hits: list[Hit
     products = _context_products(db, text, conv)[:2]
     if not products:
         if terms := unknown_terms(db, text):
-            return _di_luar_katalog(terms)
+            return _di_luar_katalog(db, text, terms)
         return Draft("Produk mana yang ingin Kakak ketahui isi kemasan atau kandungannya?",
                      sources=[_template_source("tanya_produk")], template="spesifikasi_tanya")
     blocks = [f"*{p.nama}*\n• Kemasan: {p.kemasan.replace('; box isi', ', 1 box isi')}\n• Kandungan: {_atau_kosong(p.komposisi)}"
@@ -646,29 +701,11 @@ def draft_spesifikasi(db: Session, text: str, conv: Conversation, hits: list[Hit
                  konteks={"last_product_ids": [p.id for p in products]}, template="spesifikasi")
 
 
-# Wilayah untuk menjelaskan bagian kebijakan pengiriman mana yang berlaku (Jawa Tengah vs luar Jawa Tengah).
-KOTA_JATENG = {
-    "semarang": "Semarang", "smg": "Semarang", "solo": "Solo", "surakarta": "Surakarta", "magelang": "Magelang",
-    "salatiga": "Salatiga", "kudus": "Kudus", "pati": "Pati", "klaten": "Klaten", "boyolali": "Boyolali",
-    "sragen": "Sragen", "karanganyar": "Karanganyar", "wonogiri": "Wonogiri", "sukoharjo": "Sukoharjo",
-    "purwokerto": "Purwokerto", "banyumas": "Banyumas", "tegal": "Tegal", "pekalongan": "Pekalongan",
-    "kendal": "Kendal", "demak": "Demak", "jepara": "Jepara", "rembang": "Rembang", "blora": "Blora",
-    "grobogan": "Grobogan", "purworejo": "Purworejo", "kebumen": "Kebumen", "cilacap": "Cilacap",
-    "wonosobo": "Wonosobo", "temanggung": "Temanggung", "batang": "Batang", "pemalang": "Pemalang",
-    "brebes": "Brebes", "ungaran": "Ungaran", "banjarnegara": "Banjarnegara", "purbalingga": "Purbalingga",
-}
-KOTA_LUAR_JATENG = {
-    "jakarta": "Jakarta", "jkt": "Jakarta", "surabaya": "Surabaya", "sby": "Surabaya", "bandung": "Bandung",
-    "jogja": "Yogyakarta", "yogyakarta": "Yogyakarta", "yogya": "Yogyakarta", "malang": "Malang", "bekasi": "Bekasi",
-    "bogor": "Bogor", "depok": "Depok", "tangerang": "Tangerang", "bali": "Bali", "denpasar": "Denpasar",
-    "medan": "Medan", "makassar": "Makassar", "palembang": "Palembang", "lampung": "Lampung", "cirebon": "Cirebon",
-    "kediri": "Kediri", "madiun": "Madiun", "banjarmasin": "Banjarmasin", "balikpapan": "Balikpapan",
-}
 _KEBIJAKAN_TOPIK = [
     # (pola pertanyaan, [(judul bagian dokumen, kata wajib di kalimat)])
-    (re.compile(r"ongkir|ongkos kirim|biaya kirim|gratis", re.I),
+    (re.compile(r"ongkir|ongkos kirim|biaya kirim|biaya pengiriman|gratis", re.I),
      [("Pengiriman", "ongkos kirim"), ("Harga dan diskon volume", "ongkos kirim")]),
-    (re.compile(r"\blama\b|\bhari\b|nyampe|estimasi|kirim ke|pengiriman|ekspedisi|\b(?:sampai|sampe)\w*\s+(?:brp|berapa)", re.I),
+    (re.compile(r"\blama\b|\bhari\b|nyampe|estimasi|\b(?:di)?kirim\w*|pengiriman|ekspedisi|\b(?:sampai|sampe)\w*\s+(?:brp|berapa|kapan)", re.I),
      [("Pengiriman", "hari kerja")]),
     (re.compile(r"retur|refund|tukar|rusak|pecah|cacat|kedaluwarsa|expired", re.I), [("Retur", "")]),
     (re.compile(r"bayar|pembayaran|transfer|tempo|termin|lunas", re.I), [("Pembayaran", "")]),
@@ -714,13 +751,8 @@ _SEBUT_JENIS = re.compile(r"\b(madu|kapsul|teh|minyak|vitamin|serbuk|sirup|table
 _PESANAN_SENDIRI = re.compile(r"\b(belum bayar|sudah transfer|udah transfer|tagihan|invoice|nota|pesanan saya)\b", re.I)
 
 
-def _kota(text: str) -> tuple[str, bool] | None:
-    for tok in re.findall(r"[a-z]+", text.lower()):
-        if tok in KOTA_JATENG:
-            return KOTA_JATENG[tok], True
-        if tok in KOTA_LUAR_JATENG:
-            return KOTA_LUAR_JATENG[tok], False
-    return None
+_kota = pemahaman.kota_dikenal
+_TANYA_KIRIM = re.compile(r"ongkir|ongkos kirim|biaya kirim|biaya pengiriman|\b(?:di)?kirim\w*|pengiriman|nyampe|sampai|sampe", re.I)
 
 
 def draft_kebijakan(db: Session, text: str, conv: Conversation, hits: list[Hit], **kw) -> Draft:
@@ -736,20 +768,34 @@ def draft_kebijakan(db: Session, text: str, conv: Conversation, hits: list[Hit],
                          sources=sources or [_template_source("di luar kebijakan")], escalate=True,
                          escalate_reason=f"Di luar kebijakan penjualan: {label}.", staff_draft=None,
                          template="kebijakan_di_luar")
+    data_sales = (conv.konteks or {}).get("sales") or {}
+    profil = data_sales.get("profil")
+    kota_lain = data_sales.get("kota") if profil else None
+    kota = _kota(text) or (_kota(kota_lain) if kota_lain else None) or ((kota_lain, None) if kota_lain else None)
     sections = [sec for pola, secs in _KEBIJAKAN_TOPIK if pola.search(text) for sec in secs]
-    if _kota(text) and ("Pengiriman", "hari kerja") not in sections:
+    if (_kota(text) or (kota and _TANYA_KIRIM.search(text))) and ("Pengiriman", "hari kerja") not in sections:
         sections.append(("Pengiriman", "hari kerja"))  # "ongkir ke sby?" → sertakan estimasi waktu kirim
     sentences, sources = _policy_sentences(db, sections)
+    if kota and kota[1] is not None and not re.search(r"gratis", text, re.I):
+        # Ketentuan gratis ongkir untuk area lain tidak relevan bagi pembeli di kota ini.
+        sentences = [s for s in sentences if not re.search(r"gratis", s, re.I) or kota[0].lower() in s.lower()] or sentences
     if not sentences:
         return draft_dokumen(db=db, text=text, conv=conv, hits=hits, **kw)
     body = "Berikut ketentuan dari kebijakan penjualan kami:\n" + "\n".join(f"• {s}" for s in sentences)
-    kota = _kota(text)
     if kota and any("hari kerja" in s for s in sentences) and any("Jawa Tengah" in s for s in sentences):
-        body += f"\n\n{kota[0]} termasuk {'wilayah Jawa Tengah' if kota[1] else 'luar Jawa Tengah'}."
-    nominal = re.search(r"\b(brp|berapa)\b", text, re.I) and re.search(r"ongkir|ongkos kirim|biaya kirim", text, re.I)
+        if kota[1] is None:  # wilayahnya tidak diketahui pasti: kedua estimasi disebut, tidak ditebak
+            body += f"\n\nWilayah {kota[0]} belum bisa saya pastikan, jadi estimasinya dikonfirmasi staf kami."
+        else:
+            body += f"\n\n{kota[0]} termasuk {'wilayah Jawa Tengah' if kota[1] else 'luar Jawa Tengah'}."
+    nominal = re.search(r"\b(brp|berapa)\b", text, re.I) and re.search(r"ongkir|ongkos kirim|biaya kirim|biaya pengiriman", text, re.I)
+    if profil and re.search(r"ongkir|ongkos kirim|biaya", text, re.I):
+        nominal = True  # profil diketahui: selalu jujur bahwa nominal ongkir dihitung staf
     gratis_di_kota = kota and any(kota[0].lower() in s.lower() and "ongkos kirim" in s.lower() for s in sentences)
     if nominal and not gratis_di_kota:
         tujuan = kota[0] if kota else "lokasi Kakak"
+        if profil:  # profil pembeli diketahui: lanjutkan percakapan sales, staf menghitung ongkir saat konfirmasi
+            return Draft(body + f"\n\nNominal ongkir ke {tujuan} akan dihitung staf kami saat konfirmasi pesanan 🙏",
+                         sources=sources, template="kebijakan")
         return Draft(body + f"\n\nNominal ongkir ke {tujuan} akan dihitung staf kami saat konfirmasi pesanan 🙏",
                      sources=sources, escalate=True, staff_draft=None, template="kebijakan_ongkir",
                      escalate_reason=f"Nominal ongkir ke {tujuan} tidak ada di Knowledge Base.")
@@ -758,6 +804,52 @@ def draft_kebijakan(db: Session, text: str, conv: Conversation, hits: list[Hit],
         return Draft(f"{body}\n\nUntuk tagihan pesanan Kakak, staf kami yang akan mengirimkan detailnya. {TAWAR_STAF}",
                      sources=sources, konteks={"tawar_staf": True}, template="kebijakan")
     return Draft(body, sources=sources, template="kebijakan")
+
+
+def draft_aturan_pakai(db: Session, text: str, conv: Conversation, hits: list[Hit], **_) -> Draft:
+    """Aturan pakai hanya dikutip dari data katalog. Tidak ada datanya → arahkan ke label dan tenaga kesehatan, tanpa angka."""
+    disebut = find_products(db, text)
+    ids = (conv.konteks or {}).get("last_product_ids") or []
+    produk = disebut[:1] or [p for pid in ids if (p := db.get(Product, pid)) is not None]
+    if not produk:
+        return Draft("Boleh tahu produk mana yang Kakak maksud?", sources=[_template_source("tanya_produk")],
+                     konteks={"langkah": "tanya_produk"}, template="aturan_tanya")
+    if len(produk) > 1:
+        nama = [p.nama for p in produk[:3]]
+        return Draft(f"Produk yang mana, Kak: {', '.join(nama[:-1])} atau {nama[-1]}?",
+                     sources=[_template_source("tanya_produk")], konteks={"langkah": "tanya_produk"}, template="aturan_tanya")
+    p = produk[0]
+    data = str((p.data_teknis or {}).get("aturan_pakai") or "").strip()
+    if data:
+        inti = f"Menurut data katalog, aturan pakai *{p.nama}*: {data.rstrip('.')}. Ikuti juga petunjuk pada label kemasan."
+    else:
+        inti = (f"Aturan pakai *{p.nama}* belum tercatat di data kami, jadi saya tidak akan menebak. Silakan ikuti "
+                "petunjuk pada label kemasan.")
+    return Draft(f"{inti} Untuk kondisi kesehatan tertentu, konsultasikan dengan dokter atau apoteker. {TAWAR_STAF}",
+                 sources=[_product_source(db, p, hits)], product_ids=[p.id], template="aturan_pakai",
+                 konteks={"last_product_ids": [p.id], "tawar_staf": True, "langkah": "tawar_staf"})
+
+
+def draft_lokasi_cabang(db: Session, **_) -> Draft:
+    """Data cabang tidak ada: akui dan teruskan ke staf, tidak mengarang lokasi."""
+    gudang = _gudang(db)
+    lokasi = f" Yang tercatat, pengiriman kami dilakukan dari gudang {gudang}." if gudang else ""
+    return Draft(f"Mohon maaf, Kak 🙏 Informasi cabang atau lokasi penjualan belum ada di data kami, jadi saya tidak akan "
+                 f"menebak.{lokasi} {HOLD_STAF}", sources=[_template_source("lokasi cabang")], escalate=True,
+                 escalate_reason="Pembeli menanyakan cabang/lokasi penjualan; datanya tidak ada.", staff_draft=None,
+                 konteks={"langkah": "serah_staf"}, template="lokasi_cabang")
+
+
+def draft_serah_sales(conv: Conversation, contact: Contact, slots: dict, **_) -> Draft:
+    """Data calon pembeli grosir sudah terkumpul: serah terima ke staf beserta ringkasannya."""
+    sales.ensure_contact_details(contact, slots)
+    data = (conv.konteks or {}).get("sales") or {}
+    sapa = f"Kak {data['nama']}" if data.get("nama") else "Kak"
+    return Draft(f"Terima kasih, {sapa} 🙏 Datanya sudah saya rangkum dan teruskan ke staf penjualan kami, yang akan "
+                 "menghubungi Kakak untuk konfirmasi stok, tagihan, dan ongkos kirim.",
+                 sources=[_template_source("serah terima sales")], escalate=True, staff_draft=None,
+                 escalate_reason="Calon pembeli grosir: data lengkap, ditindaklanjuti staf.",
+                 konteks={"langkah": "serah_staf"}, template="serah_sales")
 
 
 def draft_perlu_staf(**_) -> Draft:
@@ -919,6 +1011,7 @@ def _data_teknis(db: Session, key: str) -> list[tuple[Product, dict]]:
 
 _NARKOBA = re.compile(r"narkoba|narkotika|obat terlarang|psikotropika|ganja|sabu|bko|bahan kimia", re.I)
 _HUKUM = re.compile(r"lapor|polisi|somasi|tuntut", re.I)
+_DITIPU = re.compile(r"\bditipu\b|\bkena tipu\b|\bmenipu (?:saya|kami)\b", re.I)
 
 
 def _kalimat_izin(db: Session) -> str:
@@ -950,6 +1043,8 @@ def draft_tuduhan(db: Session, text: str, **_) -> Draft:
                      "Obat (BKO)" + ("; produk lainnya belum ada data ujinya." if len(ada) < len(bko) else "."))
     if _HUKUM.search(text):
         eskalasi, alasan = True, "Pembeli menyinggung jalur hukum/polisi."
+    elif _DITIPU.search(text):
+        eskalasi, alasan = True, "Pembeli melapor merasa ditipu — ditangani staf."
     body += (" Pesan Kakak sudah saya teruskan ke staf kami untuk ditindaklanjuti." if eskalasi
              else " Bila ada pengalaman yang kurang baik, staf kami siap membantu. " + TAWAR_STAF)
     return Draft(body, sources=[_template_source("tanggapan tuduhan")], escalate=eskalasi, staff_draft=None,
@@ -1029,7 +1124,7 @@ def draft_daftar_produk(db: Session, text: str, **_) -> Draft:
         lines.append(f"\n*{kat} ({len(names)})*\n" + "\n".join(f"• {n}" for n in names))
     lines.append("\nSebutkan nama produknya untuk info harga grosir, MOQ, dan izin edar 🙏")
     return Draft("\n".join(lines), sources=[_template_source("daftar katalog aktif")],
-                 product_ids=[p.id for p in products], template="daftar_produk")
+                 product_ids=[p.id for p in products], template="daftar_produk", permintaan=terms)
 
 
 def draft_gratis(db: Session, **_) -> Draft:
@@ -1119,5 +1214,8 @@ HANDLERS = {
     "nomor_dibagikan": draft_nomor_dibagikan,
     "tindak_lanjut": draft_tindak_lanjut,
     "tunda_closing": draft_tunda_closing,
+    "aturan_pakai": draft_aturan_pakai,
+    "lokasi_cabang": draft_lokasi_cabang,
+    "serah_sales": draft_serah_sales,
     "lainnya": draft_dokumen,
 }

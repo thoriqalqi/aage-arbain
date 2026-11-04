@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 
 from .. import llm
 from ..channels.base import TEKS_NOMOR_DIBAGIKAN
+from .pemahaman import samarkan_usaha
 
 INTENTS = {
     "salam": "Salam",
@@ -43,6 +44,9 @@ INTENTS = {
     "cari_riwayat": "Mencari produk pesanan lama dari ciri",
     "tindak_lanjut": "Pikir dulu / nanti dikabari",
     "tunda_closing": "Pesanan ditunda (kasus kesehatan belum ditangani)",
+    "aturan_pakai": "Aturan pakai/dosis",
+    "lokasi_cabang": "Cabang/lokasi penjualan",
+    "serah_sales": "Data pembeli grosir lengkap, serah ke staf",
     "lainnya": "Lainnya",
 }
 
@@ -59,7 +63,8 @@ MEDIS_PERSONAL = _r(
     r"demam|batuk|pilek|diare|muntah|pusing|sesak|nyeri|"
     r"hamil|menyusui|alergi|operasi|kemoterapi|cuci darah)\b|\b(ibu hamil|sedang hamil|menyusui|dosis (?:untuk|buat) (?:saya|anak))\b|"
     # keamanan pemakaian untuk kelompok rentan / bersama obat → selalu staf/tenaga kesehatan
-    r"\b(bayi|balita|efek samping\w*|kontraindikasi|interaksi obat|(?:di)?campur\w*\s+(?:dengan\s+|sama\s+)?obat)\b"
+    r"\b(bayi|balita|hamil|efek samping\w*|kontraindikasi|interaksi obat|(?:di)?campur\w*\s+(?:dengan\s+|sama\s+)?obat|"
+    r"(?:di)?minum\s+(?:bareng|barengan|bersama|sama|dengan)\s+obat)\b"
 )
 KELUHAN = _r(
     r"\b(?:tidak|belum)\s+(?:diproses|diproses\w*|direspon\w*|dibalas|ditanggapi)\b|\b(rusak|bocor|pecah|penyok|kedaluwarsa|kadaluarsa|kadaluwarsa|expired|exp|telat|terlambat|belum (?:sampai|datang|diterima|dikirim)|"
@@ -93,6 +98,21 @@ IZIN = _r(r"\b(izin|ijin|bpom|pom|edar|registrasi|nie|terdaftar|legal)\b")
 KEBIJAKAN = _r(
     r"\b(pengiriman|ongkir|ongkos kirim|kirim ke|ekspedisi|pembayaran|bayar|transfer|tempo|\w*retur|garansi|masa simpan|"
     r"kedaluwarsa berapa|cod|kartu kredit|paylater|giro|cicil\w*|luar negeri|ekspor|export|nyampe|dikembalikan|tidak laku)\b"
+    # Pertanyaan waktu/biaya kirim: "kirimnya berapa lama", "dikirim ke klaten berapa hari", "sampainya kapan".
+    r"|\b(?:di)?kirim\w*\b.{0,30}\b(?:berapa|brp|lama|hari|gimana|kapan)\b|\bsampai\w*\s+kapan\b|\bnyampe\w*\b|\bberapa\s+lama\s+(?:sampai|sampe)\b|"
+    r"\bbiaya\s+(?:kirim|pengiriman)\b|\bongkir\w*\b"
+)
+# Aturan pakai/dosis: dikutip dari data katalog saja. Dosis untuk kondisi pribadi tertangkap MEDIS_PERSONAL lebih dulu.
+ATURAN_PAKAI = _r(
+    r"\bdosis\w*\b|\btakaran\w*\b|\baturan\s+(?:pakai|minum|konsumsi)\w*\b|\bcara\s+(?:minum|pakai|konsumsi|penggunaan)\w*\b|"
+    r"\b(?:sehari|per\s+hari)\s+(?:berapa|brp)\b|\bsekali\s+minum\b|\bpemakaian\w*\b|\bberapa\s+kali\s+(?:sehari|minum)\b|"
+    r"\bdiminum\s+(?:pagi|malam|siang|sebelum|sesudah|setelah)\b"
+)
+# Cabang, gerai, atau lokasi yang bisa didatangi: datanya tidak ada, jadi staf yang menjawab.
+LOKASI_CABANG = _r(
+    r"\bcabang\b|\bgerai\b|\boutlet\b|\bshowroom\b|\btoko\s+offline\b|\bperwakilan\b|"
+    r"\b(?:datang|mampir|ambil)\b.{0,25}\b(?:langsung|lokasi|tempat|toko\w*|kantor)\b|\bbeli\s+langsung\b|"
+    r"\bdijual\s+di\b.{0,15}\btoko\b"
 )
 SPESIFIKASI = _r(
     r"\bisi(?:nya)?\s*(?:brp|berapa|apa)\b|\b(?:brp|berapa)\s*(?:isi|mg|gram|gr|ml|kapsul|tablet|sachet|botol|biji)\b|"
@@ -266,6 +286,7 @@ def route(text: str, *, inbound_verdict: str, inbound_rules: list[str], konteks:
           mentions_product: bool = False, multi_item: bool = False) -> RouteResult:
     slots = extract_slots(text)
     t = text.strip()
+    t_aman = samarkan_usaha(t)  # "kios obat saya" bukan permintaan klaim; klaim lain di pesan yang sama tetap kena
 
     if t == TEKS_NOMOR_DIBAGIKAN:
         return RouteResult("nomor_dibagikan", "Pembeli membagikan nomor HP-nya sendiri.", slots)
@@ -291,17 +312,21 @@ def route(text: str, *, inbound_verdict: str, inbound_rules: list[str], konteks:
         return RouteResult("marah", "Pembeli marah/kecewa → empati & teruskan ke staf.", slots)
     if TUDUHAN.search(t) and not PEMBANDING.search(t):
         return RouteResult("tuduhan", "Tuduhan penipuan/ilegal → jawab dari data, tawarkan staf.", slots)
-    if inbound_verdict == "blocked" or KLAIM.search(t) or "R05" in inbound_rules:
+    if inbound_verdict == "blocked" or KLAIM.search(t_aman) or "R05" in inbound_rules:
         return RouteResult("klaim_kesehatan", "Pesan meminta klaim terkait penyakit/khasiat terapi.", slots)
     if JANJI.search(t):
         return RouteResult("perlu_staf", "Meminta janji/jaminan di luar data (stok, waktu, uang kembali, keaslian).", slots)
+    if LOKASI_CABANG.search(t) and not QTY_RE.search(t):
+        return RouteResult("lokasi_cabang", "Menanyakan cabang/lokasi penjualan; datanya tidak ada → staf.", slots)
+    if ATURAN_PAKAI.search(t):
+        return RouteResult("aturan_pakai", "Menanyakan aturan pakai/dosis produk.", slots)
     if AGAMA.search(t):
         return RouteResult("agama", "Agama/halal → jawab sertifikasi dari data, tanpa fatwa.", slots)
     if PERUSAHAAN.search(t):
         return RouteResult("perusahaan", "Pertanyaan tentang CV Arba'in.", slots)
     if PEMBANDING.search(t):
         return RouteResult("pembanding", "Membandingkan dengan merek lain — tidak menjelekkan pihak lain.", slots)
-    if PERLU_STAF.search(t):
+    if PERLU_STAF.search(t_aman):
         return RouteResult("perlu_staf", "Topik di luar wewenang AI (kemitraan/HET/sampel/sertifikat/opini).", slots)
     if ASAL_PRODUK.search(t):
         return RouteResult("perlu_staf", "Asal/negara produksi tidak ada di katalog → staf.", slots)

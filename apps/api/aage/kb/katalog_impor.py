@@ -58,6 +58,7 @@ KOLOM_PRODUK = [
     Kolom("halal_lembaga", False, "BPJPH", "", "Lembaga penerbit sertifikat."),
     Kolom("bko_hasil", False, "Negatif", "", "Hasil uji Bahan Kimia Obat. Hanya 'Negatif' yang diterima; kosong = belum ada data."),
     Kolom("bko_nomor_laporan", False, "LHU-2026-0001", "", "Nomor laporan hasil uji BKO."),
+    Kolom("aturan_pakai", False, "", "", "Aturan pakai sesuai label resmi. Kosong = AI mengarahkan ke label dan dokter/apoteker."),
     Kolom("diskon_volume", False, "10:3|25:5|50:8|100:10", "",
           "Tier diskon maksimal: minimal_box:persen, pisahkan dengan |. Kosong = tanpa diskon otomatis."),
     Kolom("kata_kunci", False, "stamina energi madu jahe", "kelor teh", "Kata pencarian tambahan (sinonim)."),
@@ -324,7 +325,7 @@ def validasi_produk(baris: list[tuple[int, dict]], db: Session) -> tuple[list[di
             "baris": n, "sku": sku, "nama": nama, "kategori": r.get("kategori", ""), "harga_dasar": harga,
             "satuan_grosir": r.get("satuan") or "box", "kemasan": r.get("kemasan", ""), "moq": moq, "stok": stok,
             "deskripsi": r.get("deskripsi", ""), "komposisi": r.get("komposisi", ""), "klaim": klaim,
-            "no_izin_edar": r.get("izin_edar", ""), "halal": halal, "bko": bko, "tiers": sorted(tiers),
+            "no_izin_edar": r.get("izin_edar", ""), "halal": halal, "bko": bko, "aturan_pakai": r.get("aturan_pakai", "").strip(), "tiers": sorted(tiers),
             "kata_kunci": r.get("kata_kunci", ""), "larangan": _daftar(r.get("kata_terlarang", "")),
             "het_per_botol": het,
         })
@@ -473,7 +474,8 @@ def _terapkan(db: Session, imp: KatalogImpor, aktor: str) -> dict:
         p.stok, p.stok_per = r["stok"], (now if r["stok"] is not None else None)
         p.deskripsi, p.komposisi, p.no_izin_edar = r["deskripsi"], r["komposisi"], r["no_izin_edar"]
         p.kata_kunci, p.larangan, p.het_per_botol = r["kata_kunci"], r["larangan"], r["het_per_botol"]
-        p.data_teknis = {k: v for k, v in (("sertifikasi_halal", r["halal"]), ("status_bebas_bko", r["bko"])) if v}
+        p.data_teknis = {k: v for k, v in (("sertifikasi_halal", r["halal"]), ("status_bebas_bko", r["bko"]),
+                                                  ("aturan_pakai", r.get("aturan_pakai"))) if v}
         p.sumber_data, p.aktif = "impor", True
         db.flush()
         dipakai.add(p.id)
@@ -597,7 +599,7 @@ def _baris_ekspor(p: Product) -> list:
         "komposisi": p.komposisi, "klaim_disetujui": "|".join(c.teks_klaim for c in p.claims),
         "izin_edar": p.no_izin_edar, "halal_status": halal.get("status", ""),
         "halal_nomor": halal.get("nomor_sertifikat", ""), "halal_lembaga": halal.get("lembaga", ""),
-        "bko_hasil": bko.get("hasil", ""), "bko_nomor_laporan": bko.get("nomor_laporan_uji", ""),
+        "bko_hasil": bko.get("hasil", ""), "bko_nomor_laporan": bko.get("nomor_laporan_uji", ""), "aturan_pakai": t.get("aturan_pakai", ""),
         "diskon_volume": "|".join(f"{r.min_qty}:{r.diskon_maks_persen:g}" for r in p.pricing),
         "kata_kunci": p.kata_kunci, "kata_terlarang": "|".join(p.larangan or []),
         "het_per_botol": "" if p.het_per_botol is None else p.het_per_botol,

@@ -33,6 +33,7 @@ export const EVENT_META: Record<string, { label: string; icon: LucideIcon }> = {
   draf_jawaban: { label: "Draf jawaban", icon: PenLine },
   gaya_bahasa: { label: "Gaya bahasa (kunci fakta)", icon: PenLine },
   memori_dihapus: { label: "Memori percakapan kedaluwarsa", icon: Clock },
+  permintaan_tak_terpenuhi: { label: "Permintaan di luar katalog", icon: Clock },
   claimguard: { label: "ClaimGuard", icon: ShieldCheck },
   claimguard_inbound: { label: "ClaimGuard: klaim diminta", icon: ShieldCheck },
   kebijakan: { label: "Keputusan kebijakan", icon: Gavel },
