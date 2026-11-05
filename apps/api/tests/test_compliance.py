@@ -206,7 +206,7 @@ def test_latest_audit_kosong_lalu_ada_dan_ledger(client, auth, db):
     assert latest["state"] == "ada" and latest["audit"]["audit_id"] == audit["audit_id"]
     ev = db.scalar(select(LedgerEvent).where(LedgerEvent.objek_ref == f"audit:{audit['audit_id']}"))
     assert ev is not None and ev.tipe_event == "compliance_audit" and ev.outcome == "BLOCKED"
-    assert ev.data["input_text_hash"] == audit["input_text_hash"] and ev.data["rules_version"] == "2.0.0"
+    assert ev.data["input_text_hash"] == audit["input_text_hash"] and ev.data["rules_version"] == "2.1.0"
 
 
 def test_ledger_juga_untuk_allowed_dan_error(client, auth, db, engine_with):
@@ -307,5 +307,5 @@ def test_audit_append_only(db, client, auth):
 
 def test_registry_endpoint(client, auth):
     r = client.get("/api/compliance/registry", headers=auth).json()
-    assert r["rules_version"] == "2.0.0" and r["llm"]["status_bila_gagal"] == "ERROR"
+    assert r["rules_version"] == "2.1.0" and r["llm"]["status_bila_gagal"] == "ERROR"
     assert {x["id"] for x in r["regulations"]} == {"PERBAN_34_2022", "PERBAN_30_2023"}

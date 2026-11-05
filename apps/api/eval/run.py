@@ -18,6 +18,8 @@ import time
 from contextlib import nullcontext
 from pathlib import Path
 
+from eval.metrik_klaim import biner
+
 HERE = Path(__file__).resolve().parent
 DATASETS = HERE / "datasets"
 OUT = HERE / "hasil"
@@ -133,6 +135,7 @@ def run(offline: bool, rebuild_qa: bool) -> dict:
                 misses.append({"kalimat": row["kalimat"], "label": gold, "prediksi": pred})
         result["klaim"] = {"n": len(rows), "recall": round(100 * tp / (tp + fn), 1) if tp + fn else 0.0,
                            "precision": round(100 * tp / (tp + fp), 1) if tp + fp else 0.0,
+                           **biner(tp, fp, fn, tn),
                            "akurasi_3_kelas": round(100 * exact / len(rows), 1), "diblokir_lolos": blocked_leak,
                            "confusion": confusion, "beda_label": misses}
 

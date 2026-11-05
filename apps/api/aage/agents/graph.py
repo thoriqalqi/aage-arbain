@@ -123,7 +123,7 @@ def router_node(state: State, config) -> dict:
             ringkasan=f"Klaim yang diminta pembeli: {inbound.label}", verdict=inbound.verdict,
             aturan_terpicu=inbound.rules_triggered, alasan=" | ".join(inbound.reasons[:4]),
             model=inbound.model, latensi_ms=inbound.duration_ms,
-            data={"sentences": inbound.to_dict()["sentences"], "safe_text": inbound.safe_text},
+            data={"sentences": inbound.to_dict()["sentences"], "safe_text": inbound.safe_text, "versi_aturan": inbound.rules_version},
         )
     konteks = conv.konteks or {}
     r, mentions = _rute(db, text, inbound, konteks)
@@ -239,7 +239,7 @@ def claimguard_node(state: State, config) -> dict:
             ringkasan=f"ClaimGuard: {check.label} ({check.summary})", verdict=check.verdict,
             aturan_terpicu=check.rules_triggered, alasan=" | ".join(check.reasons[:5]), model=check.model,
             token_in=check.token_in, token_out=check.token_out, biaya_rp=check.biaya_rp, latensi_ms=check.duration_ms,
-            data={"sentences": check.to_dict()["sentences"], "safe_text": check.safe_text},
+            data={"sentences": check.to_dict()["sentences"], "safe_text": check.safe_text, "versi_aturan": check.rules_version},
         )
     return {"draft": d, "check": check, "staff_check": staff_check}
 

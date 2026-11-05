@@ -347,7 +347,7 @@ def conversation_reply(conv_id: int, body: ReplyIn, user: User = Depends(require
                   ringkasan=f"ClaimGuard atas balasan manual staf: {check.label}", verdict=check.verdict,
                   aturan_terpicu=check.rules_triggered, alasan=" | ".join(check.reasons[:5]), aktor=f"staf:{user.nama}",
                   model=check.model, biaya_rp=check.biaya_rp,
-                  data={"sentences": check.to_dict()["sentences"], "safe_text": check.safe_text})
+                  data={"sentences": check.to_dict()["sentences"], "safe_text": check.safe_text, "versi_aturan": check.rules_version})
     if check.verdict != claimguard.ALLOWED:
         db.commit()
         raise HTTPException(422, {"pesan": f"ClaimGuard: {check.label}. Balasan tidak dikirim.", "claimguard": check.to_dict()})
@@ -730,7 +730,7 @@ def claimguard_check(body: CheckIn, user: User = Depends(current_user), db: Sess
     ledger.record(db, "claimguard_playground", aktor=f"staf:{user.nama}", ringkasan=f"Playground: {res.label}",
                   verdict=res.verdict, aturan_terpicu=res.rules_triggered, model=res.model, biaya_rp=res.biaya_rp,
                   token_in=res.token_in, token_out=res.token_out, latensi_ms=res.duration_ms,
-                  data={"summary": res.summary})
+                  data={"summary": res.summary, "versi_aturan": res.rules_version})
     db.commit()
     return {**res.to_dict(), "text": text[:20000]}
 

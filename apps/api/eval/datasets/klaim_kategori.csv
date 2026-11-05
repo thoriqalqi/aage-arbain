@@ -1,0 +1,117 @@
+kalimat,kategori,keputusan,catatan
+Membantu memelihara daya tahan tubuh.,SUPPORTED_CLAIM,PASS,klaim disetujui
+Membantu memelihara kesehatan tulang.,SUPPORTED_CLAIM,PASS,klaim disetujui
+Membantu memelihara kesehatan mata.,SUPPORTED_CLAIM,PASS,klaim disetujui
+Membantu memelihara kesehatan pencernaan.,SUPPORTED_CLAIM,PASS,klaim disetujui
+Membantu melegakan tenggorokan.,SUPPORTED_CLAIM,PASS,klaim disetujui
+Membantu menghangatkan tubuh.,SUPPORTED_CLAIM,PASS,klaim disetujui
+Membantu memenuhi kebutuhan nutrisi harian.,SUPPORTED_CLAIM,PASS,klaim disetujui
+Membantu meredakan pegal linu dan nyeri otot.,SUPPORTED_CLAIM,PASS,klaim disetujui
+Secara tradisional digunakan untuk membantu memelihara daya ingat.,SUPPORTED_CLAIM,PASS,klaim disetujui
+Membantu metabolisme energi.,SUPPORTED_CLAIM,PASS,klaim disetujui
+Produk ini membantu memelihara stamina.,SUPPORTED_CLAIM,PASS,parafrase ringan
+Produk ini membantu menyegarkan badan.,SUPPORTED_CLAIM,PASS,parafrase ringan
+Madu ini membantu memenuhi kebutuhan nutrisi.,SUPPORTED_CLAIM,PASS,parafrase ringan
+Minuman ini secara tradisional digunakan untuk membantu memelihara kesehatan pencernaan.,SUPPORTED_CLAIM,PASS,parafrase ringan
+Simpan di tempat sejuk dan kering.,SAFE_PRODUCT_DESCRIPTION,PASS,penyimpanan
+Tutup rapat kemasan setelah dibuka.,SAFE_PRODUCT_DESCRIPTION,PASS,penyimpanan
+Minum satu sachet sehari dengan air hangat.,SAFE_PRODUCT_DESCRIPTION,PASS,aturan pakai
+Kocok dahulu sebelum diminum.,SAFE_PRODUCT_DESCRIPTION,PASS,aturan pakai
+Tersedia dalam kemasan dus isi 20 sachet.,SAFE_PRODUCT_DESCRIPTION,PASS,kemasan
+Minimum order lima karton per produk.,SAFE_PRODUCT_DESCRIPTION,PASS,moq
+Harga grosir tercantum di katalog terbaru.,SAFE_PRODUCT_DESCRIPTION,PASS,harga tanpa angka
+Komposisi tercantum pada label kemasan.,SAFE_PRODUCT_DESCRIPTION,PASS,komposisi
+Nomor izin edar tercantum pada kemasan.,SAFE_PRODUCT_DESCRIPTION,PASS,izin edar
+Pengiriman dilakukan pada hari kerja.,SAFE_PRODUCT_DESCRIPTION,PASS,pengiriman
+Rasanya manis dengan aroma jahe yang kuat.,SAFE_PRODUCT_DESCRIPTION,PASS,rasa
+Produk ini bukan obat dan tidak ditujukan untuk mengobati penyakit.,SAFE_PRODUCT_DESCRIPTION,PASS,penafian dengan kata terapi
+"Untuk keluhan kesehatan, konsultasikan dengan dokter atau apoteker.",SAFE_PRODUCT_DESCRIPTION,PASS,anjuran
+Tanyakan kepada apoteker bila sedang hamil atau menyusui.,SAFE_PRODUCT_DESCRIPTION,PASS,anjuran
+Tidak disarankan untuk anak di bawah dua tahun.,SAFE_PRODUCT_DESCRIPTION,PASS,peringatan
+Menyembuhkan diabetes dalam dua minggu.,THERAPEUTIC_CLAIM,BLOCK,kata terapi langsung
+Obat ampuh untuk asam urat.,THERAPEUTIC_CLAIM,BLOCK,kata terapi langsung
+Mengobati maag kronis secara alami.,THERAPEUTIC_CLAIM,BLOCK,kata terapi langsung
+Mencegah kanker sejak dini.,THERAPEUTIC_CLAIM,BLOCK,kata terapi langsung
+Menurunkan tekanan darah tinggi.,THERAPEUTIC_CLAIM,BLOCK,parameter klinis
+Menormalkan kadar gula darah.,THERAPEUTIC_CLAIM,BLOCK,parameter klinis
+Kolesterol langsung turun setelah diminum.,THERAPEUTIC_CLAIM,BLOCK,parameter klinis
+Bisa menggantikan obat dari dokter.,THERAPEUTIC_CLAIM,BLOCK,pengganti obat
+Tidak perlu lagi minum obat resep setelah memakai produk ini.,THERAPEUTIC_CLAIM,BLOCK,pengganti obat parafrase
+Penyakit jantung Anda bisa hilang dengan rutin minum ini.,THERAPEUTIC_CLAIM,BLOCK,parafrase sulit
+Asam lambung tidak akan kambuh lagi.,THERAPEUTIC_CLAIM,BLOCK,parafrase sulit
+Luka diabetes mengering lebih cepat.,THERAPEUTIC_CLAIM,BLOCK,parafrase sulit
+Membersihkan sumbatan pembuluh darah.,THERAPEUTIC_CLAIM,BLOCK,parafrase sulit
+Tumor mengecil setelah beberapa bulan pemakaian.,THERAPEUTIC_CLAIM,BLOCK,parafrase sulit
+Stroke dapat dihindari dengan produk ini.,THERAPEUTIC_CLAIM,BLOCK,parafrase sulit
+Hasil dijamin dalam tiga hari.,GUARANTEE,BLOCK,jaminan langsung
+Pasti berhasil untuk semua orang.,GUARANTEE,BLOCK,jaminan langsung
+Garansi hasil atau uang kembali.,GUARANTEE,BLOCK,jaminan langsung
+Dijamin ampuh sejak minum pertama.,GUARANTEE,BLOCK,jaminan langsung
+Terbukti 100% berhasil.,GUARANTEE,BLOCK,klaim absolut
+100% aman tanpa efek samping.,GUARANTEE,BLOCK,klaim keamanan
+Tanpa efek samping sama sekali.,GUARANTEE,BLOCK,klaim keamanan
+Bebas risiko untuk semua usia.,GUARANTEE,BLOCK,klaim keamanan
+Semua pemakai pasti merasakan manfaatnya.,GUARANTEE,BLOCK,jaminan langsung
+Uang kembali bila tidak terasa manfaatnya.,GUARANTEE,BLOCK,parafrase sulit
+Tidak mungkin gagal.,GUARANTEE,BLOCK,parafrase sulit
+Efeknya tidak akan mengecewakan Anda.,GUARANTEE,BLOCK,parafrase sulit
+Tak ada risiko apa pun bagi tubuh.,GUARANTEE,BLOCK,parafrase sulit
+Aman untuk semua orang tanpa terkecuali.,GUARANTEE,BLOCK,parafrase sulit
+Membantu menurunkan berat badan.,UNSUPPORTED_CLAIM,NEEDS_REVIEW,manfaat tak terdaftar
+Membantu memperkuat jantung.,UNSUPPORTED_CLAIM,NEEDS_REVIEW,manfaat lebih kuat dari klaim
+Membantu meningkatkan kesuburan.,UNSUPPORTED_CLAIM,NEEDS_REVIEW,manfaat tak terdaftar
+Mengandung antioksidan tinggi yang baik untuk tubuh.,UNSUPPORTED_CLAIM,NEEDS_REVIEW,manfaat tak terdaftar
+Madu terbaik untuk keluarga.,UNSUPPORTED_CLAIM,NEEDS_REVIEW,superlatif
+Membantu detoks tubuh secara alami.,UNSUPPORTED_CLAIM,NEEDS_REVIEW,detoks
+Direkomendasikan oleh dokter.,UNSUPPORTED_CLAIM,NEEDS_REVIEW,endorsement
+"Kata pelanggan kami, keluhannya hilang dalam seminggu.",UNSUPPORTED_CLAIM,NEEDS_REVIEW,testimoni
+Khasiatnya ajaib.,UNSUPPORTED_CLAIM,BLOCK,kata terlarang
+Meningkatkan gairah pria dewasa.,UNSUPPORTED_CLAIM,BLOCK,klaim seksual
+Membuat kulit tampak awet muda.,UNSUPPORTED_CLAIM,BLOCK,kata terlarang
+Menjernihkan kulit dari dalam.,UNSUPPORTED_CLAIM,NEEDS_REVIEW,parafrase sulit
+Membuat tidur lebih nyenyak.,UNSUPPORTED_CLAIM,NEEDS_REVIEW,parafrase sulit
+Rambut tumbuh lebih lebat.,UNSUPPORTED_CLAIM,NEEDS_REVIEW,parafrase sulit
+Otak jadi lebih encer.,UNSUPPORTED_CLAIM,NEEDS_REVIEW,parafrase sulit
+Badan terasa lebih ringan setelah diminum.,UNSUPPORTED_CLAIM,NEEDS_REVIEW,parafrase sulit
+87% pelanggan merasa lebih bugar setelah dua minggu.,STATISTICAL_CLAIM,NEEDS_REVIEW,persentase
+Stamina naik 40 persen dalam sebulan.,STATISTICAL_CLAIM,NEEDS_REVIEW,persentase
+Menambah daya tahan tubuh hingga 70%.,STATISTICAL_CLAIM,NEEDS_REVIEW,persentase
+Hasil survei: 95% pembeli merasakan manfaatnya.,STATISTICAL_CLAIM,NEEDS_REVIEW,persentase
+Uji laboratorium menunjukkan peningkatan imun 30%.,STATISTICAL_CLAIM,NEEDS_REVIEW,hasil uji
+Terbukti pada 200 responden dalam uji kami.,STATISTICAL_CLAIM,NEEDS_REVIEW,hasil uji
+Meningkatkan energi hingga 3 kali lipat.,STATISTICAL_CLAIM,NEEDS_REVIEW,kelipatan
+Kebugaran meningkat dua kali lipat.,STATISTICAL_CLAIM,NEEDS_REVIEW,kelipatan dalam kata
+Kandungan vitaminnya dua kali lebih banyak dari kebutuhan harian.,STATISTICAL_CLAIM,NEEDS_REVIEW,kelipatan dalam kata
+Sudah dipakai lebih dari 10.000 pasien.,STATISTICAL_CLAIM,NEEDS_REVIEW,jumlah pemakai
+Sembilan dari sepuluh ibu puas dengan hasilnya.,STATISTICAL_CLAIM,NEEDS_REVIEW,parafrase sulit
+Tujuh dari sepuluh pelanggan membeli ulang.,STATISTICAL_CLAIM,NEEDS_REVIEW,parafrase sulit
+Rata-rata pengguna merasa segar dalam 15 menit.,STATISTICAL_CLAIM,NEEDS_REVIEW,parafrase sulit
+Mayoritas pemakai merasakan perubahan dalam sepekan.,STATISTICAL_CLAIM,NEEDS_REVIEW,parafrase sulit
+Lebih bagus dari merek lain untuk menjaga stamina.,COMPARATIVE_CLAIM,NEEDS_REVIEW,perbandingan merek
+Lebih ampuh daripada produk sejenis.,COMPARATIVE_CLAIM,NEEDS_REVIEW,perbandingan produk
+Jauh lebih baik dibanding jamu biasa.,COMPARATIVE_CLAIM,NEEDS_REVIEW,perbandingan produk
+Lebih cepat terasa dibanding merek kompetitor.,COMPARATIVE_CLAIM,NEEDS_REVIEW,perbandingan merek
+Lebih unggul daripada vitamin biasa.,COMPARATIVE_CLAIM,NEEDS_REVIEW,perbandingan produk
+Lebih hemat dan lebih berkhasiat daripada merek sebelah.,COMPARATIVE_CLAIM,NEEDS_REVIEW,perbandingan merek
+Mengalahkan semua suplemen di pasaran.,COMPARATIVE_CLAIM,NEEDS_REVIEW,parafrase sulit
+Produk pesaing tidak sebagus ini.,COMPARATIVE_CLAIM,NEEDS_REVIEW,parafrase sulit
+Kualitasnya di atas merek impor.,COMPARATIVE_CLAIM,NEEDS_REVIEW,parafrase sulit
+Lebih murni dari madu di supermarket.,COMPARATIVE_CLAIM,NEEDS_REVIEW,parafrase sulit
+Tidak seperti produk lain yang penuh bahan kimia.,COMPARATIVE_CLAIM,NEEDS_REVIEW,parafrase sulit
+"Dibanding kapsul biasa, penyerapannya lebih tinggi.",COMPARATIVE_CLAIM,NEEDS_REVIEW,parafrase sulit
+Merek lain kalah jauh soal khasiat.,COMPARATIVE_CLAIM,NEEDS_REVIEW,parafrase sulit
+"Satu-satunya yang benar-benar bekerja, beda dari yang lain.",COMPARATIVE_CLAIM,NEEDS_REVIEW,parafrase sulit
+Banyak penderita diabetes memilih produk ini.,UNCERTAIN_CLAIM,NEEDS_REVIEW,menyebut penyakit
+Sering dicari orang yang punya maag.,UNCERTAIN_CLAIM,NEEDS_REVIEW,menyebut penyakit
+Hipertensi sering tidak disadari penderitanya.,UNCERTAIN_CLAIM,NEEDS_REVIEW,menyebut penyakit
+Asam urat cukup umum pada usia lanjut.,UNCERTAIN_CLAIM,NEEDS_REVIEW,menyebut penyakit
+Konsumsi rutin setiap hari.,UNCERTAIN_CLAIM,NEEDS_REVIEW,ajakan terus-menerus
+Minum rutin agar terasa hasilnya.,UNCERTAIN_CLAIM,NEEDS_REVIEW,ajakan terus-menerus
+Cocok untuk yang sering begadang.,UNCERTAIN_CLAIM,NEEDS_REVIEW,konteks kabur
+Pas diminum saat badan kurang fit.,UNCERTAIN_CLAIM,NEEDS_REVIEW,konteks kabur
+Orang tua kami dulu minum ini saat sakit.,UNCERTAIN_CLAIM,NEEDS_REVIEW,konteks kabur
+Katanya bagus untuk ibu hamil.,UNCERTAIN_CLAIM,NEEDS_REVIEW,konteks kabur
+Baik diminum sebelum olahraga.,UNCERTAIN_CLAIM,NEEDS_REVIEW,konteks kabur
+Banyak yang merasa cocok.,UNCERTAIN_CLAIM,NEEDS_REVIEW,konteks kabur
+Bisa jadi pilihan saat cuaca dingin.,UNCERTAIN_CLAIM,NEEDS_REVIEW,konteks kabur
+Terasa berbeda bagi sebagian orang.,UNCERTAIN_CLAIM,NEEDS_REVIEW,konteks kabur

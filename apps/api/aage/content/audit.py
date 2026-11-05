@@ -234,6 +234,6 @@ def audit(db: Session, *, url: str | None = None, text: str | None = None, html_
     ledger.record(db, "audit_halaman", objek_ref=f"audit:{url or 'teks'}"[:80], aktor=aktor,
                   ringkasan=f"Audit {report['sumber'][:80]}: skor {before} → {after}, potensi {report['skor_potensi']}",
                   verdict=check.verdict, aturan_terpicu=check.rules_triggered, outcome=f"{len(risky)} kalimat berisiko",
-                  model=check.model, data=report["ringkasan"])
+                  model=check.model, data={**report["ringkasan"], "versi_aturan": check.rules_version})
     db.commit()
     return report

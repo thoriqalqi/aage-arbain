@@ -106,6 +106,13 @@ Dataset konteks (WIP, 89 giliran) dijalankan dengan perintah di bawah. Baris `ba
 .venv/Scripts/python -m eval.run_konteks --dataset luar_katalog --keluaran hasil_kerja
 ```
 
+Kategori ClaimGuard diukur tanpa LLM. `klaim_kategori.csv` sengaja memuat parafrase yang belum tertangkap aturan, jadi angkanya ukuran, bukan gerbang 100%.
+
+```powershell
+# apps/api
+.venv/Scripts/python -m eval.run_klaim --keluaran hasil_kerja
+```
+
 ## Catatan kejujuran angka
 
 Dataset ditulis tim pengembang, dan aturannya disetel memakai dataset yang sama, jadi 100% bukan uji buta. Saat menyebut angka, sertakan batasan ini. Lihat bagian Keterbatasan di `apps/api/eval/laporan_perbaikan.md`.

@@ -53,6 +53,6 @@ def send(
         aturan_terpicu=check.rules_triggered, aktor=aktor, outcome=msg.status_kirim, latensi_ms=latency,
         alasan=(f"Disetujui lewat approval #{approval_id}" if approval_id else "Dikirim otomatis: lolos ClaimGuard & kebijakan")
         + (f" · Error kanal: {err}" if err and msg.status_kirim == "gagal" else ""),
-        data={"kanal": conv.kanal, "approval_id": approval_id},
+        data={"kanal": conv.kanal, "approval_id": approval_id, "versi_aturan": check.rules_version},
     )
     return msg

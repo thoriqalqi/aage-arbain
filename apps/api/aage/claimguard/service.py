@@ -19,6 +19,7 @@ from .rules import HEALTH_OBJ_RE, RULES, is_benefit_claim, is_negated, stat_with
 
 ALLOWED, REVIEW, BLOCKED = "allowed", "review", "blocked"
 LABELS = {ALLOWED: "Diizinkan", REVIEW: "Perlu review", BLOCKED: "Diblokir"}
+KEPUTUSAN = {ALLOWED: "PASS", REVIEW: "NEEDS_REVIEW", BLOCKED: "BLOCK"}
 _RANK = {ALLOWED: 0, REVIEW: 1, BLOCKED: 2}
 
 ADVISORY_RE = re.compile(
@@ -63,6 +64,26 @@ class SentenceResult:
     matched_claim: dict | None = None
     suggestion: str | None = None
     stage: str = "aturan"
+    kategori: str = ""
+    risiko: str = ""
+    keputusan: str = ""
+
+
+@dataclass
+class Finding:
+    """Satu temuan pada satu kalimat. `severity` adalah tingkat risiko, `decision` adalah keputusan kalimatnya."""
+
+    finding_id: str
+    matched_text: str
+    start: int
+    end: int
+    claim_type: str
+    severity: str
+    rule_id: str
+    reason: str
+    evidence_gap: str
+    suggested_correction: str | None
+    decision: str
 
 
 @dataclass
@@ -79,6 +100,9 @@ class CheckResult:
     token_out: int = 0
     biaya_rp: float = 0.0
     duration_ms: int = 0
+    keputusan: str = ""
+    rules_version: str = ""
+    temuan: list[Finding] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         d = asdict(self)
@@ -215,6 +239,49 @@ def _product_name_re(names: list[str]) -> re.Pattern | None:
     return re.compile("|".join(re.escape(n) for n in sorted(names, key=len, reverse=True)), re.IGNORECASE)
 
 
+_ATURAN_TANPA_HIT = "KLAIM_TIDAK_TERDAFTAR"
+
+
+def _klasifikasi(sr: SentenceResult, klaim_manfaat: bool) -> tuple[str, str]:
+    """Kategori kalimat. Hanya label: verdict sudah final sebelum fungsi ini dipanggil."""
+    if sr.rules:
+        return max((registry.klasifikasi(h.id) for h in sr.rules), key=lambda kr: registry.peringkat_risiko(kr[1]))
+    if sr.verdict != ALLOWED:
+        kategori, risiko = registry.klasifikasi(_ATURAN_TANPA_HIT)
+        return kategori, ("HIGH" if sr.verdict == BLOCKED else risiko)
+    if sr.matched_claim:
+        return "SUPPORTED_CLAIM", "LOW"
+    # Klaim manfaat tanpa padanan yang diloloskan LLM-judge tetap belum punya bukti.
+    return ("UNCERTAIN_CLAIM", "MEDIUM") if klaim_manfaat else ("SAFE_PRODUCT_DESCRIPTION", "LOW")
+
+
+def _rentang(sr: SentenceResult, cuplikan: str) -> tuple[str, int, int]:
+    """Posisi cuplikan di teks asli. Cuplikan yang tak ditemukan memakai seluruh kalimat."""
+    i = sr.text.lower().find(cuplikan.lower()) if cuplikan else -1
+    if i < 0:
+        return sr.text, sr.start, sr.end
+    return sr.text[i:i + len(cuplikan)], sr.start + i, sr.start + i + len(cuplikan)
+
+
+def _temuan(results: list[SentenceResult]) -> list[Finding]:
+    out: list[Finding] = []
+
+    def tambah(sr: SentenceResult, rule_id: str, kategori: str, risiko: str, cuplikan: str, alasan: str) -> None:
+        teks, mulai, akhir = _rentang(sr, cuplikan)
+        out.append(Finding(f"F{len(out) + 1}", teks, mulai, akhir, kategori, risiko, rule_id, alasan,
+                           registry.celah_bukti(kategori), sr.suggestion, sr.keputusan))
+
+    for sr in results:
+        if sr.verdict == ALLOWED:
+            continue
+        for h in sr.rules:
+            tambah(sr, h.id, *registry.klasifikasi(h.id), h.match, h.alasan)
+        if not sr.rules:
+            tambah(sr, _ATURAN_TANPA_HIT, sr.kategori, sr.risiko, "",
+                   sr.reasons[-1] if sr.reasons else "Klaim manfaat tidak ditemukan di daftar klaim disetujui.")
+    return out
+
+
 JUDGE_PROMPT ="""Anda adalah pemeriksa kepatuhan klaim produk herbal/suplemen di Indonesia (aturan BPOM).
 Nilai SATU kalimat berikut. Klaim terapi (menyembuhkan/mengobati/mencegah penyakit), jaminan hasil,
 dan klaim yang tidak ada di daftar klaim disetujui TIDAK boleh diizinkan.
@@ -298,6 +365,8 @@ def check(
 
         if sr.verdict != ALLOWED:
             sr.suggestion = _suggest(sr, claims, product_names, product_scoped)
+        sr.kategori, sr.risiko = _klasifikasi(sr, is_benefit_claim(masked))
+        sr.keputusan = KEPUTUSAN[sr.verdict]
         results.append(sr)
 
     overall = worst(*[s.verdict for s in results]) if results else ALLOWED
@@ -330,4 +399,7 @@ def check(
         token_out=tok_out,
         biaya_rp=round(cost, 2),
         duration_ms=int((time.perf_counter() - started) * 1000),
+        keputusan=KEPUTUSAN[overall],
+        rules_version=registry.rules_version(),
+        temuan=_temuan(results),
     )

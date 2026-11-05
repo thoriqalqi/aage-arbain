@@ -84,7 +84,7 @@ def decide(db: Session, approval_id: int, *, aksi: str, user: User, teks: str | 
                       verdict=check.verdict, aturan_terpicu=check.rules_triggered,
                       alasan=" | ".join(check.reasons[:5]), model=check.model, biaya_rp=check.biaya_rp,
                       aktor=actor, latensi_ms=check.duration_ms,
-                      data={"sentences": check.to_dict()["sentences"], "safe_text": check.safe_text})
+                      data={"sentences": check.to_dict()["sentences"], "safe_text": check.safe_text, "versi_aturan": check.rules_version})
         if check.verdict != claimguard.ALLOWED:
             db.commit()
             raise ApprovalError(f"ClaimGuard: {check.label}. Perbaiki teks sebelum dikirim.", check)

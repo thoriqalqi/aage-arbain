@@ -474,7 +474,7 @@ def generate(db: Session, *, product_id: int, topik: str, target: str, tipe: str
         aturan_terpicu=check.rules_triggered, alasan=alasan,
         sumber_ref=[{"jenis": "produk", "product_id": p.id, "judul": p.nama},
                     *[{k: s[k] for k in ("jenis", "judul", "chunk_id", "document_id", "versi", "halaman")} for s in sumber if s["jenis"] == "dokumen"]],
-        outcome="draf", data={"topik": topik, "target": target, "format": tipe, "data_kosong": kosong, "versi": 1},
+        outcome="draf", data={"topik": topik, "target": target, "format": tipe, "data_kosong": kosong, "versi": 1, "versi_aturan": check.rules_version},
     )
     db.commit()
     return d
@@ -558,7 +558,7 @@ def edit(db: Session, d: ContentDraft, changes: dict, aktor: str, *, perubahan: 
     ledger.record(db, "konten_diedit", objek_ref=f"content:{d.id}", product_id=d.product_id, aktor=aktor,
                   ringkasan=f"Draf '{d.judul}' {aksi} · ClaimGuard {claimguard.LABELS.get(d.claim_verdict, d.claim_verdict)}",
                   verdict=d.claim_verdict, aturan_terpicu=d.claim_report.get("rules_triggered", []), outcome="draf",
-                  data={"versi": nomor_versi(db, d.id), "dipulihkan_dari": dari_versi})
+                  data={"versi": nomor_versi(db, d.id), "dipulihkan_dari": dari_versi, "versi_aturan": d.claim_report.get("rules_version")})
     db.commit()
     return d
 
@@ -727,7 +727,7 @@ def approve(db: Session, d: ContentDraft, aktor: str, *, commit: bool = True) ->
     d.status = "disetujui"
     ledger.record(db, "konten_disetujui", objek_ref=f"content:{d.id}", product_id=d.product_id, aktor=aktor,
                   ringkasan=f"Konten '{d.judul}' disetujui", verdict=d.claim_verdict, outcome="disetujui",
-                  data={"versi": nomor_versi(db, d.id)})
+                  data={"versi": nomor_versi(db, d.id), "versi_aturan": (d.claim_report or {}).get("rules_version")})
     if commit:
         db.commit()
     return d

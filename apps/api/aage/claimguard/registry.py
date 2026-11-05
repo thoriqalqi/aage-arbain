@@ -23,6 +23,20 @@ def rules_version() -> str:
     return load()["rules_version"]
 
 
+def klasifikasi(rule_id: str) -> tuple[str, str]:
+    """(kategori, risiko) aturan. Aturan yang belum diklasifikasi selalu perlu dinilai manusia."""
+    r = load()["rules"].get(rule_id) or {}
+    return r.get("kategori", "UNCERTAIN_CLAIM"), r.get("risiko", "MEDIUM")
+
+
+def peringkat_risiko(risiko: str) -> int:
+    return load()["tingkat_risiko"].index(risiko)
+
+
+def celah_bukti(kategori: str) -> str:
+    return load()["kategori_klaim"][kategori]["celah_bukti"]
+
+
 def reference(ref_id: str) -> dict | None:
     reg = load()
     ref = reg["references"].get(ref_id)
