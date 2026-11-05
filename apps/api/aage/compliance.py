@@ -138,6 +138,7 @@ def run_audit(db: Session, *, engine: ClaimGuardEngine, product_id: str, text: s
         aturan_terpicu=sorted({m.rule_id for m in result.matched_rules}), model=audit.model_name,
         token_in=result.model_info.input_tokens if result.model_info else 0,
         token_out=result.model_info.output_tokens if result.model_info else 0, latensi_ms=result.duration_ms,
+        biaya_rp=result.model_info.biaya_rp if result.model_info else 0.0,
         outcome=result.status,
         sumber_ref=[{"jenis": "regulasi", "judul": r["singkat"], "kutipan": r["article_reference"]} for r in result.references[:8]],
         data={k: v for k, v in serialize_audit(audit).items() if k not in {"references", "matched_rules"}}

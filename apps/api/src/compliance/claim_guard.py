@@ -33,12 +33,15 @@ from aage.models import ApprovedClaim, Product
 
 from .llm_adapter import ContextReviewer, ReviewerError, ReviewerNotConfigured, ReviewRequest
 
-ENGINE_VERSION = "claimguard-engine/2.0.0"
+ENGINE_VERSION = "claimguard-engine/2.1.0"
 DISCLAIMER = ("ClaimGuard adalah alat bantu penyaringan awal, bukan pengganti keputusan ahli regulasi atau penasihat hukum. "
               "Hasil ALLOWED berarti tidak ditemukan pelanggaran oleh pemeriksaan ini, bukan jaminan kepatuhan.")
 UNVERIFIED_NOTE = "Rujukan regulasi perlu diverifikasi"
 HUMAN_REVIEW_NOTE = "Wajib ditinjau manusia sebelum dipublikasikan."
 RISKY_LLM_CATEGORIES = {"terapi_penyakit", "absolut", "keamanan", "tanpa_bukti"}
+# Kategori temuan LLM ke kategori klaim registry. Hanya label: keputusan tetap dari logika di verify_content.
+KATEGORI_LLM = {"terapi_penyakit": ("THERAPEUTIC_CLAIM", "HIGH"), "absolut": ("GUARANTEE", "HIGH"), "keamanan": ("GUARANTEE", "HIGH"),
+                "tanpa_bukti": ("UNSUPPORTED_CLAIM", "MEDIUM")}
 
 AuditStatus = Literal["BLOCKED", "NEED_REVIEW", "ALLOWED", "ERROR"]
 
@@ -57,6 +60,8 @@ class UnknownProductError(ClaimGuardInputError):
 class RuleMatch(BaseModel):
     rule_id: str
     description: str
+    kategori: str
+    risiko: str
     severity: str
     confidence: str
     status_aturan: str
@@ -75,6 +80,8 @@ class Evidence(BaseModel):
     sumber: Literal["aturan", "pencocokan_klaim", "llm"]
     rule_id: str | None
     alasan: str
+    kategori: str
+    risiko: str
 
 
 class ModelInfo(BaseModel):
@@ -83,6 +90,7 @@ class ModelInfo(BaseModel):
     latency_ms: int | None = None
     input_tokens: int = 0
     output_tokens: int = 0
+    biaya_rp: float = 0.0
 
 
 class OfficialClaim(BaseModel):
@@ -174,7 +182,9 @@ class ClaimGuardEngine:
                 return
             r = registry.rule(rule_id)
             start, end = _locate(s.text, found, s.start)
-            m = RuleMatch(rule_id=rule_id, description=r["description"], severity=r["severity"], confidence=r["confidence"],
+            kategori_klaim, risiko = registry.klasifikasi(rule_id)
+            m = RuleMatch(rule_id=rule_id, description=r["description"], kategori=kategori_klaim, risiko=risiko,
+                          severity=r["severity"], confidence=r["confidence"],
                           status_aturan=r["status_aturan"], match=found, sentence=s.text, start=start, end=end,
                           decisive=registry.is_decisive(rule_id, kategori),
                           references=registry.references_for(rule_id, kategori))
@@ -249,7 +259,7 @@ class ClaimGuardEngine:
             refs = _unique_refs(r for m in relevant for r in registry.usable_references(m.rule_id, kategori))
             evidence = [Evidence(kutipan=m.match, start=m.start, end=m.end, rule_id=m.rule_id,
                                  sumber="pencocokan_klaim" if m.rule_id == "KLAIM_TIDAK_TERDAFTAR" else "aturan",
-                                 alasan=m.description) for m in matches]
+                                 alasan=m.description, kategori=m.kategori, risiko=m.risiko) for m in matches]
             rec, rec_note = self._recommend(product, chk, set(per_sentence))
             unverified = [m.rule_id for m in relevant if not registry.usable_references(m.rule_id, kategori)]
             note = None
@@ -293,15 +303,17 @@ class ClaimGuardEngine:
 
         review = outcome.review
         info = ModelInfo(provider=outcome.provider, model=outcome.model, latency_ms=outcome.latency_ms,
-                         input_tokens=outcome.input_tokens, output_tokens=outcome.output_tokens)
+                         input_tokens=outcome.input_tokens, output_tokens=outcome.output_tokens, biaya_rp=outcome.biaya_rp)
         norm_text = _norm(text)
         valid = [f for f in review.findings if _norm(f.quote) and _norm(f.quote) in norm_text]
         dropped = len(review.findings) - len(valid)
         evidence = []
         for f in valid:
             start, end = _locate(text, f.quote)
+            kategori_klaim, risiko = (registry.klasifikasi(f.rule_id) if f.rule_id in registry.load()["rules"]
+                                      else KATEGORI_LLM.get(f.category, ("UNCERTAIN_CLAIM", "MEDIUM")))
             evidence.append(Evidence(kutipan=f.quote, start=start, end=end, sumber="llm", rule_id=f.rule_id,
-                                     alasan=f"[{f.category}] {f.explanation}"))
+                                     alasan=f"[{f.category}] {f.explanation}", kategori=kategori_klaim, risiko=risiko))
         cited = [f for f in valid if f.rule_id and registry.is_decisive(f.rule_id, kategori)]
         notes = [f"{dropped} kutipan LLM tidak ditemukan di teks dan diabaikan."] if dropped else []
 
@@ -324,7 +336,8 @@ class ClaimGuardEngine:
 
         rule_ids = [f.rule_id for f in (cited if status == "BLOCKED" else valid) if f.rule_id]
         refs = _unique_refs(r for rid in rule_ids for r in registry.usable_references(rid, kategori))
-        matched = [RuleMatch(rule_id=f.rule_id, description=registry.rule(f.rule_id)["description"], severity="blocked",
+        matched = [RuleMatch(rule_id=f.rule_id, description=registry.rule(f.rule_id)["description"],
+                             kategori=registry.klasifikasi(f.rule_id)[0], risiko=registry.klasifikasi(f.rule_id)[1], severity="blocked",
                              confidence="tinggi", status_aturan=registry.rule(f.rule_id)["status_aturan"], match=f.quote,
                              sentence=f.quote, start=_locate(text, f.quote)[0], end=_locate(text, f.quote)[1], decisive=True,
                              references=registry.references_for(f.rule_id, kategori)) for f in cited] if status == "BLOCKED" else []

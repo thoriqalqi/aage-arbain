@@ -7,9 +7,9 @@ from .claim_guard import (
     ClaimGuardInputError,
     UnknownProductError,
 )
-from .llm_adapter import AnthropicReviewer, ContextReviewer, LLMReview, ReviewerError
+from .llm_adapter import ContextReviewer, JalurUtamaReviewer, LLMReview, ReviewerError
 
 __all__ = [
     "ENGINE_VERSION", "AuditResult", "ClaimGuardEngine", "ClaimGuardInputError", "UnknownProductError",
-    "AnthropicReviewer", "ContextReviewer", "LLMReview", "ReviewerError",
+    "ContextReviewer", "JalurUtamaReviewer", "LLMReview", "ReviewerError",
 ]

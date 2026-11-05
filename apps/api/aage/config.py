@@ -102,9 +102,8 @@ class Settings(BaseSettings):
     agent_mode: str = "auto"  # auto | llm | simulasi
 
     # ClaimGuard & Compliance Check (src/compliance/claim_guard.py). Versi aturan ada di config/claimguard_registry.json.
-    claimguard_model: str = "claude-sonnet-5-5"  # model Anthropic untuk analisis konteks (Tahap B)
     claimguard_max_text_length: int = 12_000
-    claimguard_llm_timeout_s: float = 30.0
+    claimguard_llm_timeout_s: float = 60.0  # audit butuh jawaban lebih panjang dari balasan chat (LLM_TIMEOUT_S)
     claimguard_llm_failure_status: str = "ERROR"  # ERROR | NEED_REVIEW bila LLM tidak tersedia/gagal; tidak pernah ALLOWED
 
     # Prospek: Live Lead Scouting (OpenStreetMap Overpass, tanpa API key) + Opportunity Score

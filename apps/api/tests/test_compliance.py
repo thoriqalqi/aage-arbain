@@ -1,11 +1,10 @@
 """ClaimGuard & Compliance Check: engine, adapter LLM (di-mock, tanpa jaringan), repository, dan endpoint."""
 
-import types
-
 import httpx
 import pytest
+from sqlalchemy import select
 
-from src.compliance import AnthropicReviewer, ClaimGuardEngine, ClaimGuardInputError, LLMReview, UnknownProductError
+from src.compliance import ClaimGuardEngine, ClaimGuardInputError, JalurUtamaReviewer, LLMReview, UnknownProductError
 from src.compliance.llm_adapter import ReviewerError, ReviewerTimeout, ReviewOutcome
 
 OBA = "ARB-001"  # Kapsul Habbatussauda 120 — Obat Bahan Alam
@@ -98,45 +97,156 @@ def test_llm_output_valid_allowed(db):
     assert r.status == "ALLOWED" and "bukan jaminan" in r.reason and r.recommendation is None
 
 
-def _fake_anthropic(monkeypatch, create):
-    import anthropic
+@pytest.fixture
+def jalur_utama(monkeypatch):
+    """Nyalakan jalur LLM utama dengan kunci uji. Jaringan dipalsukan; tidak ada panggilan sungguhan."""
+    from aage import llm
 
-    class Client:
-        def __init__(self, **_):
-            self.messages = types.SimpleNamespace(create=create)
+    monkeypatch.setattr(llm.settings, "llm_provider_name", "openai_compat")
+    monkeypatch.setattr(llm.settings, "llm_api_key", "kunci-uji")
+    monkeypatch.setattr(llm.settings, "llm_base_url", "https://llm.uji/v1")
+    monkeypatch.setattr(llm.settings, "llm_judge_model", "hakim-uji")
+    monkeypatch.setattr(llm.settings, "llm_fallback_models", "")
+    monkeypatch.setattr(llm.settings, "llm_price_in_usd_per_m", 1.0)
+    monkeypatch.setattr(llm.settings, "llm_price_out_usd_per_m", 1.0)
+    monkeypatch.setattr(llm, "budget_ok", lambda: True)
 
-    monkeypatch.setattr(anthropic, "Anthropic", Client)
+    def pasang(*jawaban):
+        panggilan = []
+        antrean = list(jawaban)
+
+        def palsu(url, body, timeout, headers=None):
+            panggilan.append({"url": url, "body": body, "timeout": timeout})
+            j = antrean.pop(0)
+            if isinstance(j, Exception):
+                raise j
+            status, isi = j
+            if status >= 300:
+                return httpx.Response(status, json={"error": {"message": "kunci-uji ditolak"}})
+            return httpx.Response(200, json={"choices": [{"message": {"content": isi}, "finish_reason": "stop"}],
+                                             "usage": {"prompt_tokens": 321, "completion_tokens": 45}})
+
+        monkeypatch.setattr(llm, "_post", palsu)
+        return panggilan
+
+    return pasang
 
 
-def test_llm_output_tidak_valid_jadi_error(db, monkeypatch):
-    bad = types.SimpleNamespace(content=[types.SimpleNamespace(type="tool_use", input={"status": "AMAN"})], usage=None)
-    _fake_anthropic(monkeypatch, lambda **_: bad)
-    r = ClaimGuardEngine(db, AnthropicReviewer("kunci-uji", "claude-uji")).verify_content(OBA, CLEAN)
+def test_llm_output_tidak_valid_jadi_error(db, jalur_utama):
+    jalur_utama((200, '{"status": "AMAN"}'))
+    r = ClaimGuardEngine(db, JalurUtamaReviewer()).verify_content(OBA, CLEAN)
     assert r.status == "ERROR" and r.error_code == "llm_output_tidak_valid"
 
 
-def test_adapter_anthropic_output_valid(db, monkeypatch):
-    ok = types.SimpleNamespace(
-        content=[types.SimpleNamespace(type="tool_use", input={"status": "ALLOWED", "summary": "Tidak ada klaim kesehatan.", "findings": []})],
-        usage=types.SimpleNamespace(input_tokens=321, output_tokens=45))
-    _fake_anthropic(monkeypatch, lambda **_: ok)
-    r = ClaimGuardEngine(db, AnthropicReviewer("kunci-uji", "claude-uji")).verify_content(OBA, CLEAN)
-    assert r.status == "ALLOWED" and r.model_info.provider == "anthropic" and r.model_info.input_tokens == 321
+def test_llm_bukan_json_jadi_error(db, jalur_utama):
+    jalur_utama((200, "maaf, tidak bisa"))
+    r = ClaimGuardEngine(db, JalurUtamaReviewer()).verify_content(OBA, CLEAN)
+    assert r.status == "ERROR" and r.error_code == "llm_output_tidak_valid"
 
 
-def test_llm_timeout_dan_tanpa_api_key(db, monkeypatch):
-    import anthropic
+def test_adapter_jalur_utama_output_valid(db, jalur_utama):
+    panggilan = jalur_utama((200, '{"status": "ALLOWED", "summary": "Tidak ada klaim kesehatan.", "findings": []}'))
+    r = ClaimGuardEngine(db, JalurUtamaReviewer()).verify_content(OBA, CLEAN)
+    assert r.status == "ALLOWED" and r.stage == "llm"
+    assert r.model_info.provider == "openai_compat" and r.model_info.model == "hakim-uji"
+    assert r.model_info.input_tokens == 321 and r.model_info.biaya_rp > 0
+    assert panggilan[0]["body"]["model"] == "hakim-uji"
+    assert panggilan[0]["body"]["temperature"] == 0
+    assert panggilan[0]["timeout"] == 60.0  # batas audit, bukan batas balasan chat
+    assert panggilan[0]["body"]["max_tokens"] == 4096
+    assert panggilan[0]["url"].startswith("https://llm.uji/v1")
+    pesan = panggilan[0]["body"]["messages"]
+    assert pesan[0]["role"] == "system" and "<materi>" in pesan[1]["content"]
 
-    def timeout(**_):
-        raise anthropic.APITimeoutError(request=httpx.Request("POST", "https://api.anthropic.com/v1/messages"))
 
-    _fake_anthropic(monkeypatch, timeout)
-    r = ClaimGuardEngine(db, AnthropicReviewer("kunci-uji", "claude-uji", 1)).verify_content(OBA, CLEAN)
+def test_llm_timeout_ditolak_dan_tanpa_konfigurasi(db, jalur_utama, monkeypatch):
+    from aage import llm
+
+    jalur_utama(httpx.ReadTimeout("lambat"))
+    r = ClaimGuardEngine(db, JalurUtamaReviewer()).verify_content(OBA, CLEAN)
     assert r.status == "ERROR" and r.error_code == "llm_timeout"
-    r = ClaimGuardEngine(db, AnthropicReviewer("", "claude-uji")).verify_content(OBA, CLEAN)
+
+    jalur_utama((403, ""))
+    r = ClaimGuardEngine(db, JalurUtamaReviewer()).verify_content(OBA, CLEAN)
+    assert r.status == "ERROR" and r.error_code == "llm_gagal" and "HTTP 403" in r.reason
+    assert "kunci-uji" not in r.reason  # pesan provider tidak diteruskan
+
+    monkeypatch.setattr(llm, "budget_ok", lambda: False)
+    r = ClaimGuardEngine(db, JalurUtamaReviewer()).verify_content(OBA, CLEAN)
+    assert r.status == "ERROR" and r.error_code == "llm_budget_habis"
+
+    monkeypatch.setattr(llm.settings, "llm_api_key", "")
+    r = ClaimGuardEngine(db, JalurUtamaReviewer()).verify_content(OBA, CLEAN)
     assert r.status == "ERROR" and r.error_code == "llm_tidak_dikonfigurasi"
-    r = ClaimGuardEngine(db, AnthropicReviewer("", "claude-uji"), llm_failure_status="NEED_REVIEW").verify_content(OBA, CLEAN)
+    r = ClaimGuardEngine(db, JalurUtamaReviewer(), llm_failure_status="NEED_REVIEW").verify_content(OBA, CLEAN)
     assert r.status == "NEED_REVIEW" and r.error_code == "llm_tidak_dikonfigurasi"
+
+
+def test_llm_dimatikan_tidak_menjadi_allowed(db, jalur_utama):
+    from aage import llm
+
+    panggilan = jalur_utama()
+    with llm.disabled():
+        r = ClaimGuardEngine(db, JalurUtamaReviewer()).verify_content(OBA, CLEAN)
+    assert r.status == "ERROR" and r.error_code == "llm_tidak_dikonfigurasi" and panggilan == []
+
+
+def test_tahap_aturan_tidak_memanggil_llm(db, jalur_utama):
+    panggilan = jalur_utama()
+    r = ClaimGuardEngine(db, JalurUtamaReviewer()).verify_content(OBA, RISKY)
+    assert r.status == "BLOCKED" and panggilan == []
+
+
+def test_kategori_dan_risiko_di_hasil_aturan(db):
+    r = ClaimGuardEngine(db, None).verify_content(OBA, RISKY)
+    m = {x.rule_id: x for x in r.matched_rules}
+    assert (m["R01"].kategori, m["R01"].risiko) == ("THERAPEUTIC_CLAIM", "HIGH")
+    assert (m["R08"].kategori, m["R08"].risiko) == ("GUARANTEE", "HIGH")
+    assert all(e.kategori and e.risiko for e in r.evidence)
+
+
+def test_kategori_dan_risiko_di_hasil_llm(db):
+    r = ClaimGuardEngine(db, FakeReviewer(review("NEED_REVIEW", [
+        ("apotek mitra", "absolut", None),
+        ("botol isi 120", "lainnya", None),
+        ("Semarang", "keamanan", "R17"),
+        ("kemasan", "keamanan", "R-KARANGAN"),
+    ]))).verify_content(OBA, CLEAN)
+    kat = {e.kutipan: (e.kategori, e.risiko) for e in r.evidence}
+    assert kat["apotek mitra"] == ("GUARANTEE", "HIGH")
+    assert kat["botol isi 120"] == ("UNCERTAIN_CLAIM", "MEDIUM")
+    assert kat["Semarang"] == ("STATISTICAL_CLAIM", "MEDIUM")  # rule_id terdaftar menang
+    assert kat["kemasan"] == ("GUARANTEE", "HIGH")  # rule_id karangan tidak dipakai
+    assert r.status == "NEED_REVIEW"
+
+
+def test_llm_blocked_punya_kategori(db):
+    r = ClaimGuardEngine(db, FakeReviewer(review("BLOCKED", [("apotek mitra", "absolut", "R07")]))).verify_content(OBA, CLEAN)
+    assert (r.matched_rules[0].kategori, r.matched_rules[0].risiko) == ("GUARANTEE", "HIGH")
+
+
+def test_biaya_audit_masuk_ledger_dan_rute_memakai_jalur_utama(client, admin, db, jalur_utama):
+    """Budget dihitung dari Ledger, jadi biaya audit harus tercatat di sana."""
+    from aage.models import LedgerEvent
+
+    jalur_utama((200, '{"status": "ALLOWED", "summary": "Tidak ada klaim kesehatan.", "findings": []}'))
+    r = client.post("/api/compliance/audit", json={"product_id": OBA, "text": CLEAN + " Uji biaya."}, headers=admin)
+    assert r.status_code == 200, r.text
+    a = r.json()["audit"]
+    assert a["status"] == "ALLOWED" and a["model_provider"] == "openai_compat" and a["model_name"] == "hakim-uji"
+    assert a["engine_version"] == "claimguard-engine/2.1.0"
+    db.expire_all()
+    ev = db.scalar(select(LedgerEvent).where(LedgerEvent.objek_ref == f"audit:{a['audit_id']}"))
+    assert ev.biaya_rp > 0 and ev.token_in == 321
+
+
+def test_registry_melaporkan_jalur_utama(client, admin):
+    from aage import llm
+
+    info = client.get("/api/compliance/registry", headers=admin).json()["llm"]
+    assert info["model"] == llm.settings.llm_judge_model
+    assert info["provider"] == llm.settings.llm_provider
+    assert info["dikonfigurasi"] is False  # kunci kosong di tes
 
 
 @pytest.mark.parametrize("reviewer", [

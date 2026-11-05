@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from src.compliance import AnthropicReviewer, ClaimGuardEngine, ClaimGuardInputError, UnknownProductError
+from src.compliance import ClaimGuardEngine, ClaimGuardInputError, JalurUtamaReviewer, UnknownProductError
 
 from . import compliance as svc
 from .config import get_settings
@@ -32,8 +32,7 @@ router = APIRouter(prefix="/api/compliance")
 
 
 def get_engine(db: Session = Depends(get_db)) -> ClaimGuardEngine:
-    s = get_settings()
-    return ClaimGuardEngine(db, AnthropicReviewer(s.anthropic_api_key, s.claimguard_model, s.claimguard_llm_timeout_s))
+    return ClaimGuardEngine(db, JalurUtamaReviewer())
 
 
 class AuditIn(BaseModel):
@@ -139,7 +138,7 @@ def approve(draft_id: int, body: ConfirmIn, user: User = Depends(current_user), 
 @router.get("/registry")
 def registry(user: User = Depends(current_user)):
     s = get_settings()
-    return {**svc.registry_view(), "llm": {"provider": "anthropic", "model": s.claimguard_model,
-                                          "dikonfigurasi": bool(s.anthropic_api_key),
+    return {**svc.registry_view(), "llm": {"provider": s.llm_provider, "model": s.llm_judge_model,
+                                          "dikonfigurasi": s.llm_enabled,
                                           "status_bila_gagal": s.claimguard_llm_failure_status.upper()},
             "batas_teks": s.claimguard_max_text_length}

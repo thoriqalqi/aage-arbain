@@ -170,12 +170,14 @@ def complete(
     json_mode: bool = False,
     max_tokens: int = 700,
     temperature: float = 0.2,
+    timeout_s: float | None = None,
 ) -> LLMResult | None:
     _last_error.set(None)
+    batas = timeout_s or settings.llm_timeout_s
     if _disabled.get() or not settings.llm_enabled:
         return None
     if not budget_ok():
-        _last_error.set({"status": None, "rate_limit": False, "pesan": "Budget AI terlampaui (BUDGET_DAILY_RP)"})
+        _last_error.set({"status": None, "rate_limit": False, "budget": True, "pesan": "Budget AI terlampaui (BUDGET_DAILY_RP)"})
         return None
     primary = settings.llm_judge_model if judge else settings.llm_model
     candidates = [primary] + [m.strip() for m in settings.llm_fallback_models.split(",") if m.strip()]
@@ -185,9 +187,9 @@ def complete(
         started = time.perf_counter()
         url, body, headers = _request(name, messages, json_mode=json_mode, max_tokens=max_tokens, temperature=temperature)
         try:
-            resp = _post(url, body, settings.llm_timeout_s, headers)
+            resp = _post(url, body, batas, headers)
         except httpx.TimeoutException as exc:
-            _last_error.set({"status": 408, "rate_limit": False, "pesan": f"Timeout {settings.llm_timeout_s:g} dtk: {type(exc).__name__}"})
+            _last_error.set({"status": 408, "rate_limit": False, "pesan": f"Timeout {batas:g} dtk: {type(exc).__name__}"})
             log.warning("LLM %s timeout", name)
             continue
         except httpx.HTTPError as exc:
