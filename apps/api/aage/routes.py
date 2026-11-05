@@ -44,7 +44,7 @@ from .models import (
     User,
 )
 from .prospects import consent, dedupe, impor, konfigurasi, mapper, penilaian, tinjauan
-from .security import create_token, current_user, mask_phone, require_admin, require_izin, verify_password
+from .security import create_token, current_user, mask_phone, punya_izin, require_admin, require_izin, verify_password
 
 log = logging.getLogger("aage.api")
 settings = get_settings()
@@ -177,7 +177,7 @@ class SimulateIn(BaseModel):
 
 
 @router.post("/chat/simulate")
-def chat_simulate(body: SimulateIn, db: Session = Depends(get_db)):
+def chat_simulate(body: SimulateIn, user: User = Depends(require_izin("penjualan")), db: Session = Depends(get_db)):
     r = handle_inbound(db, channel="webchat", external_user_id=body.session, text=body.text)
     return {"trace_id": r.trace_id, "conversation_id": r.conversation_id, "intent": r.intent, "keputusan": r.decision,
             "verdict": r.verdict, "verdict_masuk": r.inbound_verdict, "approval_id": r.approval_id,
@@ -185,7 +185,7 @@ def chat_simulate(body: SimulateIn, db: Session = Depends(get_db)):
 
 
 @router.get("/chat/simulate/{session}/messages")
-def chat_messages(session: str, after_id: int = 0, db: Session = Depends(get_db)):
+def chat_messages(session: str, after_id: int = 0, user: User = Depends(require_izin("penjualan")), db: Session = Depends(get_db)):
     contact = db.scalar(select(Contact).where(Contact.channel == "webchat", Contact.external_user_id == session))
     if contact is None:
         return {"pesan": []}
@@ -198,7 +198,7 @@ def chat_messages(session: str, after_id: int = 0, db: Session = Depends(get_db)
 
 
 @router.get("/conversations")
-def conversations(status: str | None = None, q: str | None = None, user: User = Depends(current_user),
+def conversations(status: str | None = None, q: str | None = None, user: User = Depends(require_izin("penjualan")),
                   db: Session = Depends(get_db)):
     stmt = select(Conversation).order_by(Conversation.diperbarui_pada.desc()).limit(200)
     if status:
@@ -239,7 +239,7 @@ def _jendela(db: Session, c: Conversation) -> dict:
 
 
 @router.get("/conversations/{conv_id}")
-def conversation_detail(conv_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def conversation_detail(conv_id: int, user: User = Depends(require_izin("penjualan")), db: Session = Depends(get_db)):
     c = _get_conv(db, conv_id)
     events = list(db.scalars(select(LedgerEvent).where(LedgerEvent.conversation_id == c.id).order_by(LedgerEvent.id)))
     lo = riwayat_terakhir(db, c.contact)
@@ -263,7 +263,7 @@ def conversation_detail(conv_id: int, user: User = Depends(current_user), db: Se
 
 
 @router.post("/conversations/{conv_id}/ambil-alih")
-def conversation_take_over(conv_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def conversation_take_over(conv_id: int, user: User = Depends(require_izin("penjualan")), db: Session = Depends(get_db)):
     c = _get_conv(db, conv_id)
     inbox.take_over(db, c, user.nama)
     db.commit()
@@ -271,7 +271,7 @@ def conversation_take_over(conv_id: int, user: User = Depends(current_user), db:
 
 
 @router.post("/conversations/{conv_id}/kembalikan")
-def conversation_release(conv_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def conversation_release(conv_id: int, user: User = Depends(require_izin("penjualan")), db: Session = Depends(get_db)):
     c = _get_conv(db, conv_id)
     if c.status == inbox.DITANGANI_STAF:
         inbox.release(db, c, aktor=f"staf:{user.nama}", alasan="Staf mengembalikan percakapan ke AI")
@@ -287,7 +287,7 @@ class ContactPatch(BaseModel):
 
 
 @router.patch("/contacts/{contact_id}")
-def contact_patch(contact_id: int, body: ContactPatch, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def contact_patch(contact_id: int, body: ContactPatch, user: User = Depends(require_izin("penjualan")), db: Session = Depends(get_db)):
     c = db.get(Contact, contact_id)
     if c is None:
         raise HTTPException(404, "Kontak tidak ditemukan")
@@ -318,7 +318,7 @@ class ReplyIn(BaseModel):
 
 
 @router.post("/conversations/{conv_id}/reply")
-def conversation_reply(conv_id: int, body: ReplyIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def conversation_reply(conv_id: int, body: ReplyIn, user: User = Depends(require_izin("penjualan")), db: Session = Depends(get_db)):
     c = _get_conv(db, conv_id)
     check = claimguard.check(db, body.text, product_ids=(c.konteks or {}).get("last_product_ids") or None)
     trace = ledger.new_trace_id()
@@ -353,6 +353,8 @@ def approvals(status: str = "menunggu", user: User = Depends(current_user), db: 
     stmt = select(Approval).order_by(Approval.dibuat_pada.asc() if status == "menunggu" else Approval.id.desc())
     if status != "semua":
         stmt = stmt.where(Approval.status == status)
+    if not punya_izin(user, "penjualan"):
+        stmt = stmt.where(Approval.objek_tipe == "konten")
     items = []
     for a in db.scalars(stmt.limit(200)):
         conv = db.get(Conversation, a.conversation_id) if a.conversation_id else None
@@ -362,6 +364,9 @@ def approvals(status: str = "menunggu", user: User = Depends(current_user), db: 
 
 @router.post("/approvals/{approval_id}/decide")
 def decide(approval_id: int, body: DecideIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    target = db.get(Approval, approval_id)
+    if target is not None and target.objek_tipe != "konten" and not punya_izin(user, "penjualan"):
+        raise HTTPException(403, "Peran Anda hanya bisa memutus approval konten")
     try:
         ap = approval_svc.decide(db, approval_id, aksi=body.aksi, user=user, teks=body.teks, catatan=body.catatan)
     except approval_svc.ApprovalError as exc:
@@ -382,6 +387,8 @@ def ledger_list(conversation_id: int | None = None, product_id: int | None = Non
                 dari: datetime | None = None, sampai: datetime | None = None, limit: int = Query(100, le=500),
                 offset: int = 0, user: User = Depends(current_user), db: Session = Depends(get_db)):
     stmt = select(LedgerEvent)
+    if not punya_izin(user, "penjualan"):
+        stmt = stmt.where(LedgerEvent.conversation_id.is_(None), LedgerEvent.tipe_event.in_(ledger.TIPE_UNTUK_MARKETING))
     if conversation_id:
         stmt = stmt.where(LedgerEvent.conversation_id == conversation_id)
     if product_id:
@@ -422,6 +429,10 @@ def ledger_trace(event_id: int, user: User = Depends(current_user), db: Session 
         raise HTTPException(404, "Event tidak ditemukan")
     chain = [ev] if not ev.trace_id else list(
         db.scalars(select(LedgerEvent).where(LedgerEvent.trace_id == ev.trace_id).order_by(LedgerEvent.id)))
+    if not punya_izin(user, "penjualan"):
+        if not ledger.boleh_dibaca_marketing(ev):
+            raise HTTPException(403, "Peran Anda tidak bisa membuka event ini")
+        chain = [e for e in chain if ledger.boleh_dibaca_marketing(e)]
     chunk_ids = {s.get("chunk_id") for e in chain for s in (e.sumber_ref or []) if isinstance(s, dict) and s.get("chunk_id")}
     sources = []
     for cid in sorted(chunk_ids):
@@ -591,11 +602,13 @@ def kb_add_claim(body: ClaimIn, user: User = Depends(require_admin), db: Session
 
 
 @router.post("/kb/claims/{claim_id}/verify")
-def kb_verify_claim(claim_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def kb_verify_claim(claim_id: int, user: User = Depends(require_izin("klaim.verifikasi")), db: Session = Depends(get_db)):
     c = db.get(ApprovedClaim, claim_id)
     if c is None:
         raise HTTPException(404, "Klaim tidak ditemukan")
     c.diverifikasi_oleh = user.nama
+    ledger.record(db, "klaim_diverifikasi", objek_ref=f"claim:{c.id}", product_id=c.product_id, aktor=f"staf:{user.nama}", model=None,
+                  ringkasan=f"Klaim #{c.id} diverifikasi oleh {user.nama}")
     db.commit()
     return {"id": c.id, "diverifikasi_oleh": c.diverifikasi_oleh}
 

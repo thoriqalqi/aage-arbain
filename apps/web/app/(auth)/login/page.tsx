@@ -1,7 +1,6 @@
 "use client"
 
-import { LoaderCircle, MessageCircle } from "lucide-react"
-import Link from "next/link"
+import { LoaderCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
@@ -102,10 +101,7 @@ export default function LoginPage() {
           </AButton>
 
           <div className="mt-8 border-t border-line pt-6">
-            <Link href="/chat" className="inline-flex items-center gap-2 text-[13px] font-medium text-brand-600 hover:underline">
-              <MessageCircle className="size-4" /> Coba simulator WhatsApp pembeli
-            </Link>
-            <p className="mt-2 text-[12px] text-subtle-foreground">Akun demo tercantum di README (data seed).</p>
+            <p className="text-[12px] text-subtle-foreground">Akun demo tercantum di README (data seed).</p>
           </div>
         </form>
       </section>

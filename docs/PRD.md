@@ -225,7 +225,7 @@ Semua data ada di satu database Postgres dengan pgvector; `ledger_events` menjad
 | Method | Path | Fungsi |
 | --- | --- | --- |
 | GET, POST | `/webhook/whatsapp` | Verifikasi webhook Meta dan terima pesan masuk |
-| POST | `/chat/simulate` | Kanal web chat cadangan, memakai pipeline yang sama |
+| POST | `/chat/simulate` | Simulator web chat untuk admin dan staf (wajib login), memakai pipeline yang sama |
 | POST | `/kb/products/import` | Unggah katalog CSV/XLSX |
 | POST | `/kb/documents` | Unggah dokumen atau URL, lalu ingest |
 | POST | `/claimguard/check` | Periksa teks, kembalikan verdict + sorotan |

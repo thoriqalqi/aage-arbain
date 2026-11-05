@@ -6,7 +6,7 @@
 - POST /api/agents/audit              ClaimGuard agent: status, pasal Perban BPOM 30/2023, teks terpotong
 - POST /api/agents/leads              Lead miner: prospek + skor urgensi
 - POST /api/agents/content            GEO agent: draf konten (+ audit)
-- POST /api/agents/invoice/approve    staf menyetujui deal → invoice via Fonnte (simulasi bila token kosong)
+- POST /api/agents/invoice/approve    staf menyetujui deal → invoice disusun sebagai pratinjau, tidak dikirim ke mana pun
 
 Item human-in-the-loop masuk tabel approvals; audit BLOCKED dan keputusan staf tercatat di Ledger."""
 
@@ -20,11 +20,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from . import ledger
-from .channels import fonnte
 from .config import get_settings
 from .db import SessionLocal, get_db
 from .models import Approval, User
-from .security import current_user
+from .security import current_user, require_izin
 
 settings = get_settings()
 # Ekspor konfigurasi .env ke environment sebelum modul crew dibaca (CrewAI & SDK Anthropic membaca env).
@@ -184,9 +183,10 @@ class InvoiceIn(BaseModel):
 
 
 @router.post("/invoice/approve")
-def invoice_approve(body: InvoiceIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def invoice_approve(body: InvoiceIn, user: User = Depends(require_izin("penjualan")), db: Session = Depends(get_db)):
     """Staf menyetujui deal final (HITL). Harga dihitung ulang di server dari matriks_harga_b2b — klien tidak bisa
-    mengirim harga sendiri. Teks invoice diaudit ClaimGuard sebelum dikirim."""
+    mengirim harga sendiri. Pengiriman WhatsApp dinonaktifkan karena jalur ini melewati channels/sender.py dan belum ada
+    kanal WhatsApp resmi: invoice hanya disusun, diaudit ClaimGuard, dan dicatat."""
     p = crew_mod.db().find(body.produk)
     if p is None:
         raise HTTPException(404, "Produk tidak ditemukan")
@@ -202,10 +202,10 @@ def invoice_approve(body: InvoiceIn, user: User = Depends(current_user), db: Ses
     audit_res = crew_mod.audit_compliance(teks, p["id"], "invoice")
     if audit_res["status"] == crew_mod.BLOCKED:
         raise HTTPException(422, {"pesan": "ClaimGuard memblokir teks invoice", "audit": audit_res})
-    status, detail = fonnte.send(body.target_wa, teks) if body.target_wa else ("simulasi", "Nomor tujuan kosong")
-    ledger.record(db, "invoice_dikirim", aktor=f"staf:{user.nama}", ringkasan=f"Invoice {body.pembeli}: {crew_mod.rupiah(total)}",
+    status, detail = "simulasi", "Pengiriman WhatsApp dinonaktifkan. Invoice hanya disusun sebagai pratinjau."
+    ledger.record(db, "invoice_disusun", aktor=f"staf:{user.nama}", ringkasan=f"Invoice {body.pembeli}: {crew_mod.rupiah(total)}",
                   alasan=("Diskon di atas batas AI disetujui manusia" if di_atas_batas else "Deal final dikonfirmasi manusia"),
-                  outcome=status, verdict="allowed", data={"produk": p["id"], "qty_box": body.qty_box, "diskon": body.diskon_disetujui,
-                                                           "kanal": "fonnte", "detail": detail})
+                  outcome=status, verdict="allowed" if audit_res["status"] == crew_mod.PASSED else "review",
+                  data={"produk": p["id"], "qty_box": body.qty_box, "diskon": body.diskon_disetujui, "detail": detail})
     db.commit()
     return {"status": status, "detail": detail, "teks": teks, "total": total, "audit": audit_res["status"]}

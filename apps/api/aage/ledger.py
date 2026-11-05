@@ -52,6 +52,8 @@ EVENT_TYPES = {
     "agen_hitl": "Agen: menunggu persetujuan manusia",
     "agen_claimguard": "Agen ClaimGuard: audit",
     "invoice_dikirim": "Invoice dikirim",
+    "invoice_disusun": "Invoice disusun (tidak dikirim)",
+    "klaim_diverifikasi": "Klaim produk diverifikasi",
     "compliance_audit": "ClaimGuard Compliance Check",
     "compliance_tindakan": "Tindakan manusia atas draf (Compliance)",
     "pengaturan_diubah": "Pengaturan diubah",
@@ -63,6 +65,18 @@ EVENT_TYPES = {
     "kontak_diubah": "Profil toko diubah",
     "prospek_ditautkan": "Prospek ditautkan ke percakapan",
 }
+
+
+# Yang boleh dibaca peran tanpa izin penjualan. Daftar putih: tipe baru tertutup sampai sengaja ditambahkan.
+TIPE_UNTUK_MARKETING = frozenset({
+    "konten_dibuat", "konten_disetujui", "konten_diekspor", "konten_diedit", "konten_diarsipkan", "audit_halaman", "claimguard",
+    "claimguard_playground", "compliance_audit", "compliance_tindakan", "agen_claimguard", "approval_dibuat", "approval_diputus",
+})
+
+
+def boleh_dibaca_marketing(ev: LedgerEvent) -> bool:
+    """Event yang menempel pada percakapan memuat isi chat pelanggan, jadi selalu tertutup."""
+    return ev.conversation_id is None and ev.tipe_event in TIPE_UNTUK_MARKETING
 
 
 def new_trace_id() -> str:

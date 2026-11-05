@@ -5,7 +5,7 @@ import { AnimatePresence } from "motion/react"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import { ChatBubble, TypingBubble } from "@/components/aage/chat-bubble"
-import { api } from "@/lib/api"
+import { ApiError, api } from "@/lib/api"
 import type { Message } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -89,11 +89,9 @@ export default function WebChatPage() {
       await api<SimResponse>("/api/chat/simulate", { method: "POST", json: { session, text: value } })
       setMessages((m) => m.filter((x) => x.id !== optimistic.id))
       await poll()
-    } catch {
-      setMessages((m) => [
-        ...m,
-        { ...optimistic, id: -Date.now() - 1, arah: "keluar", pengirim: "ai", teks: "Maaf, koneksi terputus. Coba kirim ulang ya, Kak." },
-      ])
+    } catch (err) {
+      const teks = err instanceof ApiError && err.status === 403 ? "Peran Anda tidak memiliki izin memakai simulator ini." : "Maaf, koneksi terputus. Coba kirim ulang ya, Kak."
+      setMessages((m) => [...m, { ...optimistic, id: -Date.now() - 1, arah: "keluar", pengirim: "ai", teks }])
     } finally {
       setSending(false)
     }

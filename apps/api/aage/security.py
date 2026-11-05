@@ -69,7 +69,13 @@ IZIN = {
     "leads.ekspor": {"admin"},
     "leads.impor": {"admin"},
     "leads.atur": {"admin"},
+    "penjualan": {"admin", "staf"},  # Inbox, simulator, balasan, approval non-konten, invoice
+    "klaim.verifikasi": {"admin"},
 }
+
+
+def punya_izin(user: User, izin: str) -> bool:
+    return user.role in IZIN[izin]
 
 
 def require_izin(izin: str):

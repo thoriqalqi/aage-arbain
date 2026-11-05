@@ -20,9 +20,9 @@ from sqlalchemy.orm import Session
 
 from . import clock, llm, settings_store
 from .db import SessionLocal, get_db
-from .ledger import EVENT_TYPES
+from .ledger import EVENT_TYPES, boleh_dibaca_marketing
 from .models import Approval, LedgerEvent, User
-from .security import current_user, require_admin
+from .security import current_user, punya_izin, require_admin
 
 router = APIRouter()
 
@@ -35,7 +35,7 @@ AGENT_EVENTS: dict[str, tuple[str, ...]] = {
     "orchestrator": ("pesan_masuk", "intent", "kebijakan", "approval_dibuat"),
     "opportunity": ("prospek_dibuat", "prospek_status", "prospek_riset"),
     "sales": ("retrieval", "draf_jawaban", "pesan_keluar", "draf_pesanan", "pengingat_repeat_order",
-              "invoice_dikirim", "agen_hitl"),
+              "invoice_dikirim", "invoice_disusun", "agen_hitl"),
     "content": ("konten_dibuat", "konten_diedit", "konten_disetujui", "konten_diekspor", "konten_diarsipkan",
                 "audit_halaman"),
     "claimguard": ("claimguard", "claimguard_inbound", "agen_claimguard", "claimguard_playground",
@@ -57,7 +57,7 @@ def _start_of_day() -> datetime:
     return local.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
 
 
-def compute(db: Session) -> dict:
+def compute(db: Session, boleh_penjualan: bool = True) -> dict:
     now = clock.now()
     today = _start_of_day()
     modes = settings_store.otonomi(db)
@@ -88,7 +88,8 @@ def compute(db: Session) -> dict:
 
         if last and last_at and last_at >= today:
             label = EVENT_TYPES.get(last.tipe_event, last.tipe_event)
-            kerja = f"{label}: {' '.join((last.ringkasan or '').split())}".rstrip(": ")[:120]
+            ringkasan = last.ringkasan if boleh_penjualan or boleh_dibaca_marketing(last) else ""  # bisa memuat isi chat atau nama toko
+            kerja = f"{label}: {' '.join((ringkasan or '').split())}".rstrip(": ")[:120]
         else:
             kerja = IDLE_TEXT[agent]
         mode_efektif, alasan_mode = settings_store.effective_mode(db, agent)
@@ -110,16 +111,18 @@ def compute(db: Session) -> dict:
 
 @router.get("/agents/status")
 def agents_status(user: User = Depends(current_user), db: Session = Depends(get_db)):
-    return compute(db)
+    return compute(db, punya_izin(user, "penjualan"))
 
 
 @router.get("/agents/status/stream")
 def agents_status_stream(user: User = Depends(current_user)):
+    boleh_penjualan = punya_izin(user, "penjualan")
+
     def gen():
         last_payload, started, last_sent = None, time.monotonic(), 0.0
         while time.monotonic() - started < STREAM_MAX_S:
             with SessionLocal() as db:
-                data = compute(db)
+                data = compute(db, boleh_penjualan)
             # "diperbarui" selalu berubah; bandingkan isi tanpa stempel waktu.
             body = json.dumps({k: v for k, v in data.items() if k != "diperbarui"}, sort_keys=True)
             if body != last_payload:

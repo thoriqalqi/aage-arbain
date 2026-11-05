@@ -86,9 +86,9 @@ function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/")
 }
 
-function useCounts() {
+function useCounts(role: Role) {
   const { data: ap } = useSWR<{ items: unknown[] }>("/api/approvals?status=menunggu", fetcher, { refreshInterval: 8000 })
-  const { data: conv } = useSWR<{ jumlah_per_status: Record<string, number> }>("/api/conversations", fetcher, { refreshInterval: 8000 })
+  const { data: conv } = useSWR<{ jumlah_per_status: Record<string, number> }>(canAccess(role, "/inbox") ? "/api/conversations" : null, fetcher, { refreshInterval: 8000 })
   return {
     approval: ap?.items.length ?? 0,
     inbox: (conv?.jumlah_per_status?.eskalasi ?? 0) + (conv?.jumlah_per_status?.ditahan ?? 0),
@@ -118,7 +118,7 @@ function CountBadge({ value }: { value: number }) {
 
 function NavLinks({ role, onNavigate }: { role: Role; onNavigate?: () => void }) {
   const pathname = usePathname()
-  const counts = useCounts()
+  const counts = useCounts(role)
   return (
     <nav className="flex flex-col gap-6" aria-label="Navigasi utama">
       {navFor(role).map((group, gi) => (
@@ -199,13 +199,15 @@ function SidebarBody({ role, onNavigate }: { role: Role; onNavigate?: () => void
       </div>
       <div className="space-y-4 border-t border-line py-4">
         <BudgetMeter />
-        <Link
-          href="/chat"
-          target="_blank"
-          className="mx-3 flex h-9 items-center gap-2.5 rounded-[10px] px-3 text-[13px] text-muted-foreground hover:bg-soft hover:text-foreground"
-        >
-          <MessageCircle className="size-4" aria-hidden /> Simulator WhatsApp
-        </Link>
+        {canAccess(role, "/inbox") && (
+          <Link
+            href="/chat"
+            target="_blank"
+            className="mx-3 flex h-9 items-center gap-2.5 rounded-[10px] px-3 text-[13px] text-muted-foreground hover:bg-soft hover:text-foreground"
+          >
+            <MessageCircle className="size-4" aria-hidden /> Simulator WhatsApp
+          </Link>
+        )}
       </div>
     </>
   )
@@ -278,7 +280,8 @@ function UserMenu() {
 
 function Topbar({ onOpenCommand, onOpenNav }: { onOpenCommand: () => void; onOpenNav: () => void }) {
   const { data: status } = useSWR<Status>("/api/status", fetcher, { refreshInterval: 30000 })
-  const counts = useCounts()
+  const { role } = useRole()
+  const counts = useCounts(role)
   // Web chat selalu aktif (simulator), jadi tidak dihitung sebagai kanal live.
   const liveChannels = Object.entries(status?.kanal ?? {}).filter(([k, v]) => k !== "webchat" && v.aktif).map(([, v]) => v.label)
   return (

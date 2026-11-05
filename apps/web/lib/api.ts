@@ -75,7 +75,7 @@ export async function api<T = unknown>(path: string, init: RequestInit & { json?
   const res = await fetch(path.startsWith("/api") ? path : `/api${path}`, { ...init, headers, body })
   if (res.status === 401 && typeof window !== "undefined" && !path.includes("/auth/login")) {
     clearSession()
-    if (!window.location.pathname.startsWith("/login") && !window.location.pathname.startsWith("/chat")) {
+    if (!window.location.pathname.startsWith("/login")) {
       window.location.href = "/login"
     }
   }

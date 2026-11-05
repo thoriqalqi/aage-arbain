@@ -94,8 +94,8 @@ def test_sender_refuses_unchecked_text(db):
 
 def test_approval_flow_and_claimguard_on_staff_edit(client, auth):
     sid = "approval-flow"
-    client.post("/api/chat/simulate", json={"session": sid, "text": "madu stamina plus 50 karton harganya?"})
-    r = client.post("/api/chat/simulate", json={"session": sid, "text": "bisa diskon 30%?"}).json()
+    client.post("/api/chat/simulate", headers=auth, json={"session": sid, "text": "madu stamina plus 50 karton harganya?"})
+    r = client.post("/api/chat/simulate", headers=auth, json={"session": sid, "text": "bisa diskon 30%?"}).json()
     ap_id = r["approval_id"]
     assert r["keputusan"] == "eskalasi"
 
@@ -105,12 +105,12 @@ def test_approval_flow_and_claimguard_on_staff_edit(client, auth):
 
     ok = client.post(f"/api/approvals/{ap_id}/decide", headers=auth, json={"aksi": "setujui"})
     assert ok.status_code == 200 and ok.json()["status"] == "disetujui"
-    msgs = client.get(f"/api/chat/simulate/{sid}/messages").json()["pesan"]
+    msgs = client.get(f"/api/chat/simulate/{sid}/messages", headers=auth).json()["pesan"]
     assert msgs[-1]["pengirim"] == "staf"
 
 
 def test_ledger_trace_reaches_source_document(client, auth):
-    r = client.post("/api/chat/simulate", json={"session": "trace", "text": "izin edar propolis tetes apa?"}).json()
+    r = client.post("/api/chat/simulate", headers=auth, json={"session": "trace", "text": "izin edar propolis tetes apa?"}).json()
     events = client.get("/api/ledger", headers=auth, params={"trace_id": r["trace_id"], "tipe": "pesan_keluar"}).json()
     trace = client.get(f"/api/ledger/{events['items'][0]['id']}/trace", headers=auth).json()
     assert trace["sumber"] and trace["sumber"][0]["dokumen"]["versi"] >= 1
