@@ -53,6 +53,7 @@ EVENT_TYPES = {
     "katalog_ganti_gagal": "Ganti katalog gagal",
     "dokumen_diingest": "Dokumen di-ingest",
     "claimguard_playground": "Pemeriksaan Playground",
+    "llm_gagal": "Panggilan LLM gagal",
     "agen_hitl": "Agen: menunggu persetujuan manusia",
     "agen_claimguard": "Agen ClaimGuard: audit",
     "invoice_dikirim": "Invoice dikirim",
@@ -77,7 +78,7 @@ EVENT_TYPES = {
 TIPE_UNTUK_MARKETING = frozenset({
     "konten_dibuat", "konten_disetujui", "konten_diekspor", "konten_diedit", "konten_diarsipkan", "konten_diterbitkan",
     "konten_terbit_dibatalkan", "audit_halaman", "claimguard",
-    "claimguard_playground", "compliance_audit", "compliance_tindakan", "agen_claimguard", "approval_dibuat", "approval_diputus",
+    "claimguard_playground", "llm_gagal", "compliance_audit", "compliance_tindakan", "agen_claimguard", "approval_dibuat", "approval_diputus",
 })
 
 
@@ -93,11 +94,31 @@ def new_trace_id() -> str:
 def record(db: Session, tipe_event: str, **fields) -> LedgerEvent:
     if tipe_event not in EVENT_TYPES:
         raise ValueError(f"Tipe event tidak dikenal: {tipe_event}")
+    simpan_kegagalan_llm(db, **fields)
     ev = LedgerEvent(tipe_event=tipe_event, **fields)
     db.add(ev)
     db.flush()
     ledger_chain.seal(db, ev)  # segel hash di transaksi yang sama
     return ev
+
+
+def simpan_kegagalan_llm(db: Session, **konteks) -> None:
+    """Tulis kegagalan LLM yang tertunda, dengan rujukan event yang memicunya. `llm` tidak bisa menulis sendiri: sesi
+    terpisah akan menunggu kunci rantai hash yang dipegang transaksi pemanggil. Jalur yang tidak menulis event lain
+    sesudah memanggil LLM harus memanggil fungsi ini.
+
+    Hanya jenis dan kode yang disimpan. Pesan provider tidak ikut karena bisa mengutip prompt, dan Ledger tidak bisa dihapus."""
+    from .llm import ambil_kegagalan
+
+    for g in ambil_kegagalan():
+        ev = LedgerEvent(tipe_event="llm_gagal", trace_id=konteks.get("trace_id"), conversation_id=konteks.get("conversation_id"),
+                         product_id=konteks.get("product_id"), objek_ref=konteks.get("objek_ref"),
+                         ringkasan=f"Panggilan LLM gagal: {g['jenis']} · {g['tujuan']}", model=g["model"], token_in=g["token_in"],
+                         token_out=g["token_out"], biaya_rp=g["biaya_rp"], latensi_ms=g["latensi_ms"], outcome=g["jenis"],
+                         data={k: g[k] for k in ("jenis", "tujuan", "status", "finish_reason", "retry_after")})
+        db.add(ev)
+        db.flush()
+        ledger_chain.seal(db, ev)
 
 
 def record_llm(db: Session, tipe_event: str, llm_result, **fields) -> LedgerEvent:

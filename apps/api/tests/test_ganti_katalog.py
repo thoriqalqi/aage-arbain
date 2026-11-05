@@ -27,7 +27,7 @@ from aage.models import (
     Document,
     KatalogImpor,
     LedgerEvent,
-    MarketingDraft,
+    ComplianceAudit,
     Message,
     PricingRule,
     Product,
@@ -165,7 +165,8 @@ def test_produk_yang_dirujuk_audit_tidak_dihapus_tetapi_tidak_terbaca_agent(clie
     with SessionLocal() as db:
         p = db.scalar(select(Product).where(Product.aktif.is_(True)).order_by(Product.id))
         pid, nama = p.id, p.nama
-        db.add(MarketingDraft(product_id=pid, teks="Draf pemasaran uji"))
+        db.add(ComplianceAudit(audit_id="audit-uji-katalog", product_sku=p.sku, product_id=pid, input_text_hash="0" * 64, status="ALLOWED",
+                               stage="aturan", rules_version="uji", engine_version="uji"))
         db.commit()
 
     data = _pratinjau(client, admin)

@@ -31,6 +31,14 @@ if adalah_online(_URL_TES):
     pytest.exit("AAGE_TES_DATABASE_URL mengarah ke database online; tes menghapus isi database.", returncode=2)
 
 
+@pytest.fixture(autouse=True)
+def _kosongkan_kegagalan_llm():
+    """Semua tes berbagi satu konteks, jadi kegagalan LLM yang belum tertulis tidak boleh terbawa ke tes berikutnya."""
+    from aage import llm
+
+    llm.ambil_kegagalan()
+
+
 @pytest.fixture(scope="session")
 def seeded():
     from aage import settings_store

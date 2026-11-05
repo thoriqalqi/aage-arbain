@@ -114,7 +114,7 @@ Yang perlu diketahui:
 
 - Penggantian berjalan dalam satu transaksi. Kalau gagal di tengah jalan, katalog lama tetap utuh.
 - Dokumen staf di luar katalog tetap aktif. Kebijakan diganti kalau file memuatnya. Kalau tidak, kebijakan asli tetap dipakai, sedangkan kebijakan simulasi ikut tersingkir dan panel dampak memberi tahu.
-- Produk yang dirujuk audit compliance atau draf marketing tidak bisa dihapus. Produk itu dinonaktifkan dan tidak terbaca agent.
+- Produk yang dirujuk audit compliance tidak bisa dihapus. Produk itu dinonaktifkan dan tidak terbaca agent.
 - Draf approval yang menunggu dari katalog lama tidak bisa disetujui apa adanya. Tolak, atau tulis ulang bila berupa balasan.
 - Mengembalikan katalog demo dari `katalog_simulasi.xlsx` tidak memulihkan dokumen "Panduan Izin Edar". Unggah ulang lewat tab Dokumen.
 - Fakta mitra berstatus belum diverifikasi tidak dikutip agent sampai admin memverifikasinya. Mode produksi juga menahan data simulasi.

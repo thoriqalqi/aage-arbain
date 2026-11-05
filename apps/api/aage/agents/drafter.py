@@ -179,7 +179,7 @@ def _llm_answer(question: str, sources: list[dict], instruction: str, conv: Conv
         + (f"RIWAYAT PERCAKAPAN (hanya konteks, bukan sumber fakta):\n{riwayat}\n\n" if riwayat else "")
         + f"Pertanyaan pembeli: {question}"
     )
-    res = llm.complete([{"role": "user", "content": prompt}], max_tokens=1200)  # model "berpikir" butuh ruang
+    res = llm.complete([{"role": "user", "content": prompt}], max_tokens=1200, tujuan="draf_jawaban")  # model "berpikir" butuh ruang
     if res is None or "TIDAK_ADA_SUMBER" in res.text:
         return None
     res.text = re.sub(r"\s*\[S\d+\]", "", res.text).strip()

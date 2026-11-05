@@ -311,7 +311,7 @@ def test_latest_audit_kosong_lalu_ada_dan_ledger(client, auth, db):
     assert r.status_code == 200 and r.json() == {"state": "kosong", "audit": None, "draft": None}
     r = client.post("/api/compliance/audit", json={"product_id": SK, "text": "Sari Kurma Ajwa menyembuhkan penyakit."}, headers=auth)
     audit = r.json()["audit"]
-    assert r.status_code == 200 and audit["status"] == "BLOCKED" and r.json()["draft"]["status"] == "diblokir"
+    assert r.status_code == 200 and audit["status"] == "BLOCKED" and r.json()["draft"] is None
     latest = client.get(f"/api/compliance/latest-audit?product_id={SK}", headers=auth).json()
     assert latest["state"] == "ada" and latest["audit"]["audit_id"] == audit["audit_id"]
     ev = db.scalar(select(LedgerEvent).where(LedgerEvent.objek_ref == f"audit:{audit['audit_id']}"))
@@ -329,20 +329,9 @@ def test_ledger_juga_untuk_allowed_dan_error(client, auth, db, engine_with):
     assert client.post("/api/compliance/audit", json={"product_id": OBA, "text": CLEAN}, headers=auth).json()["audit"]["status"] == "ALLOWED"
     engine_with(FakeReviewer(ReviewerTimeout("lambat")))
     r = client.post("/api/compliance/audit", json={"product_id": OBA, "text": CLEAN}, headers=auth).json()
-    assert r["audit"]["status"] == "ERROR" and r["draft"]["status"] == "audit_gagal"
+    assert r["audit"]["status"] == "ERROR" and r["draft"] is None
     after = db.scalar(select(func.count()).select_from(LedgerEvent).where(LedgerEvent.tipe_event == "compliance_audit"))
     assert after == before + 2
-
-
-def test_status_draf_tepat_dan_tidak_menyentuh_draf_lain(client, auth, engine_with):
-    engine_with(FakeReviewer(review("ALLOWED")))
-    a = client.post("/api/compliance/audit", json={"product_id": OBA, "text": CLEAN}, headers=auth).json()
-    b = client.post("/api/compliance/audit", json={"product_id": OBA, "text": RISKY}, headers=auth).json()
-    assert a["draft"]["id"] != b["draft"]["id"] and b["draft"]["status"] == "diblokir"
-    other = client.get(f"/api/compliance/drafts/{a['draft']['id']}", headers=auth).json()
-    assert other["draft"]["status"] == "lolos_pemeriksaan"
-    r = client.post("/api/compliance/audit", json={"product_id": SK, "text": CLEAN, "draft_id": a["draft"]["id"]}, headers=auth)
-    assert r.status_code == 422  # draf milik produk lain
 
 
 def test_retry_idempotency_tidak_duplikasi(client, auth):
@@ -350,56 +339,140 @@ def test_retry_idempotency_tidak_duplikasi(client, auth):
     first = client.post("/api/compliance/audit", json={"product_id": OBA, "text": RISKY}, headers=h).json()
     again = client.post("/api/compliance/audit", json={"product_id": OBA, "text": RISKY}, headers=h).json()
     assert again["replayed"] is True and again["audit"]["audit_id"] == first["audit"]["audit_id"]
-    hist = client.get(f"/api/compliance/audits?draft_id={first['draft']['id']}", headers=auth).json()["items"]
-    assert len(hist) == 1
     r = client.post("/api/compliance/audit", json={"product_id": OBA, "text": RISKY + " Lain."}, headers=h)
     assert r.status_code == 409
 
 
-def test_tombol_intervensi_butuh_persetujuan_dan_audit_ulang_simpan_riwayat(client, auth, admin, engine_with):
-    engine_with(FakeReviewer(review("ALLOWED")))
+# ------------------------------------------------------------------ satu sistem draf: content_drafts
+
+
+def _draf(db, sku=OBA, isi=CLEAN, judul="Materi uji"):
+    from aage.models import ContentDraft, Product
+
+    p = db.scalar(select(Product).where(Product.sku == sku))
+    d = ContentDraft(product_id=p.id, tipe="deskripsi", topik="uji", judul=judul, isi=isi, faq=[], meta={}, json_ld=[],
+                     claim_verdict="allowed", claim_report={})
+    db.add(d)
+    db.commit()
+    return d.id
+
+
+def _audit_draf(client, headers, draft_id, sku=OBA):
+    return client.post("/api/compliance/audit", json={"product_id": sku, "draft_id": draft_id}, headers=headers)
+
+
+def test_audit_tanpa_draf_tidak_membuat_draf(client, auth, db):
+    from sqlalchemy import func
+
+    from aage.models import ContentDraft
+
+    sebelum = db.scalar(select(func.count()).select_from(ContentDraft))
     r = client.post("/api/compliance/audit", json={"product_id": OBA, "text": RISKY}, headers=auth).json()
-    draft_id, audit_id = r["draft"]["id"], r["audit"]["audit_id"]
-    assert r["audit"]["status"] == "BLOCKED" and r["audit"]["recommendation"]
-
-    # Tanpa confirm → ditolak, draf tidak berubah
-    bad = client.post(f"/api/compliance/drafts/{draft_id}/apply-recommendation", json={"audit_id": audit_id}, headers=auth)
-    assert bad.status_code == 422
-    assert client.post(f"/api/compliance/drafts/{draft_id}/discard", json={}, headers=auth).status_code == 422
-    assert client.post(f"/api/compliance/drafts/{draft_id}/approve", json={"confirm": True}, headers=auth).status_code == 409
-    d = client.get(f"/api/compliance/drafts/{draft_id}", headers=auth).json()["draft"]
-    assert d["teks"] == RISKY and d["versi"] == 1 and d["status"] == "diblokir"
-
-    # Dengan confirm → teks diganti, audit ulang otomatis (audit baru), riwayat tetap
-    ok = client.post(f"/api/compliance/drafts/{draft_id}/apply-recommendation",
-                     json={"audit_id": audit_id, "confirm": True}, headers=auth).json()
-    assert ok["audit"]["audit_id"] != audit_id and ok["audit"]["status"] == "ALLOWED"
-    assert ok["draft"]["versi"] == 2 and ok["draft"]["status"] == "lolos_pemeriksaan"
-    hist = client.get(f"/api/compliance/audits?draft_id={draft_id}", headers=auth).json()["items"]
-    assert [h["audit_id"] for h in hist] == [ok["audit"]["audit_id"], audit_id]
-    # Rekomendasi lama tidak bisa diterapkan lagi
-    stale = client.post(f"/api/compliance/drafts/{draft_id}/apply-recommendation",
-                        json={"audit_id": audit_id, "confirm": True}, headers=auth)
-    assert stale.status_code == 409
-
-    # Keputusan manusia tidak ditimpa audit ulang teks yang sama
-    assert client.post(f"/api/compliance/drafts/{draft_id}/approve", json={"confirm": True}, headers=auth).json()["draft"]["status"] == "disetujui"
-    again = client.post("/api/compliance/audit", json={"product_id": OBA, "text": ok["draft"]["teks"], "draft_id": draft_id}, headers=auth).json()
-    assert again["draft"]["status"] == "disetujui" and again["audit"]["status_draf_diperbarui"] is False
-
-    # Buang dengan confirm → soft delete, tercatat
-    gone = client.post(f"/api/compliance/drafts/{draft_id}/discard", json={"confirm": True, "catatan": "uji"}, headers=auth).json()
-    assert gone["draft"]["status"] == "dibuang"
+    assert r["draft"] is None and r["audit"]["draft_id"] is None and r["audit"]["draft_versi"] is None
+    db.expire_all()
+    assert db.scalar(select(func.count()).select_from(ContentDraft)) == sebelum
 
 
-def test_need_review_hanya_admin_dengan_catatan(client, auth, admin):
-    r = client.post("/api/compliance/audit", json={"product_id": OBA, "text": "Produk ini pengganti kemoterapi."}, headers=auth).json()
-    draft_id = r["draft"]["id"]
-    assert r["audit"]["status"] == "NEED_REVIEW"
-    assert client.post(f"/api/compliance/drafts/{draft_id}/approve", json={"confirm": True, "catatan": "sudah dicek tim"}, headers=auth).status_code == 403
-    assert client.post(f"/api/compliance/drafts/{draft_id}/approve", json={"confirm": True}, headers=admin).status_code == 422
-    ok = client.post(f"/api/compliance/drafts/{draft_id}/approve", json={"confirm": True, "catatan": "Dicek tim regulasi: aman"}, headers=admin)
-    assert ok.status_code == 200 and ok.json()["draft"]["status"] == "disetujui"
+def test_audit_draf_memeriksa_isi_draf(client, admin, db, engine_with):
+    from aage.content import studio
+    from aage.models import ContentDraft
+
+    pid = _draf(db)
+    engine_with(FakeReviewer(review("ALLOWED")))
+    r = _audit_draf(client, admin, pid).json()
+    d = db.get(ContentDraft, pid)
+    assert r["audit"]["draft_id"] == pid and r["draft"]["id"] == pid and r["draft"]["judul"] == "Materi uji"
+    assert r["audit"]["input_text_hash"] == __import__("hashlib").sha256(studio.full_text(d).encode()).hexdigest()
+    hist = client.get(f"/api/compliance/audits?draft_id={pid}", headers=admin).json()["items"]
+    assert [h["audit_id"] for h in hist] == [r["audit"]["audit_id"]]
+    assert client.get(f"/api/compliance/latest-audit?draft_id={pid}", headers=admin).json()["draft"]["id"] == pid
+
+
+def test_audit_draf_menolak_permintaan_yang_salah(client, auth, admin, db):
+    from aage.models import ContentDraft
+
+    pid = _draf(db)
+    assert _audit_draf(client, auth, pid).status_code == 403  # staf penjualan tidak memegang izin konten
+    assert _audit_draf(client, admin, pid, sku=SK).status_code == 422  # draf milik produk lain
+    assert _audit_draf(client, admin, 999_999).status_code == 404
+    r = client.post("/api/compliance/audit", json={"product_id": OBA, "draft_id": pid, "text": CLEAN}, headers=admin)
+    assert r.status_code == 422  # isi draf yang diperiksa, bukan teks kiriman
+    assert client.post("/api/compliance/audit", json={"product_id": OBA}, headers=admin).status_code == 422
+    db.get(ContentDraft, pid).status = "diarsipkan"
+    db.commit()
+    assert _audit_draf(client, admin, pid).status_code == 409
+
+
+def test_blokir_llm_bertahan_sampai_teks_berubah(client, admin, db, engine_with):
+    """Aturan meloloskan teks ini; hanya LLM yang memblokir. Pemeriksaan aturan berikutnya tidak boleh menghapusnya."""
+    from aage.content import studio
+    from aage.models import ContentDraft
+
+    pid = _draf(db)
+    engine_with(FakeReviewer(review("BLOCKED", [("apotek mitra", "absolut", "R07")])))
+    r = _audit_draf(client, admin, pid).json()
+    assert r["audit"]["status"] == "BLOCKED" and r["audit"]["status_draf_diperbarui"] is True
+    assert r["draft"]["claim_verdict"] == "blocked"
+
+    d = db.get(ContentDraft, pid)
+    db.refresh(d)
+    with pytest.raises(studio.ContentError):
+        studio.submit(db, d, "staf:pembuat")
+    assert d.claim_verdict == "blocked"
+    with pytest.raises(studio.ContentError):
+        studio.approve(db, d, "staf:penyetuju", commit=False)
+    db.rollback()
+
+    # Audit ulang yang lolos tidak melepaskan blokir: hasil LLM tidak boleh diundi sampai cocok.
+    engine_with(FakeReviewer(review("ALLOWED")))
+    r = _audit_draf(client, admin, pid).json()
+    assert r["audit"]["status"] == "ALLOWED" and r["draft"]["claim_verdict"] == "blocked"
+    assert r["audit"]["status_draf_diperbarui"] is False
+    db.expire_all()
+    d = db.get(ContentDraft, pid)
+    studio.recheck(db, d)
+    assert d.claim_verdict == "blocked"
+
+    # Teks berubah: audit lama tidak berlaku, dan pengajuan bisa berjalan lagi.
+    studio.edit(db, d, {"isi": CLEAN + " Tersedia untuk grosir."}, "staf:pembuat")
+    assert d.claim_verdict != "blocked"
+
+
+def test_need_review_dan_error_tidak_melonggarkan(client, admin, db, engine_with):
+    from aage.content import studio
+    from aage.models import ContentDraft
+
+    pid = _draf(db)
+    engine_with(FakeReviewer(ReviewerTimeout("lambat")))
+    r = _audit_draf(client, admin, pid).json()
+    assert r["audit"]["status"] == "ERROR" and r["draft"]["claim_verdict"] == "allowed"  # LLM mati bukan bukti pelanggaran
+    engine_with(FakeReviewer(review("NEED_REVIEW", [("apotek mitra", "absolut", None)])))
+    r = _audit_draf(client, admin, pid).json()
+    assert r["audit"]["status"] == "NEED_REVIEW" and r["draft"]["claim_verdict"] == "review"
+    db.expire_all()
+    d = db.get(ContentDraft, pid)
+    studio.recheck(db, d)
+    assert d.claim_verdict == "review"
+
+
+def test_aturan_dua_orang_tidak_punya_jalan_pintas(client, admin, db):
+    """Menyetujui, membuang, dan menerapkan rekomendasi hanya lewat Studio Konten."""
+    pid = _draf(db)
+    for aksi in ("approve", "discard", "apply-recommendation"):
+        r = client.post(f"/api/compliance/drafts/{pid}/{aksi}", json={"confirm": True, "audit_id": "x" * 10}, headers=admin)
+        assert r.status_code == 404
+    assert client.get(f"/api/compliance/drafts/{pid}", headers=admin).status_code == 404
+    assert client.get("/api/compliance/drafts", headers=admin).status_code == 404
+
+
+def test_idempotency_draf_berbeda_ditolak(client, admin, db, engine_with):
+    engine_with(FakeReviewer(review("ALLOWED")))
+    a, b = _draf(db), _draf(db)
+    h = {**admin, "Idempotency-Key": "uji-draf-beda-1"}
+    pertama = _audit_draf(client, h, a).json()
+    assert _audit_draf(client, h, a).json()["replayed"] is True
+    assert pertama["draft"]["id"] == a
+    assert _audit_draf(client, h, b).status_code == 409
 
 
 def test_audit_append_only(db, client, auth):

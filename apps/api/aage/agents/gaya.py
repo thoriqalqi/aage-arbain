@@ -103,7 +103,7 @@ def periksa_fakta(db: Session, asli: str, baru: str) -> list[str]:
 def tulis_ulang(db: Session, teks: str) -> HasilGaya:
     """LLM menulis ulang draf; gagal/mati/tidak lolos kunci fakta → teks None (template asli tetap dipakai)."""
     try:
-        res = llm.complete([{"role": "user", "content": PROMPT.format(teks=teks)}], max_tokens=1200, temperature=0.5)
+        res = llm.complete([{"role": "user", "content": PROMPT.format(teks=teks)}], max_tokens=1200, temperature=0.5, tujuan="gaya_bahasa")
     except Exception as exc:  # gangguan LLM tidak boleh menggagalkan balasan
         return HasilGaya(None, f"LLM gagal ({type(exc).__name__}) — template dipakai")
     if res is None:

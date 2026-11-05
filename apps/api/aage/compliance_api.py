@@ -37,18 +37,9 @@ def get_engine(db: Session = Depends(get_db)) -> ClaimGuardEngine:
 
 class AuditIn(BaseModel):
     product_id: str = Field(min_length=1, max_length=40)
-    text: str = Field(min_length=1, max_length=200_000)  # batas sebenarnya CLAIMGUARD_MAX_TEXT_LENGTH (dicek engine)
-    draft_id: int | None = None
+    text: str | None = Field(None, min_length=1, max_length=200_000)  # batas sebenarnya CLAIMGUARD_MAX_TEXT_LENGTH (dicek engine)
+    draft_id: int | None = Field(None, description="Draf Studio Konten yang diaudit. Isi draf yang diperiksa, jadi `text` dikosongkan.")
     request_id: str | None = Field(None, min_length=8, max_length=80, description="Idempotency key alternatif header")
-
-
-class ConfirmIn(BaseModel):
-    confirm: bool = False
-    catatan: str | None = Field(None, max_length=2000)
-
-
-class ApplyIn(ConfirmIn):
-    audit_id: str = Field(min_length=8, max_length=32)
 
 
 def _raise(exc: svc.ComplianceError):
@@ -74,7 +65,7 @@ def audit(body: AuditIn, idempotency_key: str | None = Header(None, alias="Idemp
         log.exception("Compliance audit gagal")
         db.rollback()
         raise HTTPException(503, "Audit tidak dapat diproses saat ini; coba lagi") from None
-    return {"audit": svc.serialize_audit(a), "draft": svc.serialize_draft(d), "replayed": replayed}
+    return {"audit": svc.serialize_audit(a), "draft": svc.serialize_draft(db, d) if d else None, "replayed": replayed}
 
 
 @router.get("/latest-audit")
@@ -84,55 +75,12 @@ def latest_audit(product_id: str | None = None, draft_id: int | None = None,
         raise HTTPException(422, "Sertakan product_id dan/atau draft_id")
     a, d = svc.latest_audit(db, product_id, draft_id)
     return {"state": "ada" if a else "kosong", "audit": svc.serialize_audit(a) if a else None,
-            "draft": svc.serialize_draft(d) if d else None}
+            "draft": svc.serialize_draft(db, d) if d else None}
 
 
 @router.get("/audits")
 def audits(draft_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
     return {"items": [svc.serialize_audit(a) for a in svc.history(db, draft_id)]}
-
-
-@router.get("/drafts")
-def drafts(product_id: str | None = None, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    return {"items": [svc.serialize_draft(d) for d in svc.list_drafts(db, product_id)]}
-
-
-@router.get("/drafts/{draft_id}")
-def draft_get(draft_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    a, d = svc.latest_audit(db, None, draft_id)
-    if d is None:
-        raise HTTPException(404, f"Draf #{draft_id} tidak ditemukan")
-    return {"draft": svc.serialize_draft(d), "audit": svc.serialize_audit(a) if a else None}
-
-
-@router.post("/drafts/{draft_id}/apply-recommendation")
-def apply_recommendation(draft_id: int, body: ApplyIn, user: User = Depends(current_user), db: Session = Depends(get_db),
-                         engine: ClaimGuardEngine = Depends(get_engine)):
-    try:
-        a, d = svc.apply_recommendation(db, engine=engine, draft_id=draft_id, audit_id=body.audit_id, confirm=body.confirm, user=user)
-    except ClaimGuardInputError as exc:
-        _input_error(exc)
-    except svc.ComplianceError as exc:
-        _raise(exc)
-    return {"audit": svc.serialize_audit(a), "draft": svc.serialize_draft(d)}
-
-
-@router.post("/drafts/{draft_id}/discard")
-def discard(draft_id: int, body: ConfirmIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    try:
-        d = svc.discard(db, draft_id=draft_id, confirm=body.confirm, alasan=body.catatan, user=user)
-    except svc.ComplianceError as exc:
-        _raise(exc)
-    return {"draft": svc.serialize_draft(d)}
-
-
-@router.post("/drafts/{draft_id}/approve")
-def approve(draft_id: int, body: ConfirmIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    try:
-        d = svc.approve(db, draft_id=draft_id, confirm=body.confirm, catatan=body.catatan, user=user)
-    except svc.ComplianceError as exc:
-        _raise(exc)
-    return {"draft": svc.serialize_draft(d)}
 
 
 @router.get("/registry")

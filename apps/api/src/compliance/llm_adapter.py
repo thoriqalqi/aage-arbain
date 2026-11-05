@@ -133,7 +133,7 @@ class JalurUtamaReviewer:
             raise ReviewerNotConfigured("LLM belum dikonfigurasi (LLM_API_KEY dan LLM_BASE_URL, atau GEMINI_API_KEY)")
         res = llm.complete([{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": req.to_prompt()}],
                            judge=True, json_mode=True, max_tokens=4096, temperature=0,  # token proses berpikir model ikut terhitung
-                           timeout_s=llm.settings.claimguard_llm_timeout_s)
+                           timeout_s=llm.settings.claimguard_llm_timeout_s, tujuan="compliance_audit")
         if res is None:
             raise _kegagalan(llm.last_error())
         try:

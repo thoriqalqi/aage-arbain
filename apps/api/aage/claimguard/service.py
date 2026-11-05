@@ -359,7 +359,7 @@ def check(
             related = [c.teks_klaim for c in claims[:12]]
             res = llm.complete(
                 [{"role": "user", "content": JUDGE_PROMPT.format(claims="\n".join(f"- {c}" for c in related) or "-", sentence=sent)}],
-                judge=True, json_mode=True, max_tokens=300, temperature=0,
+                judge=True, json_mode=True, max_tokens=300, temperature=0, tujuan="claimguard_juri",
             )
             if res is not None and isinstance(res.data, dict):
                 model, tok_in, tok_out, cost = res.model, tok_in + res.token_in, tok_out + res.token_out, cost + res.biaya_rp

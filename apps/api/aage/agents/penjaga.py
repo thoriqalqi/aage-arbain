@@ -58,7 +58,7 @@ def _validasi_rapi(asli: str, rapi) -> str | None:
 def periksa(text: str) -> Putusan | None:
     try:
         res = llm.complete([{"role": "user", "content": PROMPT.format(text=text[:1500])}], json_mode=True,
-                           max_tokens=800, temperature=0)  # model "berpikir" bisa kehabisan token di 400
+                           max_tokens=800, temperature=0, tujuan="penjaga_topik")  # model "berpikir" bisa kehabisan token di 400
     except Exception:  # noqa: BLE001 — LLM tidak boleh menjatuhkan pipeline; jatuh ke aturan keras
         log.exception("Penjaga topik gagal; memakai hasil aturan")
         return None

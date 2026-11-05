@@ -41,11 +41,34 @@ class LLMResult:
 _disabled: ContextVar[bool] = ContextVar("aage_llm_disabled", default=False)
 # Error panggilan terakhir (None bila sukses) — dibaca eval untuk membedakan ERROR dari jawaban sah.
 _last_error: ContextVar[dict | None] = ContextVar("aage_llm_last_error", default=None)
+# Kegagalan yang belum tertulis ke Ledger. Tuple, bukan list: salinan konteks antar-permintaan tidak boleh berbagi isi.
+_kegagalan: ContextVar[tuple[dict, ...]] = ContextVar("aage_llm_kegagalan", default=())
+_MAKS_KEGAGALAN = 50
 
 
 def last_error() -> dict | None:
     """{"status": int|None, "rate_limit": bool, "pesan": str, "teks"?: str} dari panggilan terakhir, atau None."""
     return _last_error.get()
+
+
+def ambil_kegagalan() -> tuple[dict, ...]:
+    """Ambil kegagalan yang menunggu dicatat, lalu kosongkan. Dipanggil `ledger`, yang memegang sesi database."""
+    items = _kegagalan.get()
+    if items:
+        _kegagalan.set(())
+    return items
+
+
+def _gagal(info: dict, *, jenis: str, model: str, tujuan: str, latensi_ms: int | None = None, token_in: int = 0,
+           token_out: int = 0, finish_reason: str | None = None) -> None:
+    """Satu panggilan gagal: simpan alasan untuk pemanggil dan antrekan catatannya untuk Ledger.
+
+    Panggilan yang gagal sesudah model menjawab tetap memakai token, jadi biayanya ikut dicatat."""
+    _last_error.set(info)
+    item = {"jenis": jenis, "model": model, "tujuan": tujuan, "status": info.get("status"), "latensi_ms": latensi_ms,
+            "token_in": token_in, "token_out": token_out, "biaya_rp": _cost_rp(token_in, token_out) if token_in or token_out else 0.0,
+            "finish_reason": finish_reason, "retry_after": info.get("retry_after")}
+    _kegagalan.set((*_kegagalan.get(), item)[-_MAKS_KEGAGALAN:])
 
 
 @contextmanager
@@ -171,15 +194,18 @@ def complete(
     max_tokens: int = 700,
     temperature: float = 0.2,
     timeout_s: float | None = None,
+    tujuan: str = "lainnya",
 ) -> LLMResult | None:
+    """`tujuan` menamai pemanggil di catatan kegagalan, supaya terlihat tahap mana yang sering gagal."""
     _last_error.set(None)
     batas = timeout_s or settings.llm_timeout_s
     if _disabled.get() or not settings.llm_enabled:
         return None
-    if not budget_ok():
-        _last_error.set({"status": None, "rate_limit": False, "budget": True, "pesan": "Budget AI terlampaui (BUDGET_DAILY_RP)"})
-        return None
     primary = settings.llm_judge_model if judge else settings.llm_model
+    if not budget_ok():
+        _gagal({"status": None, "rate_limit": False, "budget": True, "pesan": "Budget AI terlampaui (BUDGET_DAILY_RP)"},
+               jenis="budget_habis", model=_model_name(primary), tujuan=tujuan)
+        return None
     candidates = [primary] + [m.strip() for m in settings.llm_fallback_models.split(",") if m.strip()]
     provider = settings.llm_provider
     for model in candidates:
@@ -189,11 +215,13 @@ def complete(
         try:
             resp = _post(url, body, batas, headers)
         except httpx.TimeoutException as exc:
-            _last_error.set({"status": 408, "rate_limit": False, "pesan": f"Timeout {batas:g} dtk: {type(exc).__name__}"})
+            _gagal({"status": 408, "rate_limit": False, "pesan": f"Timeout {batas:g} dtk: {type(exc).__name__}"},
+                   jenis="timeout", model=name, tujuan=tujuan, latensi_ms=int((time.perf_counter() - started) * 1000))
             log.warning("LLM %s timeout", name)
             continue
         except httpx.HTTPError as exc:
-            _last_error.set({"status": None, "rate_limit": False, "pesan": _redact(f"{type(exc).__name__}: {str(exc)[:200]}")})
+            _gagal({"status": None, "rate_limit": False, "pesan": _redact(f"{type(exc).__name__}: {str(exc)[:200]}")},
+                   jenis="jaringan", model=name, tujuan=tujuan, latensi_ms=int((time.perf_counter() - started) * 1000))
             log.warning("LLM %s gagal: %s", name, type(exc).__name__)
             continue
         latency = int((time.perf_counter() - started) * 1000)
@@ -207,14 +235,16 @@ def complete(
                     "pesan": _redact(f"HTTP {resp.status_code}: {msg[:300]}")}
             if resp.headers.get("Retry-After"):
                 info["retry_after"] = resp.headers["Retry-After"]
-            _last_error.set(info)
+            _gagal(info, jenis="rate_limit" if resp.status_code == 429 else "ditolak", model=name, tujuan=tujuan, latensi_ms=latency)
             log.warning("LLM %s ditolak %s", name, resp.status_code)
             continue
         text, finish, tok_in, tok_out, block = _parse_response(resp.json())
         if not text.strip():  # mis. token habis untuk reasoning / diblokir safety — jangan anggap jawaban sah
-            _last_error.set({"status": None, "rate_limit": False,
-                             "pesan": f"jawaban kosong (finish_reason={finish}{', blockReason=' + block if block else ''})",
-                             "teks": text[:200]})
+            _gagal({"status": None, "rate_limit": False,
+                    "pesan": f"jawaban kosong (finish_reason={finish}{', blockReason=' + block if block else ''})",
+                    "teks": text[:200]},
+                   jenis="jawaban_kosong", model=name, tujuan=tujuan, latensi_ms=latency, token_in=tok_in, token_out=tok_out,
+                   finish_reason=finish)
             log.warning("LLM %s jawaban kosong (%s)", name, finish)
             continue
         label = f"gemini/{name}" if provider == "gemini" else name
@@ -224,8 +254,10 @@ def complete(
             try:
                 result.data = _parse_json(text)
             except json.JSONDecodeError:
-                _last_error.set({"status": None, "rate_limit": False, "pesan": "JSON tidak valid dari model",
-                                 "teks": text[:200]})  # potongan teks mentah (tanpa key) untuk diagnosis
+                _gagal({"status": None, "rate_limit": False, "pesan": "JSON tidak valid dari model",
+                        "teks": text[:200]},  # potongan teks mentah (tanpa key) untuk diagnosis
+                       jenis="json_tidak_valid", model=name, tujuan=tujuan, latensi_ms=latency, token_in=tok_in, token_out=tok_out,
+                       finish_reason=finish)
                 log.warning("Gemini %s tidak mengembalikan JSON valid", name)
                 continue
         _last_error.set(None)

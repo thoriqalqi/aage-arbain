@@ -20,8 +20,9 @@ from sqlalchemy.orm import Session
 from .. import claimguard, clock, ledger, llm
 from ..config import get_settings
 from ..kb import retriever, verifikasi
-from ..models import Approval, ApprovedClaim, Chunk, ContentDraft, ContentVersion, LedgerEvent, Product
+from ..models import Approval, ApprovedClaim, Chunk, ComplianceAudit, ContentDraft, ContentVersion, LedgerEvent, Product
 from ..textutil import content_tokens, rupiah, stem
+from src.compliance.claim_guard import text_hash
 
 TARGET_LABEL = {"apotek": "apotek & toko obat", "konsumen": "konsumen"}
 
@@ -345,7 +346,7 @@ def _llm_generate(db: Session, p: Product, topik: str, target: str, tipe: str,
         f"tier_diskon={tiers}; Klaim disetujui={claims}\nDOKUMEN:\n{dokumen or '(tidak ada)'}\nTopik/kata kunci: {topik}. "
         f"Target pembaca: {TARGET_LABEL.get(target, target)}. Panjang: {fmt['panjang']}.\nJawab JSON: {shape}"
     )
-    res = llm.complete([{"role": "user", "content": prompt}], json_mode=True, max_tokens=1800, temperature=0.4)
+    res = llm.complete([{"role": "user", "content": prompt}], json_mode=True, max_tokens=1800, temperature=0.4, tujuan="konten")
     if res is None:
         return None, None
     data = _rapikan_llm(res.data, fmt["web"])
@@ -480,11 +481,30 @@ def generate(db: Session, *, product_id: int, topik: str, target: str, tipe: str
     return d
 
 
+PUTUSAN_AUDIT = {"BLOCKED": claimguard.BLOCKED, "NEED_REVIEW": claimguard.REVIEW}  # ALLOWED dan ERROR tidak mengubah apa pun
+
+
+def lebih_ketat(a: str, b: str | None) -> str:
+    for putusan in (claimguard.BLOCKED, claimguard.REVIEW):
+        if putusan in (a, b):
+            return putusan
+    return a
+
+
+def putusan_audit(db: Session, d: ContentDraft) -> str | None:
+    """Putusan paling ketat dari audit Compliance atas teks persis ini, supaya LLM yang memblokir tidak terhapus oleh
+    pemeriksaan aturan berikutnya. Semua audit dihitung: audit ulang sampai lolos tidak melepaskan blokir. Begitu teks
+    berubah, hash-nya berbeda dan audit lama tidak berlaku lagi."""
+    status = set(db.scalars(select(ComplianceAudit.status).where(ComplianceAudit.draft_id == d.id,
+                                                                 ComplianceAudit.input_text_hash == text_hash(full_text(d)))))
+    return next((PUTUSAN_AUDIT[s] for s in ("BLOCKED", "NEED_REVIEW") if s in status), None)
+
+
 def recheck(db: Session, d: ContentDraft) -> ContentDraft:
     check = claimguard.check(db, full_text(d), product_ids=[d.product_id] if d.product_id else None)
     lama = d.claim_report or {}
     p = db.get(Product, d.product_id) if d.product_id else None
-    d.claim_verdict = check.verdict
+    d.claim_verdict = lebih_ketat(check.verdict, putusan_audit(db, d))
     d.claim_report = {**check.to_dict(), "json_ld_errors": validate_json_ld(d.json_ld or []),
                       "sumber_generator": lama.get("sumber_generator", "edit staf"),
                       "data_kosong": data_kosong(p) if p else [], "fakta_asing": lama.get("fakta_asing", []),
@@ -701,6 +721,7 @@ def submit(db: Session, d: ContentDraft, aktor: str) -> Approval:
         return existing
     recheck(db, d)
     if d.claim_verdict == claimguard.BLOCKED:
+        ledger.simpan_kegagalan_llm(db, objek_ref=f"content:{d.id}", product_id=d.product_id)
         db.commit()
         raise ContentError("Draf Diblokir ClaimGuard. Perbaiki kalimat bertanda merah sebelum diajukan.")
     label = FORMATS.get(d.tipe, {}).get("label", d.tipe)

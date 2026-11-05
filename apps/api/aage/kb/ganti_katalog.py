@@ -32,7 +32,6 @@ from ..models import (
     Document,
     KatalogImpor,
     LedgerEvent,
-    MarketingDraft,
     Message,
     PricingRule,
     Product,
@@ -70,8 +69,7 @@ def _produk_lama(db: Session, sku_baru: set[str] | None = None, id_baru: set[int
 
 
 def _terkunci(db: Session, ids: set[int]) -> set[int]:
-    return ({*db.scalars(select(MarketingDraft.product_id).where(MarketingDraft.product_id.in_(ids))),
-             *db.scalars(select(ComplianceAudit.product_id).where(ComplianceAudit.product_id.in_(ids)))} if ids else set())
+    return set(db.scalars(select(ComplianceAudit.product_id).where(ComplianceAudit.product_id.in_(ids)))) if ids else set()
 
 
 def _baris_verifikasi(ids_produk: set[int], ids_klaim: set[int], ids_dokumen: set[int]):
