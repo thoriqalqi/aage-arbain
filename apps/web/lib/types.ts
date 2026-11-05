@@ -238,6 +238,88 @@ export type Prospect = {
   terakhir_dipindai: string | null
   market_analysis: MarketAnalysis | null
   nba: NextBestAction | null
+  terakhir_diverifikasi: string | null
+  digabung_ke_id: number | null
+  sumber_label: string
+  skor_sementara: boolean
+  status_verifikasi: "belum" | "perlu_tinjauan" | "terverifikasi" | "ditolak"
+  alasan_tinjauan: string[]
+  langkah_berikutnya: string
+}
+
+export type DaftarLead = {
+  items: Prospect[]
+  total: number
+  wilayah: string[]
+  jenis_toko: string[]
+  segmen: string[]
+  sumber_opsi: Record<string, string>
+  pindaian_latar: boolean
+  gudang: { nama: string; lat: number; lng: number }
+}
+
+export type KesalahanLead = { kolom: string; alasan: string; baris?: number }
+export type AlasanDuplikat = { aturan: string; keterangan: string }
+
+export type LeadRingkas = {
+  id: number
+  nama: string
+  alamat: string
+  wilayah: string
+  tipe: string
+  telepon: string | null
+  skor: number
+  sumber: string
+  status: Prospect["status"]
+  consent_status: Prospect["consent_status"]
+  website: string | null
+}
+
+export type LeadDetail = Prospect & {
+  rincian_confidence: { faktor: string; ada: boolean }[]
+  bukti: { id: number; source_type: string; label: string; source_reference: string; dikumpulkan_pada: string | null }[]
+  riwayat_skor: { skor: number; confidence: number | null; skor_versi: string; pemicu: string; dibuat_pada: string | null }[]
+  aktivitas: { id: number; tipe: string; label: string; ringkasan: string | null; aktor: string; pada: string | null }[]
+  duplikat: { id: number; tingkat: "pasti" | "mungkin"; alasan: AlasanDuplikat[]; lead: LeadRingkas }[]
+}
+
+export type DuplikatTinjauan = { id: number; tingkat: "pasti" | "mungkin"; alasan: AlasanDuplikat[]; lead: LeadRingkas; cocok: LeadRingkas; dibuat_pada: string | null }
+
+export type TinjauanLead = {
+  duplikat: DuplikatTinjauan[]
+  perlu_tinjauan: (LeadRingkas & { alasan: string[]; confidence: number | null })[]
+  jumlah_duplikat: number
+  jumlah_perlu_tinjauan: number
+}
+
+export type LeadImporSumber = { sumber: Record<string, string>; kolom: string[]; kolom_wajib: string[]; maks_baris: number }
+
+export type LeadImporPratinjau = {
+  token: string
+  nama_file: string
+  status: string
+  source_type: string
+  source_reference: string
+  dibuat_pada: string | null
+  diterapkan_pada: string | null
+  hasil: { baru: number; digabung: number; perlu_tinjauan: number; kembar_file: number; dilewati_salah: number } | null
+  laporan: {
+    ringkasan: { baris: number; valid: number; error: number; baru: number; digabung: number; perlu_tinjauan: number; kembar_file: number }
+    error: (KesalahanLead & { baris: number })[]
+    peringatan: string[]
+    digabung: { baris: number; nama: string; wilayah: string; cocok_dengan: string; alasan: string[] }[]
+    perlu_tinjauan: { baris: number; nama: string; wilayah: string; cocok_dengan: string[]; alasan: string[] }[]
+    kembar_file: { baris: number; nama: string; wilayah: string; sama_dengan_baris: number }[]
+    contoh: { baris: number; nama: string; wilayah: string; tipe: string; alamat: string; ada_telepon: boolean }[]
+  }
+}
+
+export type LeadKonfigurasi = {
+  segmen: string[]
+  bobot: { geo_maks: number; telepon: number; jam: number; jalan: number; penalti_jaringan: number }
+  ambang_confidence: number
+  versi: string
+  sementara: boolean
 }
 
 export type MarketArticle = { judul: string; tautan: string; cuplikan: string; sumber: string; tanggal: string }

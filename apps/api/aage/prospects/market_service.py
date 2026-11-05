@@ -118,7 +118,7 @@ def next_best_action(db: Session, p: Prospect, market: dict) -> dict:
     dasar.append(f"Kebijakan penjualan: diskon volume hingga {diskon:g}% mulai {BUNDLE_BOX} box; {ongkir}.")
 
     if p.telepon:
-        kanal = f"Hubungi via telepon/WhatsApp {p.telepon} (pesan pembuka sudah lolos ClaimGuard)."
+        kanal = "Hubungi via telepon/WhatsApp setelah consent tercatat (pesan pembuka sudah lolos ClaimGuard)."
     else:
         kanal = "Telepon tidak tercantum di OpenStreetMap — jadwalkan kunjungan langsung sales lapangan."
     dasar.append(kanal)

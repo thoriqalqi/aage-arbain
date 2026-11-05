@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, PlainTextResponse, Response
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from . import agent_status, claimguard, clock, eval_api, inbox, kpi, ledger, ledger_chain, llm
@@ -34,14 +34,17 @@ from .models import (
     Conversation,
     Document,
     KatalogImpor,
+    LeadDuplikat,
+    LeadEvidence,
+    LeadSkorRiwayat,
     LedgerEvent,
     Message,
     Product,
     Prospect,
     User,
 )
-from .prospects import consent, mapper
-from .security import create_token, current_user, require_admin, require_izin, verify_password
+from .prospects import consent, dedupe, impor, konfigurasi, mapper, penilaian, tinjauan
+from .security import create_token, current_user, mask_phone, require_admin, require_izin, verify_password
 
 log = logging.getLogger("aage.api")
 settings = get_settings()
@@ -808,30 +811,57 @@ def prospects_search(body: ProspectSearchIn, user: User = Depends(require_izin("
     return prospek_scout(ScoutIn(wilayah=body.wilayah, jenis_toko=body.tipe), user, db)
 
 
-def _prospect_query(wilayah: str | None, tipe: str | None, status: str | None):
-    stmt = select(Prospect).where(Prospect.sumber == "osm").order_by(Prospect.skor.desc())
+def _prospect_query(wilayah: str | None = None, tipe: str | None = None, status: str | None = None, *, q: str | None = None, sumber: str | None = None,
+                    consent_status: str | None = None, skor_min: int | None = None, skor_maks: int | None = None):
+    """Data demo dan lead yang sudah digabung tidak pernah tampil di daftar."""
+    stmt = select(Prospect).where(Prospect.sumber != "sintetis", Prospect.digabung_ke_id.is_(None)).order_by(Prospect.skor.desc(), Prospect.id)
     if wilayah:
         stmt = stmt.where(func.lower(Prospect.wilayah) == wilayah.lower())
     if tipe:
-        stmt = stmt.where(Prospect.tipe == tipe)
+        stmt = stmt.where(func.lower(Prospect.tipe) == tipe.lower())
     if status:
         stmt = stmt.where(Prospect.status == status)
+    if q and q.strip():
+        pola = "%" + q.strip().lower().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        stmt = stmt.where(or_(func.lower(Prospect.nama).like(pola, escape="\\"), func.lower(Prospect.alamat).like(pola, escape="\\")))
+    if sumber:
+        stmt = stmt.where(Prospect.sumber == sumber)
+    if consent_status:
+        stmt = stmt.where(Prospect.consent_status == consent_status)
+    if skor_min is not None:
+        stmt = stmt.where(Prospect.skor >= skor_min)
+    if skor_maks is not None:
+        stmt = stmt.where(Prospect.skor <= skor_maks)
     return stmt
 
 
+def _konteks_lead(db: Session) -> dict:
+    return {"ids_duplikat": dedupe.ids_menunggu(db), "ambang": konfigurasi.skor(db)["ambang_confidence"]}
+
+
+def _lead_json(db: Session, p: Prospect, user: User) -> dict:
+    return ser.prospect(p, user, _prospect_conversations(db).get(p.id), **_konteks_lead(db))
+
+
 @router.get("/prospects")
-def prospects_list(wilayah: str | None = None, tipe: str | None = None, status: str | None = None,
+def prospects_list(wilayah: str | None = None, tipe: str | None = None, status: str | None = None, q: str | None = None, sumber: str | None = None,
+                   consent_status: str | None = None, verifikasi: str | None = None, skor_min: int | None = Query(None, ge=0, le=100),
+                   skor_maks: int | None = Query(None, ge=0, le=100), limit: int = Query(500, ge=1, le=2000),
                    user: User = Depends(require_izin("leads.lihat")), db: Session = Depends(get_db)):
-    prospects = list(db.scalars(_prospect_query(wilayah, tipe, None)))
+    prospects = list(db.scalars(_prospect_query(wilayah, tipe, None, q=q, sumber=sumber, consent_status=consent_status, skor_min=skor_min, skor_maks=skor_maks)))
     convs = _prospect_conversations(db)
-    items = [ser.prospect(p, user, convs.get(p.id)) for p in prospects if not status or p.status == status]
+    konteks = _konteks_lead(db)
+    semua = [ser.prospect(p, user, convs.get(p.id), **konteks) for p in prospects if not status or p.status == status]
+    if verifikasi:
+        semua = [i for i in semua if i["status_verifikasi"] == verifikasi]
     sedang = bool(wilayah and tipe and tipe in mapper.JENIS_TOKO and mapper.background_running(" ".join(wilayah.split()), tipe))
-    wilayah_list = [w for (w,) in db.execute(select(Prospect.wilayah).where(Prospect.sumber == "osm").distinct())]
+    aktif = (Prospect.sumber != "sintetis", Prospect.digabung_ke_id.is_(None))
+    wilayah_list = sorted(w for (w,) in db.execute(select(Prospect.wilayah).where(*aktif).distinct()))
     now = clock.now()
     jatuh_tempo = sum(1 for p in prospects if p.tindak_lanjut_pada and clock.aware(p.tindak_lanjut_pada) <= now
                       and p.status not in ("pelanggan", "menolak"))
-    return {"items": items, "wilayah": wilayah_list, "jenis_toko": list(mapper.JENIS_TOKO), "pindaian_latar": sedang,
-            "funnel": {**mapper.funnel(prospects), "tindak_lanjut_jatuh_tempo": jatuh_tempo},
+    return {"items": semua[:limit], "total": len(semua), "wilayah": wilayah_list, "jenis_toko": list(mapper.JENIS_TOKO), "segmen": konfigurasi.segmen(db),
+            "sumber_opsi": impor.LABEL_SUMBER, "pindaian_latar": sedang, "funnel": {**mapper.funnel(prospects), "tindak_lanjut_jatuh_tempo": jatuh_tempo},
             "gudang": {"nama": settings.gudang_nama, "lat": settings.gudang_lat, "lng": settings.gudang_lng}}
 
 
@@ -859,7 +889,7 @@ def prospects_patch(prospect_id: int, body: ProspectPatch, user: User = Depends(
         raise HTTPException(400, str(exc)) from None
     except LookupError as exc:
         raise HTTPException(404, str(exc)) from None
-    return ser.prospect(p, user, _prospect_conversations(db).get(p.id))
+    return _lead_json(db, p, user)
 
 
 class ConsentIn(BaseModel):
@@ -886,7 +916,7 @@ def prospects_consent(prospect_id: int, body: ConsentIn, user: User = Depends(re
         raise HTTPException(400, str(exc)) from None
     except PermissionError as exc:
         raise HTTPException(403, str(exc)) from None
-    return ser.prospect(p, user, _prospect_conversations(db).get(p.id))
+    return _lead_json(db, p, user)
 
 
 @router.post("/prospects/{prospect_id}/kontak-promo")
@@ -897,7 +927,7 @@ def prospects_kontak_promo(prospect_id: int, user: User = Depends(require_izin("
         tautan = consent.buka_kontak_promo(db, p, user)
     except consent.KontakDitolak as exc:
         raise HTTPException(409, {"kode": exc.kode, "pesan": exc.pesan}) from None
-    return {"tautan": tautan, "prospek": ser.prospect(p, user, _prospect_conversations(db).get(p.id))}
+    return {"tautan": tautan, "prospek": _lead_json(db, p, user)}
 
 
 @router.post("/prospects/{prospect_id}/riset")
@@ -906,7 +936,7 @@ def prospects_research(prospect_id: int, user: User = Depends(require_izin("lead
     from .prospects import market_service
 
     p = _ambil_prospek(db, prospect_id)
-    return ser.prospect(market_service.research(db, p, f"staf:{user.nama}"), user)
+    return _lead_json(db, market_service.research(db, p, f"staf:{user.nama}"), user)
 
 
 @router.get("/prospects/export.csv")
@@ -919,6 +949,219 @@ def prospects_export(wilayah: str | None = None, tipe: str | None = None, user: 
     db.commit()
     return Response(content="﻿" + data, media_type="text/csv",
                     headers={"Content-Disposition": f'attachment; filename="prospek-{(wilayah or "semua").replace(" ", "-")}.csv"'})
+
+
+class ProspectBaru(BaseModel):
+    nama: str = Field(..., max_length=300)
+    tipe: str = Field(..., max_length=60)
+    wilayah: str = Field(..., max_length=200)
+    alamat: str | None = Field(None, max_length=600)
+    telepon: str | None = Field(None, max_length=60)
+    website: str | None = Field(None, max_length=400)
+    lat: float | None = None
+    lng: float | None = None
+    jam_buka: str | None = Field(None, max_length=300)
+    referensi: str | None = Field(None, max_length=300)
+
+
+class ProspectData(BaseModel):
+    nama: str | None = Field(None, max_length=300)
+    tipe: str | None = Field(None, max_length=60)
+    wilayah: str | None = Field(None, max_length=200)
+    alamat: str | None = Field(None, max_length=600)
+    telepon: str | None = Field(None, max_length=60)
+    website: str | None = Field(None, max_length=400)
+    lat: float | None = None
+    lng: float | None = None
+    jam_buka: str | None = Field(None, max_length=300)
+
+
+def _galat_validasi(salah: list[dict]) -> HTTPException:
+    return HTTPException(400, {"kode": "VALIDASI", "pesan": "; ".join(f"{s['kolom']}: {s['alasan']}" for s in salah), "kesalahan": salah})
+
+
+@router.post("/prospects", status_code=201)
+def prospects_create(body: ProspectBaru, user: User = Depends(require_izin("leads.ubah")), db: Session = Depends(get_db)):
+    """Input manual. Duplikat pasti ditolak; calon duplikat tetap dibuat dan masuk antrean tinjauan. Consent mulai dari UNKNOWN."""
+    try:
+        p, cocok = impor.buat_manual(db, body.model_dump(exclude={"referensi"}), reference=body.referensi, aktor=f"staf:{user.nama}")
+    except impor.DataTidakValid as exc:
+        raise _galat_validasi(exc.kesalahan) from None
+    except impor.DuplikatPasti as exc:
+        c = exc.cocok
+        raise HTTPException(409, {"kode": "DUPLIKAT", "pesan": f"Lead ini sudah ada: {c['nama']}", "lead_id": c["id"], "alasan": c["alasan"]}) from None
+    return {**_lead_json(db, p, user), "calon_duplikat": [{"id": c["id"], "nama": c["nama"], "alasan": c["alasan"]} for c in cocok]}
+
+
+def _ambil_aktif(db: Session, prospect_id: int) -> Prospect:
+    """Untuk perubahan data: baris yang sudah digabung adalah arsip. Pencatatan consent tetap terbuka agar opt-out selalu bisa masuk."""
+    p = _ambil_prospek(db, prospect_id)
+    if p.digabung_ke_id:
+        raise HTTPException(409, {"kode": "DIGABUNG", "pesan": f"Lead ini sudah digabung ke lead {p.digabung_ke_id}. Ubah lead utamanya.", "lead_id": p.digabung_ke_id})
+    return p
+
+
+@router.patch("/prospects/{prospect_id}/data")
+def prospects_data(prospect_id: int, body: ProspectData, user: User = Depends(require_izin("leads.ubah")), db: Session = Depends(get_db)):
+    p = _ambil_aktif(db, prospect_id)
+    try:
+        impor.ubah_data(db, p, body.model_dump(exclude_unset=True), f"staf:{user.nama}")
+    except impor.DataTidakValid as exc:
+        raise _galat_validasi(exc.kesalahan) from None
+    return _lead_json(db, p, user)
+
+
+class VerifikasiIn(BaseModel):
+    status: str
+    catatan: str | None = Field(None, max_length=500)
+
+
+@router.put("/prospects/{prospect_id}/verifikasi")
+def prospects_verifikasi(prospect_id: int, body: VerifikasiIn, user: User = Depends(require_izin("leads.ubah")), db: Session = Depends(get_db)):
+    p = _ambil_aktif(db, prospect_id)
+    try:
+        tinjauan.set_verifikasi(db, p, user, body.status, body.catatan)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from None
+    return _lead_json(db, p, user)
+
+
+def _lead_ringkas(p: Prospect, user: User) -> dict:
+    return {"id": p.id, "nama": p.nama, "alamat": p.alamat, "wilayah": p.wilayah, "tipe": p.tipe, "telepon": mask_phone(p.telepon, user), "skor": p.skor,
+            "sumber": p.sumber, "status": p.status, "consent_status": p.consent_status, "website": p.website}
+
+
+@router.get("/prospects/tinjauan")
+def prospects_tinjauan(user: User = Depends(require_izin("leads.lihat")), db: Session = Depends(get_db)):
+    """Antrean: calon duplikat yang menunggu keputusan, dan lead yang datanya kurang atau confidence-nya rendah."""
+    konteks = _konteks_lead(db)
+    leads = {p.id: p for p in db.scalars(_prospect_query())}
+    duplikat = []
+    for d in db.scalars(select(LeadDuplikat).where(LeadDuplikat.keputusan == "menunggu").order_by(LeadDuplikat.tingkat.desc(), LeadDuplikat.id)):
+        a, b = leads.get(d.lead_id), leads.get(d.lead_cocok_id)
+        if a and b:
+            duplikat.append({"id": d.id, "tingkat": d.tingkat, "alasan": d.alasan, "lead": _lead_ringkas(a, user), "cocok": _lead_ringkas(b, user), "dibuat_pada": ser.ts(d.dibuat_pada)})
+    perlu = []
+    for p in leads.values():
+        alasan = tinjauan.alasan_tinjauan(p, konteks["ids_duplikat"], konteks["ambang"])
+        if tinjauan.status_tinjauan(p, alasan) == "perlu_tinjauan":
+            perlu.append({**_lead_ringkas(p, user), "alasan": alasan, "confidence": p.confidence})
+    return {"duplikat": duplikat, "perlu_tinjauan": perlu[:300], "jumlah_duplikat": len(duplikat), "jumlah_perlu_tinjauan": len(perlu)}
+
+
+@router.post("/prospects/dedupe/pindai")
+def prospects_dedupe_pindai(user: User = Depends(require_izin("leads.ubah")), db: Session = Depends(get_db)):
+    return dedupe.pindai_semua(db, f"staf:{user.nama}")
+
+
+class PutusanDuplikatIn(BaseModel):
+    keputusan: str
+    utama_id: int | None = None
+
+
+@router.post("/prospects/duplikat/{duplikat_id}/putuskan")
+def prospects_duplikat_putuskan(duplikat_id: int, body: PutusanDuplikatIn, user: User = Depends(require_izin("leads.ubah")), db: Session = Depends(get_db)):
+    try:
+        d = dedupe.putuskan(db, duplikat_id, body.keputusan, body.utama_id, f"staf:{user.nama}")
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from None
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from None
+    return {"id": d.id, "keputusan": d.keputusan, "utama_id": body.utama_id}
+
+
+def _impor_lead_json(imp) -> dict:
+    return {"token": imp.token, "nama_file": imp.nama_file, "status": imp.status, "source_type": imp.source_type, "source_reference": imp.source_reference,
+            "laporan": imp.laporan, "hasil": imp.hasil, "dibuat_pada": ser.ts(imp.dibuat_pada), "diterapkan_pada": ser.ts(imp.diterapkan_pada)}
+
+
+@router.get("/prospects/impor/sumber")
+def prospects_impor_sumber(user: User = Depends(require_izin("leads.impor"))):
+    return {"sumber": impor.SUMBER_IMPOR, "kolom": list(impor.KOLOM), "kolom_wajib": list(impor.KOLOM_WAJIB), "maks_baris": impor.MAKS_BARIS}
+
+
+@router.get("/prospects/impor/template.csv")
+def prospects_impor_template(user: User = Depends(require_izin("leads.impor"))):
+    return Response(content=impor.template_csv(), media_type="text/csv", headers={"Content-Disposition": 'attachment; filename="template_impor_leads.csv"'})
+
+
+@router.post("/prospects/impor")
+def prospects_impor_pratinjau(file: UploadFile = File(...), source_type: str = Form(...), source_reference: str = Form(...),
+                              user: User = Depends(require_izin("leads.impor")), db: Session = Depends(get_db)):
+    """Langkah 1: validasi dan pratinjau. Belum ada lead yang masuk sampai dikonfirmasi.
+    Sengaja bukan async: query dan pencocokan nama berjalan di threadpool, jadi webhook tetap dilayani."""
+    try:
+        imp = impor.buat_pratinjau(db, file.filename or "leads", file.file.read(impor.MAKS_UKURAN + 1), source_type, source_reference, f"staf:{user.nama}")
+    except impor.ImporDitolak as exc:
+        raise HTTPException(400, str(exc)) from None
+    return _impor_lead_json(imp)
+
+
+class ImporTerapkanIn(BaseModel):
+    lewati_error: bool = False
+
+
+@router.post("/prospects/impor/{token}/terapkan")
+def prospects_impor_terapkan(token: str, body: ImporTerapkanIn, user: User = Depends(require_izin("leads.impor")), db: Session = Depends(get_db)):
+    """Langkah 2: terapkan dalam satu transaksi. Permintaan yang diulang mengembalikan hasil yang sama."""
+    try:
+        return _impor_lead_json(impor.terapkan(db, token, f"staf:{user.nama}", lewati_error=body.lewati_error))
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from None
+    except impor.ImporDitolak as exc:
+        raise HTTPException(409, str(exc)) from None
+
+
+@router.post("/prospects/impor/{token}/batal")
+def prospects_impor_batal(token: str, user: User = Depends(require_izin("leads.impor")), db: Session = Depends(get_db)):
+    try:
+        return _impor_lead_json(impor.batal(db, token))
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from None
+
+
+@router.get("/prospects/konfigurasi")
+def prospects_konfigurasi(user: User = Depends(require_izin("leads.lihat")), db: Session = Depends(get_db)):
+    return konfigurasi.snapshot(db)
+
+
+class KonfigurasiIn(BaseModel):
+    bobot: dict | None = None
+    ambang_confidence: float | None = None
+    segmen: list[str] | None = None
+
+
+@router.put("/prospects/konfigurasi")
+def prospects_konfigurasi_ubah(body: KonfigurasiIn, user: User = Depends(require_izin("leads.atur")), db: Session = Depends(get_db)):
+    """Versi skor naik setiap bobot berubah. Skor lama tidak berubah sampai dihitung ulang."""
+    try:
+        return konfigurasi.ubah(db, f"staf:{user.nama}", bobot=body.bobot, ambang_confidence=body.ambang_confidence, daftar_segmen=body.segmen)
+    except konfigurasi.KonfigurasiTidakValid as exc:
+        raise HTTPException(400, str(exc)) from None
+
+
+@router.post("/prospects/skor/hitung-ulang")
+def prospects_hitung_ulang(user: User = Depends(require_izin("leads.atur")), db: Session = Depends(get_db)):
+    return penilaian.hitung_ulang_semua(db, f"staf:{user.nama}")
+
+
+@router.get("/prospects/{prospect_id:int}")
+def prospects_detail(prospect_id: int, user: User = Depends(require_izin("leads.lihat")), db: Session = Depends(get_db)):
+    """Detail lead: asal data, riwayat skor, rincian confidence, aktivitas, dan calon duplikat."""
+    p = _ambil_prospek(db, prospect_id)
+    bukti = db.scalars(select(LeadEvidence).where(LeadEvidence.lead_id == p.id).order_by(LeadEvidence.dikumpulkan_pada.desc()))
+    riwayat = db.scalars(select(LeadSkorRiwayat).where(LeadSkorRiwayat.lead_id == p.id).order_by(LeadSkorRiwayat.id.desc()).limit(20))
+    aktivitas = db.scalars(select(LedgerEvent).where(LedgerEvent.objek_ref == f"prospect:{p.id}").order_by(LedgerEvent.id.desc()).limit(50))
+    duplikat = []
+    for d in db.scalars(select(LeadDuplikat).where(LeadDuplikat.keputusan == "menunggu", or_(LeadDuplikat.lead_id == p.id, LeadDuplikat.lead_cocok_id == p.id))):
+        lain = db.get(Prospect, d.lead_cocok_id if d.lead_id == p.id else d.lead_id)
+        duplikat.append({"id": d.id, "tingkat": d.tingkat, "alasan": d.alasan, "lead": _lead_ringkas(lain, user)})
+    return {**_lead_json(db, p, user), "rincian_confidence": penilaian.rincian_confidence(p),
+            "bukti": [{"id": b.id, "source_type": b.source_type, "label": impor.LABEL_SUMBER.get(b.source_type, b.source_type), "source_reference": b.source_reference,
+                       "dikumpulkan_pada": ser.ts(b.dikumpulkan_pada)} for b in bukti],
+            "riwayat_skor": [{"skor": r.skor, "confidence": r.confidence, "skor_versi": r.skor_versi, "pemicu": r.pemicu, "dibuat_pada": ser.ts(r.dibuat_pada)} for r in riwayat],
+            "aktivitas": [{"id": e.id, "tipe": e.tipe_event, "label": ledger.EVENT_TYPES.get(e.tipe_event, e.tipe_event), "ringkasan": e.ringkasan, "aktor": e.aktor, "pada": ser.ts(e.waktu)} for e in aktivitas],
+            "duplikat": duplikat}
 
 
 # ------------------------------------------------------------------ Repeat order reminder

@@ -14,7 +14,8 @@ import re
 
 from ..config import get_settings
 
-VERSI_SKOR = "draf-geo-data-v0"  # draf, belum disetujui CV Arba'in
+VERSI_SKOR = "draf-geo-data-v0"  # draf, belum disetujui CV Arba'in. Versi berjalan ada di konfigurasi.py
+BOBOT_AWAL = {"geo_maks": 70, "telepon": 10, "jam": 10, "jalan": 10, "penalti_jaringan": 25}
 
 settings = get_settings()
 R_BUMI_KM = 6371.0088
@@ -56,27 +57,49 @@ def national_chain(name: str, brand: str | None = None) -> str | None:
     return next((label for pola, label in _JARINGAN.items() if re.search(pola, hay)), None)
 
 
-def opportunity_score(lead: dict) -> dict:
-    """Kembalikan skor total + rincian transparan untuk ditampilkan di popup/tabel."""
-    jarak = haversine_km(settings.gudang_lat, settings.gudang_lng, lead["latitude"], lead["longitude"])
-    geo = geographic_fit(jarak)
-    data = data_completeness(lead.get("phone"), lead.get("opening_hours"), lead.get("has_street", False))
-    jaringan = national_chain(lead.get("name", ""), lead.get("brand"))
-    penalti = PENALTI_JARINGAN if jaringan else 0
+def opportunity_score(lead: dict, bobot: dict | None = None) -> dict:
+    """Kembalikan skor total + rincian transparan untuk ditampilkan di popup/tabel. Nomor telepon tidak ikut ke rincian."""
+    b = {**BOBOT_AWAL, **(bobot or {})}
+    asal = lead.get("asal", "OSM")
+    lat, lng = lead.get("latitude"), lead.get("longitude")
     lo, hi = settings.skor_zona_emas_min_km, settings.skor_zona_emas_max_km
-    zona = "zona emas" if lo <= jarak <= hi else ("terlalu dekat gudang" if jarak < lo else "di luar zona emas")
+    if lat is None or lng is None:
+        jarak, geo = None, 0.0
+        ket_geo = "Koordinat belum ada, jarak tidak bisa dihitung"
+    else:
+        jarak = haversine_km(settings.gudang_lat, settings.gudang_lng, lat, lng)
+        geo = geographic_fit(jarak) * b["geo_maks"] / 70
+        zona = "zona emas" if lo <= jarak <= hi else ("terlalu dekat gudang" if jarak < lo else "di luar zona emas")
+        ket_geo = f"{jarak:.2f} km dari {settings.gudang_nama} ({zona} {lo:g}–{hi:g} km)"
+    data = (b["telepon"] if lead.get("phone") else 0.0) + (b["jam"] if lead.get("opening_hours") else 0.0) + (b["jalan"] if lead.get("has_street") else 0.0)
+    jaringan = national_chain(lead.get("name", ""), lead.get("brand"))
+    penalti = b["penalti_jaringan"] if jaringan else 0
     alasan = [
-        {"faktor": "Geographic Fit", "poin": round(geo, 1), "maks": 70,
-         "keterangan": f"{jarak:.2f} km dari {settings.gudang_nama} ({zona} {lo:g}–{hi:g} km)"},
-        {"faktor": "Telepon", "poin": 10 if lead.get("phone") else 0, "maks": 10,
-         "keterangan": lead.get("phone") or "tidak ada di OSM"},
-        {"faktor": "Jam operasional", "poin": 10 if lead.get("opening_hours") else 0, "maks": 10,
-         "keterangan": lead.get("opening_hours") or "tidak ada di OSM"},
-        {"faktor": "Nama jalan", "poin": 10 if lead.get("has_street") else 0, "maks": 10,
-         "keterangan": lead.get("address") if lead.get("has_street") else "tidak ada di OSM"},
+        {"faktor": "Geographic Fit", "poin": round(geo, 1), "maks": b["geo_maks"], "keterangan": ket_geo},
+        {"faktor": "Telepon", "poin": b["telepon"] if lead.get("phone") else 0, "maks": b["telepon"],
+         "keterangan": "Tersedia" if lead.get("phone") else f"tidak ada di {asal}"},
+        {"faktor": "Jam operasional", "poin": b["jam"] if lead.get("opening_hours") else 0, "maks": b["jam"],
+         "keterangan": lead.get("opening_hours") or f"tidak ada di {asal}"},
+        {"faktor": "Nama jalan", "poin": b["jalan"] if lead.get("has_street") else 0, "maks": b["jalan"],
+         "keterangan": lead.get("address") if lead.get("has_street") else f"tidak ada di {asal}"},
     ]
     if jaringan:
         alasan.append({"faktor": "Jaringan nasional", "poin": -penalti, "maks": 0,
                        "keterangan": f"{jaringan} — pembelian umumnya terpusat di kantor pusat"})
-    return {"skor": max(0, int(round(geo + data - penalti))), "skor_geo": round(geo, 1), "skor_data": data,
-            "jarak_km": round(jarak, 2), "alasan": alasan, "jaringan": jaringan}
+    return {"skor": max(0, min(100, int(round(geo + data - penalti)))), "skor_geo": round(geo, 1), "skor_data": data,
+            "jarak_km": round(jarak, 2) if jarak is not None else None, "alasan": alasan, "jaringan": jaringan}
+
+
+def rincian_confidence(lead: dict, terverifikasi: bool) -> list[dict]:
+    """Seberapa lengkap dan terperiksa datanya, bukan peluang lead membeli. Draf: tiap butir bernilai 0,2."""
+    return [
+        {"faktor": "Koordinat", "ada": lead.get("latitude") is not None and lead.get("longitude") is not None},
+        {"faktor": "Nomor telepon", "ada": bool(lead.get("phone"))},
+        {"faktor": "Alamat jalan", "ada": bool(lead.get("has_street"))},
+        {"faktor": "Jam buka atau website", "ada": bool(lead.get("opening_hours") or lead.get("website"))},
+        {"faktor": "Diverifikasi staf", "ada": terverifikasi},
+    ]
+
+
+def confidence(lead: dict, terverifikasi: bool) -> float:
+    return round(sum(0.2 for r in rincian_confidence(lead, terverifikasi) if r["ada"]), 2)

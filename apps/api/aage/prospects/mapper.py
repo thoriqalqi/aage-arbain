@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from .. import claimguard, clock, ledger
 from ..models import Contact, LeadEvidence, Prospect
-from . import lead_service, scoring_service
+from . import konfigurasi, lead_service, penilaian, scoring_service
 from .lead_service import JENIS_TOKO, ScoutError, ScoutTimeout, normalize_jenis
 
 log = logging.getLogger("aage.prospek")
@@ -38,7 +38,7 @@ def opening_message(nama: str, wilayah: str, jenis: str) -> str:
 def _cached(db: Session, wilayah: str, jenis: str) -> list[Prospect]:
     return list(db.scalars(
         select(Prospect).where(func.lower(Prospect.wilayah) == wilayah.lower(), Prospect.tipe.in_([jenis, _LEGACY_TIPE[jenis]]),
-                               Prospect.sumber == "osm").order_by(Prospect.skor.desc())))
+                               Prospect.sumber == "osm", Prospect.digabung_ke_id.is_(None)).order_by(Prospect.skor.desc())))
 
 
 def scout_and_store(db: Session, *, wilayah: str, jenis_toko: str, aktor: str = "staf") -> dict:
@@ -102,40 +102,47 @@ def _store(db: Session, res: "lead_service.ScoutResult", wilayah: str, jenis: st
     customers = {(c.nama_toko or "").strip().lower() for c in contacts if c.nama_toko}
     customer_phones = {c.wa_number for c in contacts if c.wa_number}
     linked = {c.prospect_id for c in contacts if c.prospect_id}
+    from . import dedupe
+
     trace = ledger.new_trace_id()
     stored: list[Prospect] = []
     baru = 0
+    cfg = konfigurasi.skor(db)
+    indeks = dedupe.indeks_aktif(db)
     for lead in res.leads:
-        s = scoring_service.opportunity_score(lead)
         ext = f"osm:{lead['osm_id']}"
         p = db.scalar(select(Prospect).where(Prospect.eksternal_id == ext))
+        if p is not None and p.digabung_ke_id:
+            continue  # sudah digabung staf: tidak dimunculkan lagi oleh pindai ulang
         is_new = p is None
         if is_new:
             p = Prospect(eksternal_id=ext, status="baru")
             db.add(p)
             baru += 1
-        p.nama, p.alamat, p.wilayah, p.tipe = lead["name"], lead["address"], wilayah, jenis
-        p.lat, p.lng = lead["latitude"], lead["longitude"]
-        p.telepon, p.website, p.jam_buka = lead["phone"], lead["website"], lead["opening_hours"]
-        p.alamat_jalan_ada = lead["has_street"]
+        consent_batal = _isi_dari_osm(db, p, lead, wilayah, jenis)
         p.rating, p.jumlah_ulasan = None, None  # OSM tidak menyediakan rating — tidak dikarang
-        p.jarak_km, p.skor, p.skor_geo, p.skor_data = s["jarak_km"], s["skor"], s["skor_geo"], s["skor_data"]
-        p.alasan_skor = s["alasan"]
-        p.jaringan = s["jaringan"]
+        p.jaringan = scoring_service.national_chain(lead["name"], lead.get("brand"))
         p.sudah_pelanggan = (lead["name"].strip().lower() in customers or p.id in linked
                              or (wa_number(p.telepon) or "-") in customer_phones)
         p.sumber = "osm"
-        p.skor_versi = scoring_service.VERSI_SKOR
         p.terakhir_dipindai = p.dikumpulkan_pada = lead["last_scanned_at"]
         if is_new or not p.draf_pesan:
             msg = opening_message(p.nama, wilayah, jenis)
             chk = claimguard.check(db, msg, use_llm=False)
             p.draf_pesan, p.draf_verdict = (msg if chk.verdict == claimguard.ALLOWED else chk.safe_text), chk.verdict
         db.flush()
-        _catat_bukti(db, p, "osm", ext, p.dikumpulkan_pada, {"server": res.server, "area": res.area_dipakai})
+        penilaian.nilai_ulang(db, p, "pindai", cfg)
+        catat_bukti(db, p.id, "osm", ext, {"server": res.server, "area": res.area_dipakai}, p.dikumpulkan_pada)
+        if consent_batal:
+            ledger.record(db, "prospek_diperbarui", trace_id=trace, objek_ref=f"prospect:{p.id}", aktor=aktor, model=None,
+                          ringkasan=f"{p.nama}: consent dibatalkan karena nomor berubah saat pindai ulang", data={"consent_dibatalkan": True})
         if is_new:
+            k = dedupe.dari_prospek(p)
+            for c in indeks.cari(k):
+                dedupe.rekam_calon(db, p.id, c["id"], c["tingkat"], c["alasan"])
+            indeks.tambah(k)
             ledger.record(db, "prospek_dibuat", trace_id=trace, objek_ref=f"prospect:{p.id}", aktor=aktor,
-                          ringkasan=f"{p.nama} · skor {p.skor}", alasan="; ".join(f"{r['faktor']} +{r['poin']}" for r in s["alasan"]),
+                          ringkasan=f"{p.nama} · skor {p.skor}", alasan="; ".join(f"{r['faktor']} +{r['poin']}" for r in p.alasan_skor),
                           sumber_ref=[{"jenis": "osm", "eksternal_id": ext, "server": res.server}], verdict=p.draf_verdict,
                           outcome="baru", data={"wilayah": wilayah, "tipe": jenis, "skor": p.skor})
         stored.append(p)
@@ -148,13 +155,37 @@ def _store(db: Session, res: "lead_service.ScoutResult", wilayah: str, jenis: st
             "prospects": stored}
 
 
-def _catat_bukti(db: Session, p: Prospect, source_type: str, reference: str, dikumpulkan_pada, metadata: dict | None = None) -> None:
-    bukti = db.scalar(select(LeadEvidence).where(LeadEvidence.lead_id == p.id, LeadEvidence.source_type == source_type,
+def _isi_dari_osm(db: Session, p: Prospect, lead: dict, wilayah: str, jenis: str) -> bool:
+    """Nilai OSM yang kosong tidak mengosongkan data, dan alamat jalan tidak diganti teks "Alamat tidak spesifik".
+    Lead yang sudah punya data dari staf atau sumber lain hanya diisi bagian yang kosong. True bila consent batal karena nomornya berganti."""
+    dijaga = p.id is not None and db.scalar(select(LeadEvidence.id).where(LeadEvidence.lead_id == p.id, LeadEvidence.source_type != "osm").limit(1)) is not None
+    consent_batal = False
+    for kolom, nilai in (("nama", lead["name"]), ("wilayah", wilayah), ("tipe", jenis), ("lat", lead["latitude"]), ("lng", lead["longitude"]),
+                         ("telepon", lead["phone"]), ("website", lead["website"]), ("jam_buka", lead["opening_hours"])):
+        if nilai in (None, "") or (dijaga and getattr(p, kolom) not in (None, "")):
+            continue
+        if kolom == "telepon":
+            consent_batal = setel_nomor(p, nilai)
+        else:
+            setattr(p, kolom, nilai)
+    if lead["has_street"]:
+        if not (dijaga and p.alamat_jalan_ada):
+            p.alamat, p.alamat_jalan_ada = lead["address"], True
+    elif not p.alamat:
+        p.alamat, p.alamat_jalan_ada = lead["address"], False
+    return consent_batal
+
+
+def catat_bukti(db: Session, lead_id: int, source_type: str, reference: str, metadata: dict | None = None, dikumpulkan_pada=None) -> None:
+    """Satu bukti per lead, sumber, dan referensi. Di-flush karena autoflush mati, agar pencarian berikutnya dalam transaksi yang sama menemukannya."""
+    reference = reference[:500]
+    bukti = db.scalar(select(LeadEvidence).where(LeadEvidence.lead_id == lead_id, LeadEvidence.source_type == source_type,
                                                  LeadEvidence.source_reference == reference))
     if bukti is None:
-        bukti = LeadEvidence(lead_id=p.id, source_type=source_type, source_reference=reference)
+        bukti = LeadEvidence(lead_id=lead_id, source_type=source_type, source_reference=reference)
         db.add(bukti)
-    bukti.dikumpulkan_pada, bukti.metadata_sumber = dikumpulkan_pada, metadata
+    bukti.dikumpulkan_pada, bukti.metadata_sumber = dikumpulkan_pada or clock.now(), metadata
+    db.flush()
 
 
 def wa_number(phone: str | None) -> str | None:
@@ -167,6 +198,16 @@ def wa_number(phone: str | None) -> str | None:
     elif digits.startswith("8"):
         digits = "62" + digits
     return digits if digits.startswith("62") and 10 <= len(digits) <= 15 else None
+
+
+def setel_nomor(p: Prospect, nomor: str | None) -> bool:
+    """Consent melekat pada nomor: nomor yang berganti, termasuk dari kosong, membatalkan consent GRANTED. True bila dibatalkan."""
+    berganti = wa_number(p.telepon) != wa_number(nomor)
+    p.telepon = nomor
+    if berganti and p.consent_status == "GRANTED":
+        p.consent_status, p.consent_sumber, p.consent_cakupan, p.consent_pada = "UNKNOWN", None, None, None
+        return True
+    return False
 
 
 def _set_status(db: Session, p: Prospect, status: str, aktor: str, alasan: str | None = None) -> None:
@@ -212,7 +253,7 @@ def link_contact(db: Session, contact: Contact) -> Prospect | None:
     """Pesan WA dari nomor prospek → tautkan kontak ke prospek dan naikkan status ke "merespons"."""
     if contact.prospect_id or not contact.wa_number.isdigit():
         return None
-    for p in db.scalars(select(Prospect).where(Prospect.telepon.is_not(None))):
+    for p in db.scalars(select(Prospect).where(Prospect.telepon.is_not(None), Prospect.digabung_ke_id.is_(None))):
         if wa_number(p.telepon) == contact.wa_number:
             contact.prospect_id = p.id
             contact.nama_toko = contact.nama_toko or p.nama
@@ -244,15 +285,22 @@ def funnel(prospects: list[Prospect]) -> dict:
     return tahap
 
 
+def _aman_csv(nilai) -> str:
+    """Isi dari sumber luar bisa dibaca Excel sebagai rumus. Diberi tanda kutip agar tetap jadi teks."""
+    teks = "" if nilai is None else str(nilai)
+    return f"'{teks}" if teks.startswith(("=", "+", "-", "@", "\t", "\r")) else teks
+
+
 def to_csv(prospects: list[Prospect]) -> str:
     buf = io.StringIO()
     w = csv.writer(buf)
     w.writerow(["skor", "skor_geo", "skor_data", "nama", "jenis", "alamat", "lat", "lng", "jarak_km", "telepon",
-                "jam_buka", "status", "osm_id", "terakhir_dipindai", "draf_pesan"])
+                "jam_buka", "status", "osm_id", "terakhir_dipindai", "draf_pesan", "sumber", "consent_status", "verifikasi", "confidence", "skor_versi"])
     for p in prospects:
-        w.writerow([p.skor, p.skor_geo, p.skor_data, p.nama, p.tipe, p.alamat, p.lat, p.lng, p.jarak_km or "",
-                    p.telepon or "", p.jam_buka or "", p.status, p.eksternal_id or "",
-                    p.terakhir_dipindai.isoformat() if p.terakhir_dipindai else "", p.draf_pesan])
+        w.writerow([p.skor, p.skor_geo, p.skor_data, _aman_csv(p.nama), _aman_csv(p.tipe), _aman_csv(p.alamat), p.lat, p.lng, p.jarak_km or "",
+                    _aman_csv(p.telepon), _aman_csv(p.jam_buka), p.status, _aman_csv(p.eksternal_id),
+                    p.terakhir_dipindai.isoformat() if p.terakhir_dipindai else "", _aman_csv(p.draf_pesan), p.sumber, p.consent_status, p.verifikasi,
+                    p.confidence if p.confidence is not None else "", p.skor_versi or ""])
     return buf.getvalue()
 
 

@@ -1,21 +1,24 @@
 "use client"
 
-import { AlertTriangle, CalendarClock, ChevronRight, Clock, Download, LoaderCircle, MapPinned, MessageCircle, Phone, Radar } from "lucide-react"
+import { AlertTriangle, CalendarClock, ChevronRight, Clock, Download, LoaderCircle, MapPinned, MessageCircle, Phone, Plus, Radar, Search } from "lucide-react"
 import dynamic from "next/dynamic"
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
-import useSWR from "swr"
+import useSWR, { mutate as simpanCache } from "swr"
 
 import { AButton } from "@/components/aage/button"
 import { ScoreBar } from "@/components/aage/charts"
-import { EmptyState } from "@/components/aage/empty-state"
+import { EmptyState, SkeletonRows } from "@/components/aage/empty-state"
+import { LeadBaru } from "@/components/aage/lead-baru"
+import { VERIFIKASI } from "@/components/aage/lead-detail"
+import { GalatMuat, LeadsNav } from "@/components/aage/leads-nav"
 import { CardHeader, PageHeader, Panel, Surface } from "@/components/aage/panel"
 import { CONSENT, ProspectDrawer, STATUS } from "@/components/aage/prospect-drawer"
 import type { Gudang } from "@/components/aage/prospect-map"
 import { ApiError, api, fetcher, unduh } from "@/lib/api"
 import { formatDateTime } from "@/lib/format"
 import { useRole } from "@/lib/rbac"
-import type { Prospect } from "@/lib/types"
+import type { DaftarLead, Prospect } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 const ProspectMap = dynamic(() => import("@/components/aage/prospect-map"), {
@@ -42,27 +45,66 @@ type ScoutResponse = {
   items: Prospect[]
 }
 
+const FILTER_KOSONG = { q: "", tipe: "", wilayah: "", status: "", verifikasi: "", consent_status: "", sumber: "", skor_min: "" }
+type Filter = typeof FILTER_KOSONG
+
+function urlDaftar(f: Filter): string {
+  const q = new URLSearchParams()
+  for (const [k, v] of Object.entries(f)) if (v) q.set(k, v)
+  return q.size ? `/api/prospects?${q}` : "/api/prospects"
+}
+
 export default function ProspekPage() {
   const { actual } = useRole()
-  const { data: initial } = useSWR<{ items: Prospect[]; wilayah: string[]; gudang: Gudang }>("/api/prospects?wilayah=Kota%20Semarang&tipe=Apotek", fetcher)
+  const [filter, setFilter] = useState<Filter>(FILTER_KOSONG)
+  const [cari, setCari] = useState("")
+  const urlAktif = urlDaftar(filter)
+  const { data, error: galatMuat, isLoading, mutate } = useSWR<DaftarLead>(urlAktif, fetcher, { keepPreviousData: true })
   const [wilayah, setWilayah] = useState("Kota Semarang")
   const [jenis, setJenis] = useState<(typeof JENIS)[number]>("Apotek")
   const [result, setResult] = useState<ScoutResponse | null>(null)
-  const [items, setItems] = useState<Prospect[] | null>(null)
+  const [memindai, setMemindai] = useState(false)
   const [scanId, setScanId] = useState(0)
   const [loading, setLoading] = useState(false)
   const [waitingBg, setWaitingBg] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<Prospect | null>(null)
+  const [tambah, setTambah] = useState(false)
 
-  const shown = useMemo(() => items ?? initial?.items ?? [], [items, initial])
-  const gudang = result?.gudang ?? initial?.gudang ?? DEFAULT_GUDANG
+  const shown = useMemo(() => (memindai ? [] : (data?.items ?? [])), [memindai, data])
+  const gudang = result?.gudang ?? data?.gudang ?? DEFAULT_GUDANG
+  const segmen = data?.segmen ?? [...JENIS]
+  const adaFilter = Object.values(filter).some(Boolean)
+  const idPeta = shown.map((p) => p.id).join(",")
+
+  useEffect(() => {
+    const t = setTimeout(() => setFilter((f) => (f.q === cari.trim() ? f : { ...f, q: cari.trim() })), 300)
+    return () => clearTimeout(t)
+  }, [cari])
+
+  // Peta menyesuaikan diri setiap isi daftar berganti, bukan saat status satu lead berubah.
+  useEffect(() => setScanId((n) => n + 1), [idPeta])
+
+  function setF<K extends keyof Filter>(k: K, v: Filter[K]) {
+    setFilter((f) => ({ ...f, [k]: v }))
+  }
+
+  /** Setelah pindai, daftar menampilkan wilayah dan jenis yang baru dipindai. */
+  async function tampilkanHasil(w: string, t: string): Promise<number> {
+    const f = { ...FILTER_KOSONG, wilayah: w, tipe: t }
+    const url = urlDaftar(f)
+    const hasil = await api<DaftarLead>(url)
+    await simpanCache(url, hasil, false)
+    setCari("")
+    setFilter(f)
+    setMemindai(false)
+    return hasil.items.length
+  }
 
   async function petakan() {
     setLoading(true)
     setError(null)
-    setItems([]) // bersihkan semua pin lama sebelum memuat hasil baru
-    setScanId((n) => n + 1)
+    setMemindai(true) // bersihkan semua pin lama sebelum memuat hasil baru
     try {
       const res = await api<ScoutResponse>("/api/prospek/scout", { method: "POST", json: { wilayah, jenis_toko: jenis } })
       setResult(res)
@@ -70,14 +112,13 @@ export default function ProspekPage() {
         await waitForBackground(res.wilayah, res.jenis_toko)
         return
       }
-      setItems(res.items)
-      setScanId((n) => n + 1)
-      if (res.sumber === "cache") toast.warning("Overpass sedang penuh — menampilkan hasil pindaian terakhir")
+      await tampilkanHasil(res.wilayah, res.jenis_toko)
+      if (res.sumber === "cache") toast.warning("Overpass sedang penuh, menampilkan hasil pindaian terakhir")
       else toast.success(`${res.jumlah} ${jenis.toLowerCase()} dari OpenStreetMap (${res.baru ?? 0} baru)`)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Gagal memindai wilayah")
-      setItems(null)
     } finally {
+      setMemindai(false)
       setLoading(false)
     }
   }
@@ -86,17 +127,15 @@ export default function ProspekPage() {
   async function waitForBackground(w: string, t: string) {
     setWaitingBg(true)
     try {
+      const url = urlDaftar({ ...FILTER_KOSONG, wilayah: w, tipe: t })
       for (let i = 0; i < 30; i++) {
         await new Promise((r) => setTimeout(r, 5000))
-        const res = await api<{ items: Prospect[]; pindaian_latar: boolean }>(
-          `/api/prospects?wilayah=${encodeURIComponent(w)}&tipe=${encodeURIComponent(t)}`,
-        )
+        const res = await api<DaftarLead>(url)
         if (res.items.length || !res.pindaian_latar) {
-          setItems(res.items)
-          setScanId((n) => n + 1)
-          setResult((r) => (r ? { ...r, sumber: "osm_live", jumlah: res.items.length, peringatan: null, terakhir_dipindai: res.items[0]?.terakhir_dipindai ?? null } : r))
-          if (res.items.length) toast.success(`${res.items.length} ${t.toLowerCase()} dari OpenStreetMap`)
-          else setError("Pindaian latar selesai tanpa hasil — server OSM mungkin masih penuh. Coba Petakan lagi.")
+          const n = await tampilkanHasil(w, t)
+          setResult((r) => (r ? { ...r, sumber: "osm_live", jumlah: n, peringatan: null, terakhir_dipindai: res.items[0]?.terakhir_dipindai ?? null } : r))
+          if (n) toast.success(`${n} ${t.toLowerCase()} dari OpenStreetMap`)
+          else setError("Pindaian latar selesai tanpa hasil. Server OSM mungkin masih penuh, coba Petakan lagi.")
           return
         }
       }
@@ -106,26 +145,41 @@ export default function ProspekPage() {
     }
   }
 
+  function perbarui(u: Prospect) {
+    setSelected(u)
+    void mutate()
+  }
+
   async function setStatus(p: Prospect, status: Prospect["status"]) {
-    const updated = await api<Prospect>(`/api/prospects/${p.id}`, { method: "PATCH", json: { status } })
-    setSelected(updated)
-    setItems(shown.map((x) => (x.id === p.id ? updated : x)))
+    try {
+      perbarui(await api<Prospect>(`/api/prospects/${p.id}`, { method: "PATCH", json: { status } }))
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Status gagal disimpan")
+    }
+  }
+
+  async function bukaLead(id: number) {
+    try {
+      setSelected(await api<Prospect>(`/api/prospects/${id}`))
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Lead tidak bisa dibuka")
+    }
   }
 
   async function exportCsv() {
-    const w = result?.wilayah ?? wilayah
-    const t = result?.jenis_toko ?? jenis
+    const q = new URLSearchParams()
+    if (filter.wilayah) q.set("wilayah", filter.wilayah)
+    if (filter.tipe) q.set("tipe", filter.tipe)
+    const nama = [filter.wilayah, filter.tipe].filter(Boolean).join("-").replace(/\s+/g, "-").toLowerCase() || "semua"
     try {
-      await unduh(
-        `/api/prospects/export.csv?wilayah=${encodeURIComponent(w)}&tipe=${encodeURIComponent(t)}`,
-        `prospek-${w.replace(/\s+/g, "-").toLowerCase()}-${t.replace(/\s+/g, "-").toLowerCase()}.csv`,
-      )
+      await unduh(`/api/prospects/export.csv${q.size ? `?${q}` : ""}`, `prospek-${nama}.csv`)
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Ekspor gagal")
     }
   }
 
-  const zonaEmas = shown.filter((p) => p.skor_geo === 70).length
+  // Dibaca dari alasan skor, bukan angka poin, karena bobot lokasi bisa diatur admin.
+  const zonaEmas = shown.filter((p) => p.alasan_skor.some((r) => r.faktor === "Geographic Fit" && r.keterangan.includes("(zona emas"))).length
   const funnel = useMemo(() => {
     const urutan: Record<string, number> = { baru: 0, dihubungi: 1, merespons: 2, pelanggan: 3 }
     const at = (n: number) => shown.filter((p) => (urutan[p.status] ?? -1) >= n).length
@@ -140,20 +194,24 @@ export default function ProspekPage() {
     (p) => p.tindak_lanjut_pada && new Date(p.tindak_lanjut_pada) <= new Date() && p.status !== "pelanggan" && p.status !== "menolak",
   )
 
-  // Tautan dari Inbox: /leads?prospek=ID membuka drawer prospek tersebut.
+  // Tautan dari Inbox dan antrean tinjauan: /leads?prospek=ID membuka drawer lead tersebut.
   useEffect(() => {
     const id = Number(new URLSearchParams(window.location.search).get("prospek"))
-    if (!id || selected) return
-    const found = shown.find((p) => p.id === id)
-    if (found) setSelected(found)
-  }, [shown]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (id) void bukaLead(id)
+  }, [])
 
   return (
     <div className="space-y-5">
       <PageHeader
         title="Leads"
-        description="Pemetaan apotek, toko obat, dan minimarket dari OpenStreetMap, dinilai dengan Opportunity Score 0–100. Hanya kontak inbound/opt-in yang dihubungi."
+        description="Lead dari OpenStreetMap, input manual, dan impor, dinilai dengan Opportunity Score sementara 0–100. Hanya kontak inbound/opt-in yang dihubungi."
+        actions={
+          <AButton onClick={() => setTambah(true)}>
+            <Plus className="size-4" /> Tambah lead
+          </AButton>
+        }
       />
+      <LeadsNav />
 
       {shown.length > 0 && (
         <Panel className="flex flex-wrap items-stretch gap-2 p-3">
@@ -196,7 +254,7 @@ export default function ProspekPage() {
             className={cn(field, "w-64")}
           />
           <datalist id="wilayah-list">
-            {[...new Set(["Kota Semarang", "Kabupaten Semarang", "Kota Surakarta", "Kota Salatiga", "Kabupaten Kudus", "Kabupaten Demak", "Kabupaten Kendal", ...(initial?.wilayah ?? [])])].map((w) => (
+            {[...new Set(["Kota Semarang", "Kabupaten Semarang", "Kota Surakarta", "Kota Salatiga", "Kabupaten Kudus", "Kabupaten Demak", "Kabupaten Kendal", ...(data?.wilayah ?? [])])].map((w) => (
               <option key={w} value={w} />
             ))}
           </datalist>
@@ -232,6 +290,91 @@ export default function ProspekPage() {
           <AlertTriangle className="mt-0.5 size-4 shrink-0" /> {error ?? result?.peringatan}
         </div>
       )}
+
+      <Panel className="flex flex-wrap items-end gap-3 p-4">
+        <label className="grid gap-1 text-[12px] text-muted-foreground">
+          Cari nama atau alamat
+          <span className="relative">
+            <Search className="absolute top-3 left-3 size-4 text-subtle-foreground" aria-hidden />
+            <input value={cari} onChange={(e) => setCari(e.target.value)} className={cn(field, "w-56 pl-9")} />
+          </span>
+        </label>
+        <label className="grid gap-1 text-[12px] text-muted-foreground">
+          Segmen
+          <select value={filter.tipe} onChange={(e) => setF("tipe", e.target.value)} className={field}>
+            <option value="">Semua</option>
+            {segmen.map((j) => (
+              <option key={j}>{j}</option>
+            ))}
+          </select>
+        </label>
+        <label className="grid gap-1 text-[12px] text-muted-foreground">
+          Wilayah
+          <select value={filter.wilayah} onChange={(e) => setF("wilayah", e.target.value)} className={cn(field, "max-w-48")}>
+            <option value="">Semua</option>
+            {[...new Set([...(filter.wilayah ? [filter.wilayah] : []), ...(data?.wilayah ?? [])])].map((w) => (
+              <option key={w}>{w}</option>
+            ))}
+          </select>
+        </label>
+        <label className="grid gap-1 text-[12px] text-muted-foreground">
+          Skor minimal
+          <select value={filter.skor_min} onChange={(e) => setF("skor_min", e.target.value)} className={field}>
+            <option value="">Semua</option>
+            <option value="45">45 ke atas</option>
+            <option value="70">70 ke atas</option>
+          </select>
+        </label>
+        <label className="grid gap-1 text-[12px] text-muted-foreground">
+          Status
+          <select value={filter.status} onChange={(e) => setF("status", e.target.value)} className={field}>
+            <option value="">Semua</option>
+            {Object.entries(STATUS).map(([k, v]) => (
+              <option key={k} value={k}>{v.label}</option>
+            ))}
+          </select>
+        </label>
+        <label className="grid gap-1 text-[12px] text-muted-foreground">
+          Verifikasi
+          <select value={filter.verifikasi} onChange={(e) => setF("verifikasi", e.target.value)} className={field}>
+            <option value="">Semua</option>
+            {Object.entries(VERIFIKASI).map(([k, v]) => (
+              <option key={k} value={k}>{v.label}</option>
+            ))}
+          </select>
+        </label>
+        <label className="grid gap-1 text-[12px] text-muted-foreground">
+          Consent
+          <select value={filter.consent_status} onChange={(e) => setF("consent_status", e.target.value)} className={field}>
+            <option value="">Semua</option>
+            {Object.entries(CONSENT).map(([k, v]) => (
+              <option key={k} value={k}>{v.label}</option>
+            ))}
+          </select>
+        </label>
+        <label className="grid gap-1 text-[12px] text-muted-foreground">
+          Sumber
+          <select value={filter.sumber} onChange={(e) => setF("sumber", e.target.value)} className={cn(field, "max-w-48")}>
+            <option value="">Semua</option>
+            {Object.entries(data?.sumber_opsi ?? {}).filter(([k]) => k !== "sintetis").map(([k, v]) => (
+              <option key={k} value={k}>{v}</option>
+            ))}
+          </select>
+        </label>
+        {adaFilter && (
+          <AButton
+            variant="ghost"
+            onClick={() => {
+              setCari("")
+              setFilter(FILTER_KOSONG)
+            }}
+          >
+            Hapus filter
+          </AButton>
+        )}
+      </Panel>
+
+      {galatMuat && <GalatMuat error={galatMuat} onUlang={() => mutate()} />}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
         <Panel className="relative isolate z-0 h-[520px] overflow-hidden p-0">
@@ -282,12 +425,22 @@ export default function ProspekPage() {
       </div>
 
       <Surface className="overflow-x-auto">
-        {shown.length === 0 ? (
-          <EmptyState
-            icon={<MapPinned />}
-            title={loading ? "Memindai…" : "Belum ada prospek"}
-            description="Pilih wilayah dan jenis toko, lalu klik Petakan untuk memindai toko nyata dari OpenStreetMap."
-          />
+        {isLoading && !data ? (
+          <SkeletonRows rows={6} className="p-4" />
+        ) : shown.length === 0 ? (
+          adaFilter && !loading ? (
+            <EmptyState
+              icon={<Search />}
+              title="Tidak ada lead yang cocok"
+              description="Longgarkan filter, atau hapus filter untuk melihat semua lead."
+            />
+          ) : (
+            <EmptyState
+              icon={<MapPinned />}
+              title={loading ? "Memindai…" : "Belum ada lead"}
+              description="Klik Petakan untuk memindai toko dari OpenStreetMap, tambah lead manual, atau impor daftar dari sumber yang sah."
+            />
+          )
         ) : (
           <table className="w-full text-[13px]">
             <thead className="bg-soft text-left text-[11.5px] tracking-[0.04em] text-muted-foreground uppercase">
@@ -298,7 +451,7 @@ export default function ProspekPage() {
                 <th className="px-3 py-2.5 font-medium">Telepon</th>
                 <th className="px-3 py-2.5 font-medium">Jam buka</th>
                 <th className="px-3 py-2.5 font-medium">Status</th>
-                <th className="px-3 py-2.5 font-medium">Consent</th>
+                <th className="px-3 py-2.5 font-medium">Consent & verifikasi</th>
               </tr>
             </thead>
             <tbody>
@@ -313,7 +466,8 @@ export default function ProspekPage() {
                       {p.jaringan && <span className="rounded-full bg-review-bg px-1.5 text-[11px] font-medium text-review">Jaringan</span>}
                       {p.conversation_id && <MessageCircle className="size-3.5 text-ok" aria-label="Sudah chat WhatsApp" />}
                     </div>
-                    <div className={cn("line-clamp-1 text-[12px]", p.alamat_jalan_ada ? "text-muted-foreground" : "text-subtle-foreground italic")}>{p.alamat}</div>
+                    <div className={cn("line-clamp-1 text-[12px]", p.alamat_jalan_ada ? "text-muted-foreground" : "text-subtle-foreground italic")}>{p.alamat || "Alamat kosong"}</div>
+                    <div className="text-[11.5px] text-subtle-foreground">{p.tipe} · {p.sumber_label}</div>
                   </td>
                   <td className="tabular px-3 py-2.5 whitespace-nowrap">{p.jarak_km != null ? `${p.jarak_km.toLocaleString("id-ID")} km` : "—"}</td>
                   <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">
@@ -340,6 +494,9 @@ export default function ProspekPage() {
                   </td>
                   <td className="px-3 py-2.5 whitespace-nowrap">
                     <span className={cn("inline-flex h-6 items-center rounded-full px-2 text-[12px] font-medium", CONSENT[p.consent_status].cls)}>{CONSENT[p.consent_status].label}</span>
+                    <div className="mt-1">
+                      <span className={cn("inline-flex h-6 items-center rounded-full px-2 text-[12px] font-medium", VERIFIKASI[p.status_verifikasi].cls)}>{VERIFIKASI[p.status_verifikasi].label}</span>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -348,15 +505,21 @@ export default function ProspekPage() {
         )}
       </Surface>
       <p className="text-[11.5px] text-subtle-foreground">
-        Data © OpenStreetMap contributors (ODbL). AAGE tidak mengirim pesan massal — staf yang menghubungi prospek.
+        {data && data.total > data.items.length && `Menampilkan ${data.items.length} dari ${data.total} lead. `}
+        Skor masih sementara dan bukan izin menghubungi. Data OSM © OpenStreetMap contributors (ODbL). AAGE tidak mengirim pesan massal, staf yang menghubungi lead.
       </p>
-      <ProspectDrawer
-        p={selected}
-        onClose={() => setSelected(null)}
-        onStatus={setStatus}
-        onUpdated={(u) => {
-          setSelected(u)
-          setItems(shown.map((x) => (x.id === u.id ? u : x)))
+      <ProspectDrawer p={selected} segmen={segmen} onClose={() => setSelected(null)} onStatus={setStatus} onUpdated={perbarui} />
+      <LeadBaru
+        open={tambah}
+        segmen={segmen}
+        onClose={() => setTambah(false)}
+        onCreated={(p) => {
+          setTambah(false)
+          perbarui(p)
+        }}
+        onBukaLead={(id) => {
+          setTambah(false)
+          void bukaLead(id)
         }}
       />
     </div>

@@ -35,6 +35,15 @@ EVENT_TYPES = {
     "prospek_consent": "Consent prospek berubah",
     "prospek_kontak_dibuka": "Kontak promosi prospek dibuka",
     "prospek_kontak_ditolak": "Kontak promosi prospek ditolak",
+    "prospek_diperbarui": "Prospek diperbarui",
+    "prospek_diimpor": "Prospek diimpor",
+    "prospek_impor_pratinjau": "Pratinjau impor prospek",
+    "prospek_digabung": "Prospek digabung",
+    "prospek_duplikat_diputus": "Calon duplikat diputus",
+    "prospek_dedupe_dipindai": "Pindai duplikat prospek",
+    "prospek_diverifikasi": "Verifikasi prospek",
+    "prospek_skor_dihitung": "Skor prospek dihitung ulang",
+    "leads_konfigurasi": "Konfigurasi Leads diubah",
     "pengingat_repeat_order": "Pengingat repeat order",
     "katalog_diimpor": "Katalog diimpor",
     "katalog_pratinjau": "Pratinjau impor katalog",
@@ -52,7 +61,6 @@ EVENT_TYPES = {
     "ambil_alih_selesai": "Percakapan dikembalikan ke AI",
     "saran_ai": "Saran AI untuk staf",
     "kontak_diubah": "Profil toko diubah",
-    "prospek_diperbarui": "Prospek diperbarui",
     "prospek_ditautkan": "Prospek ditautkan ke percakapan",
 }
 

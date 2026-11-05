@@ -67,6 +67,8 @@ IZIN = {
     "leads.ubah": {"admin", "staf"},
     "leads.kontak": {"admin", "staf"},
     "leads.ekspor": {"admin"},
+    "leads.impor": {"admin"},
+    "leads.atur": {"admin"},
 }
 
 

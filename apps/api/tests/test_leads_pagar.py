@@ -203,7 +203,7 @@ def test_pindai_mencatat_asal_data_sekali_saja(client, auth, monkeypatch):
     tubuh = {"wilayah": "Kota Asal Data", "jenis_toko": "Apotek"}
     data = client.post("/api/prospek/scout", headers=auth, json=tubuh).json()
     lead = data["items"][0]
-    assert lead["skor_versi"] == scoring_service.VERSI_SKOR and lead["consent_status"] == "UNKNOWN" and lead["verifikasi"] == "belum"
+    assert lead["skor_versi"].startswith("draf-geo-data-v") and lead["consent_status"] == "UNKNOWN" and lead["verifikasi"] == "belum"
     assert lead["dikumpulkan_pada"]
     client.post("/api/prospek/scout", headers=auth, json=tubuh)
     with SessionLocal() as db:

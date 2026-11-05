@@ -1,20 +1,22 @@
 "use client"
 
-// Drawer detail prospek dengan 3 tab: Informasi Dasar · Live AI Search Audit · Next Best Action.
+// Drawer detail lead dengan 4 tab: Informasi Dasar · Asal & Riwayat · Live AI Search Audit · Next Best Action.
 
-import { Compass, Copy, ExternalLink, Globe2, Info, LoaderCircle, MapPin, MessageCircle, Newspaper, PlugZap, RefreshCw, Send, Sparkles } from "lucide-react"
+import { Compass, Copy, ExternalLink, Globe2, History, Info, LoaderCircle, MapPin, MessageCircle, Newspaper, PlugZap, RefreshCw, Send, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
+import useSWR from "swr"
 
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { ApiError, api } from "@/lib/api"
+import { ApiError, api, fetcher } from "@/lib/api"
 import { formatDateTime } from "@/lib/format"
 import { useRole } from "@/lib/rbac"
-import type { Prospect } from "@/lib/types"
+import type { LeadDetail, Prospect } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 import { AButton } from "./button"
+import { LangkahVerifikasi, RincianConfidence, TabRiwayat } from "./lead-detail"
 import { Pill, VerdictBadge } from "./status"
 
 export const STATUS: Record<Prospect["status"], { label: string; cls: string }> = {
@@ -236,9 +238,10 @@ function FollowUp({ p, onUpdated }: { p: Prospect; onUpdated: (p: Prospect) => v
   )
 }
 
-type Tab = "dasar" | "market" | "nba"
+type Tab = "dasar" | "riwayat" | "market" | "nba"
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "dasar", label: "Informasi Dasar", icon: <Info className="size-3.5" /> },
+  { id: "riwayat", label: "Asal & Riwayat", icon: <History className="size-3.5" /> },
   { id: "market", label: "Live AI Search Audit", icon: <Globe2 className="size-3.5" /> },
   { id: "nba", label: "Next Best Action", icon: <Compass className="size-3.5" /> },
 ]
@@ -248,7 +251,7 @@ function TabsHeader({ active, onChange }: { active: Tab; onChange: (t: Tab) => v
     <div
       role="tablist"
       aria-label="Detail prospek"
-      className="grid grid-cols-3 gap-1 rounded-xl border border-white/10 bg-zinc-900/85 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_8px_20px_-10px_rgba(0,0,0,0.5)] backdrop-blur-md"
+      className="grid grid-cols-2 gap-1 rounded-xl sm:grid-cols-4 border border-white/10 bg-zinc-900/85 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_8px_20px_-10px_rgba(0,0,0,0.5)] backdrop-blur-md"
     >
       {TABS.map((t) => {
         const on = active === t.id
@@ -295,9 +298,10 @@ function StatusButtons({ p, onStatus }: { p: Prospect; onStatus: (p: Prospect, s
   )
 }
 
-function TabDasar({ p, onStatus, onUpdated }: { p: Prospect; onStatus: (p: Prospect, s: Prospect["status"]) => void; onUpdated: (p: Prospect) => void }) {
+function TabDasar({ p, detail, onStatus, onUpdated }: { p: Prospect; detail?: LeadDetail; onStatus: (p: Prospect, s: Prospect["status"]) => void; onUpdated: (p: Prospect) => void }) {
   return (
     <div className="space-y-6">
+      <LangkahVerifikasi p={p} onUpdated={onUpdated} />
       {p.conversation_id && (
         <Link href={`/inbox?id=${p.conversation_id}`} className="flex items-center gap-2 rounded-md bg-ok-bg px-3 py-2 text-[13px] font-medium text-ok">
           <MessageCircle className="size-4" /> Prospek ini sudah chat lewat WhatsApp — buka percakapan
@@ -327,10 +331,12 @@ function TabDasar({ p, onStatus, onUpdated }: { p: Prospect; onStatus: (p: Prosp
           ))}
         </ul>
         <p className="mt-3 text-[12px] text-subtle-foreground">
-          Dipindai {formatDateTime(p.terakhir_dipindai)} · data OpenStreetMap apa adanya (tidak dilengkapi tebakan).
-          {p.skor_versi && ` Model skor sementara: ${p.skor_versi}, belum disetujui CV Arba'in.`}
+          Sumber: {p.sumber_label}, data apa adanya tanpa tebakan.
+          {p.terakhir_dipindai && ` Dipindai ${formatDateTime(p.terakhir_dipindai)}.`}
+          {p.skor_versi && ` Skor sementara versi ${p.skor_versi}, belum disetujui CV Arba'in.`}
         </p>
       </section>
+      <RincianConfidence p={p} detail={detail} />
       <Consent p={p} onUpdated={onUpdated} />
       <DrafPembuka p={p} onUpdated={onUpdated} />
       <StatusButtons p={p} onStatus={onStatus} />
@@ -484,21 +490,29 @@ function TabNba({ p, busy, onRun, onStatus }: { p: Prospect; busy: boolean; onRu
 
 export function ProspectDrawer({
   p,
+  segmen = [],
   onClose,
   onStatus,
   onUpdated,
 }: {
   p: Prospect | null
+  segmen?: string[]
   onClose: () => void
   onStatus: (p: Prospect, s: Prospect["status"]) => void
   onUpdated: (p: Prospect) => void
 }) {
-  const [activeTab, setActiveTab] = useState<"dasar" | "market" | "nba">("dasar")
+  const [activeTab, setActiveTab] = useState<Tab>("dasar")
   const [busy, setBusy] = useState(false)
   const id = p?.id
+  const { data: detail, error: galatDetail, mutate: muatDetail } = useSWR<LeadDetail>(id ? `/api/prospects/${id}` : null, fetcher)
+  const versi = p ? [p.id, p.diperbarui_pada, p.status, p.consent_status, p.verifikasi, p.skor].join(":") : null
   useEffect(() => {
     setActiveTab("dasar")
   }, [id])
+  // Riwayat dan aktivitas ikut diperbarui setiap lead berubah.
+  useEffect(() => {
+    if (versi) void muatDetail()
+  }, [versi, muatDetail])
 
   async function runResearch() {
     if (!p) return
@@ -527,6 +541,7 @@ export function ProspectDrawer({
               </div>
               <div className="flex flex-wrap gap-1.5">
                 <Pill>{p.tipe}</Pill>
+                <Pill>{p.sumber_label}</Pill>
                 <Pill>{p.jarak_km != null ? `${p.jarak_km.toLocaleString("id-ID")} km` : "—"}</Pill>
                 {p.osm_id && (
                   <a
@@ -544,7 +559,10 @@ export function ProspectDrawer({
               <TabsHeader active={activeTab} onChange={setActiveTab} />
             </SheetHeader>
             <div className="px-4 pb-8">
-              {activeTab === "dasar" && <TabDasar p={p} onStatus={onStatus} onUpdated={onUpdated} />}
+              {activeTab === "dasar" && <TabDasar p={p} detail={detail?.id === p.id ? detail : undefined} onStatus={onStatus} onUpdated={onUpdated} />}
+              {activeTab === "riwayat" && (
+                <TabRiwayat p={p} detail={detail?.id === p.id ? detail : undefined} galat={galatDetail} segmen={segmen} onUlang={() => muatDetail()} onUpdated={onUpdated} />
+              )}
               {activeTab === "market" && <TabMarket p={p} busy={busy} onRun={runResearch} />}
               {activeTab === "nba" && <TabNba p={p} busy={busy} onRun={runResearch} onStatus={onStatus} />}
             </div>

@@ -35,6 +35,10 @@ def _nomor_diblokir(db: Session, p: Prospect) -> bool:
 
 
 def alasan_blokir(db: Session, p: Prospect) -> tuple[str, str] | None:
+    if p.digabung_ke_id:
+        return "DIGABUNG", f"Lead ini sudah digabung ke lead {p.digabung_ke_id}."
+    if p.verifikasi == "ditolak":
+        return "DITOLAK_VERIFIKASI", "Lead ini ditolak saat verifikasi."
     if p.consent_status == OPTED_OUT:
         return "OPTED_OUT", "Lead ini sudah menolak dihubungi untuk promosi."
     if p.status == "menolak":

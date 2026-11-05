@@ -271,7 +271,7 @@ class Prospect(Base):
     dikumpulkan_pada: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     confidence: Mapped[float | None] = mapped_column(Float, nullable=True)  # 0-1; kosong = belum dihitung
     skor_versi: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    verifikasi: Mapped[str] = mapped_column(String(16), default="belum", server_default="belum", index=True)  # belum | perlu_tinjauan | terverifikasi | ditolak
+    verifikasi: Mapped[str] = mapped_column(String(16), default="belum", server_default="belum", index=True)  # belum | terverifikasi | ditolak (perlu tinjauan dihitung, lihat prospects/tinjauan.py)
     terakhir_diverifikasi: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     consent_status: Mapped[str] = mapped_column(String(16), default="UNKNOWN", server_default="UNKNOWN", index=True)  # UNKNOWN | GRANTED | OPTED_OUT
     consent_sumber: Mapped[str | None] = mapped_column(String(200), nullable=True)
@@ -305,11 +305,45 @@ class LeadDuplikat(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     lead_id: Mapped[int] = mapped_column(ForeignKey("prospects.id"), index=True)
     lead_cocok_id: Mapped[int] = mapped_column(ForeignKey("prospects.id"), index=True)
+    tingkat: Mapped[str] = mapped_column(String(8), default="mungkin")  # pasti | mungkin
     alasan: Mapped[list] = mapped_column(JSON, default=list)
-    keputusan: Mapped[str] = mapped_column(String(16), default="menunggu", index=True)  # menunggu | digabung | bukan_duplikat
+    keputusan: Mapped[str] = mapped_column(String(16), default="menunggu", index=True)  # menunggu | digabung | bukan_duplikat | gugur
     diputuskan_oleh: Mapped[str | None] = mapped_column(String(120), nullable=True)
     diputuskan_pada: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     dibuat_pada: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class LeadSkorRiwayat(Base):
+    """Satu baris setiap kali skor, versi, atau confidence sebuah lead berubah."""
+
+    __tablename__ = "lead_skor_riwayat"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    lead_id: Mapped[int] = mapped_column(ForeignKey("prospects.id"), index=True)
+    skor: Mapped[int] = mapped_column(Integer)
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    skor_versi: Mapped[str] = mapped_column(String(32))
+    faktor: Mapped[list] = mapped_column(JSON, default=list)
+    pemicu: Mapped[str] = mapped_column(String(24))  # pindai | manual | impor | ubah_data | verifikasi | hitung_ulang | gabung | migrasi
+    dibuat_pada: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class LeadImpor(Base):
+    """Impor lead: unggah → validasi → pratinjau → konfirmasi. Isi baris dihapus setelah diterapkan atau dibatalkan."""
+
+    __tablename__ = "lead_impor"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    token: Mapped[str] = mapped_column(String(40), unique=True, index=True)
+    nama_file: Mapped[str] = mapped_column(String(300), default="")
+    sha256: Mapped[str] = mapped_column(String(64), index=True)
+    source_type: Mapped[str] = mapped_column(String(24))
+    source_reference: Mapped[str] = mapped_column(String(300))
+    status: Mapped[str] = mapped_column(String(16), default="pratinjau")  # pratinjau | diterapkan | dibatalkan
+    baris: Mapped[list] = mapped_column(JSON, default=list)
+    laporan: Mapped[dict] = mapped_column(JSON, default=dict)
+    hasil: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    dibuat_oleh: Mapped[str] = mapped_column(String(120), default="")
+    dibuat_pada: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    diterapkan_pada: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class KatalogImpor(Base):

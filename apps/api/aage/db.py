@@ -132,6 +132,10 @@ def _migrate_channel_identity() -> None:
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_messages_external_message_id ON messages (external_message_id)"))
 
 
+CONFIDENCE_SQL = ("ROUND((CASE WHEN lat IS NOT NULL AND lng IS NOT NULL THEN 1 ELSE 0 END + CASE WHEN telepon IS NOT NULL THEN 1 ELSE 0 END "
+                  "+ CASE WHEN alamat_jalan_ada THEN 1 ELSE 0 END + CASE WHEN jam_buka IS NOT NULL OR website IS NOT NULL THEN 1 ELSE 0 END) * 0.2, 2)")
+
+
 def _isi_kolom_leads() -> None:
     """Database lokal lama yang kolomnya baru ditambahkan: isi nilai awal dan asal data. Idempoten; online memakai migrasi 0002."""
     from sqlalchemy import inspect
@@ -144,6 +148,11 @@ def _isi_kolom_leads() -> None:
         conn.execute(text("UPDATE prospects SET diperbarui_pada = dibuat_pada WHERE diperbarui_pada IS NULL"))
         conn.execute(text("UPDATE prospects SET dikumpulkan_pada = COALESCE(terakhir_dipindai, dibuat_pada) WHERE dikumpulkan_pada IS NULL"))
         conn.execute(text("UPDATE prospects SET skor_versi = 'draf-geo-data-v0' WHERE skor_versi IS NULL"))
+        conn.execute(text(f"UPDATE prospects SET confidence = {CONFIDENCE_SQL} WHERE confidence IS NULL"))
+        conn.execute(text(
+            "INSERT INTO lead_skor_riwayat (lead_id, skor, confidence, skor_versi, faktor, pemicu, dibuat_pada) "
+            "SELECT id, skor, confidence, skor_versi, alasan_skor, 'migrasi', dikumpulkan_pada FROM prospects p "
+            "WHERE NOT EXISTS (SELECT 1 FROM lead_skor_riwayat r WHERE r.lead_id = p.id)"))
         conn.execute(text(
             "INSERT INTO lead_evidence (lead_id, source_type, source_reference, dikumpulkan_pada, dibuat_pada) "
             "SELECT id, sumber, COALESCE(eksternal_id, 'prospect:' || CAST(id AS TEXT)), dikumpulkan_pada, dikumpulkan_pada FROM prospects p "

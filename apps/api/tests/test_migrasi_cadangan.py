@@ -137,9 +137,14 @@ def test_migrasi_0002_mengisi_baris_lead_lama_tanpa_menghapus():
         baris = c.execute(text("SELECT nama, status, consent_status, verifikasi, skor_versi, diperbarui_pada IS NOT NULL, "
                                "dikumpulkan_pada IS NOT NULL FROM prospects ORDER BY id")).all()
         bukti = c.execute(text("SELECT source_type, source_reference FROM lead_evidence ORDER BY lead_id")).all()
+        riwayat = c.execute(text("SELECT lead_id, skor, skor_versi, pemicu FROM lead_skor_riwayat ORDER BY lead_id")).all()
+        confidence = c.execute(text("SELECT confidence FROM prospects ORDER BY id")).scalars().all()
+        rls = c.execute(text("SELECT count(*) FROM pg_class WHERE relname IN ('lead_impor', 'lead_skor_riwayat', 'lead_evidence', 'lead_duplikat') AND relrowsecurity")).scalar()
     assert [tuple(b) for b in baris] == [("Asli", "dihubungi", "UNKNOWN", "belum", "draf-geo-data-v0", True, True),
                                          ("Demo", "dihubungi", "UNKNOWN", "belum", "draf-geo-data-v0", True, True)]
     assert [tuple(b) for b in bukti] == [("osm", "osm:node/1"), ("sintetis", "prospect:2")]
+    assert [tuple(r) for r in riwayat] == [(1, 10, "draf-geo-data-v0", "migrasi"), (2, 10, "draf-geo-data-v0", "migrasi")]
+    assert confidence == [0, 0] and rls == 4
     engine.dispose()
 
 
