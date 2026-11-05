@@ -16,7 +16,7 @@ from collections import Counter
 from dataclasses import dataclass
 from datetime import date
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from .. import clock, ledger, llm
@@ -25,6 +25,7 @@ from . import ingest, verifikasi
 
 KATALOG_JUDUL = "Katalog Produk"
 KEBIJAKAN_JUDUL = "Kebijakan Penjualan"
+_KUNCI_KATALOG = 7212601
 MAKS_UKURAN = 5 * 1024 * 1024
 MAKS_BARIS = 2000
 
@@ -455,21 +456,32 @@ def _kebijakan_markdown(kebijakan: list[dict]) -> str:
     return f"# {KEBIJAKAN_JUDUL}\n\n" + "\n\n".join(bagian) + "\n"
 
 
+def periksa_siap(db: Session, token: str, *, lewati_error: bool = False, status: str = "pratinjau") -> KatalogImpor:
+    if db.get_bind().dialect.name == "postgresql":
+        db.execute(select(func.pg_advisory_xact_lock(_KUNCI_KATALOG)))  # dua penggantian tidak boleh berjalan bersamaan
+    try:
+        imp = db.scalar(select(KatalogImpor).where(KatalogImpor.token == token))
+        if imp is None:
+            raise ImporDitolak("Pratinjau tidak ditemukan.")
+        if imp.status != status:
+            raise ImporDitolak(f"Pratinjau ini sudah {imp.status}.")
+        lap = imp.laporan or {}
+        if not imp.produk:
+            raise ImporDitolak("Tidak ada baris produk yang valid.")
+        if lap.get("error") and not lewati_error:
+            raise ImporDitolak(f"Ada {lap['ringkasan']['error']} baris error. Perbaiki file, atau konfirmasi untuk "
+                               "melewati baris yang salah.")
+        if lap.get("versi_katalog") != _versi_katalog(db):
+            raise ImporDitolak("Katalog sudah berubah sejak pratinjau dibuat. Unggah ulang file untuk pratinjau baru.")
+    except ImporDitolak:
+        db.rollback()  # lepaskan kunci katalog sekarang: pemanggil belum menulis apa pun, dan permintaan lain menunggu kunci ini
+        raise
+    return imp
+
+
 def terapkan(db: Session, token: str, aktor: str, *, lewati_error: bool = False) -> dict:
     """Terapkan pratinjau dalam satu transaksi. Gagal di mana pun → rollback, katalog lama tetap."""
-    imp = db.scalar(select(KatalogImpor).where(KatalogImpor.token == token))
-    if imp is None:
-        raise ImporDitolak("Pratinjau tidak ditemukan.")
-    if imp.status != "pratinjau":
-        raise ImporDitolak(f"Pratinjau ini sudah {imp.status}.")
-    lap = imp.laporan or {}
-    if not imp.produk:
-        raise ImporDitolak("Tidak ada baris produk yang valid.")
-    if lap.get("error") and not lewati_error:
-        raise ImporDitolak(f"Ada {lap['ringkasan']['error']} baris error. Perbaiki file, atau konfirmasi untuk "
-                           "melewati baris yang salah.")
-    if lap.get("versi_katalog") != _versi_katalog(db):
-        raise ImporDitolak("Katalog sudah berubah sejak pratinjau dibuat. Unggah ulang file untuk pratinjau baru.")
+    imp = periksa_siap(db, token, lewati_error=lewati_error)
     try:
         hasil = _terapkan(db, imp, aktor)
         db.commit()
@@ -491,7 +503,8 @@ def _status_kebijakan(kebijakan: list[dict]) -> tuple[str, str | None, date | No
     return verifikasi.terlemah([v["status"] for v in verif]) or verifikasi.BELUM, bukti, berlaku
 
 
-def _terapkan(db: Session, imp: KatalogImpor, aktor: str) -> dict:
+def _terapkan(db: Session, imp: KatalogImpor, aktor: str, *, singkirkan=None) -> dict:
+    """`singkirkan(db, doc_baru, produk_baru)` dipakai Ganti Katalog: membersihkan katalog lama di transaksi yang sama."""
     now = clock.now()
     catat = verifikasi.PencatatImpor(db, aktor)
     versi = max([d.versi for d in db.scalars(select(Document).where(Document.tipe == "katalog"))], default=0) + 1
@@ -562,9 +575,13 @@ def _terapkan(db: Session, imp: KatalogImpor, aktor: str) -> dict:
                "kebijakan_versi": kebijakan_doc.versi if kebijakan_doc else None,
                "baris_dilewati": imp.laporan["ringkasan"]["error"],
                "status_fakta": dict(catat.hitung)}
-    ledger.record(db, "katalog_diimpor", aktor=aktor, objek_ref=f"document:{doc.id}", outcome="sukses",
+    if singkirkan:
+        ringkas["disingkirkan"] = singkirkan(db, {doc.id, *([kebijakan_doc.id] if kebijakan_doc else [])}, dipakai)
+    ledger.record(db, "katalog_diganti" if singkirkan else "katalog_diimpor", aktor=aktor, objek_ref=f"document:{doc.id}",
+                  outcome="sukses",
                   ringkasan=f"{sumber}: {len(imp.produk)} produk, {n_klaim} klaim, {len(nonaktif)} dinonaktifkan"
-                  + (", kebijakan diganti" if kebijakan_doc else ""),
+                  + (", kebijakan diganti" if kebijakan_doc else "")
+                  + (f"; katalog lama: {ringkas['disingkirkan']['mode']}" if singkirkan else ""),
                   sumber_ref=[{"document_id": doc.id, "versi": versi, "judul": KATALOG_JUDUL}], data=ringkas,
                   model=llm.OFFLINE_MODEL)
     return ringkas

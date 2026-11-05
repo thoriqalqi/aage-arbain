@@ -11,6 +11,13 @@ def admin(client):
     return {"Authorization": f"Bearer {tok}"}
 
 
+@pytest.fixture
+def auth(client):
+    """Studio Konten milik Marketing dan Admin. Peran penjualan diuji di test_konten_agen.py."""
+    tok = client.post("/api/auth/login", json={"email": "marketing@aage.local", "password": "marketing123"}).json()["token"]
+    return {"Authorization": f"Bearer {tok}"}
+
+
 def _gen(client, h, tipe="artikel", topik="stamina saat musim hujan"):
     r = client.post("/api/content/generate", headers=h, json={"product_id": 1, "topik": topik, "target": "apotek", "tipe": tipe})
     assert r.status_code == 200, r.text

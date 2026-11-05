@@ -62,7 +62,7 @@ Prasyarat: Python 3.12, Node 20.
 cd apps/api
 python -m venv .venv && .venv/Scripts/pip install -r requirements.txt   # Linux/macOS: .venv/bin/pip
 .venv/Scripts/python -m aage.seed          # reset + seed data demo (SQLite ./aage.db)
-.venv/Scripts/python -m uvicorn aage.main:app --port 8000
+IZINKAN_DB_LOKAL=true .venv/Scripts/python -m uvicorn aage.main:app --port 8000   # tanpa ini API hanya mau start pada database online
 ```
 
 ```bash

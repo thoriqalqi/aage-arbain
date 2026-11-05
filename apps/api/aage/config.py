@@ -14,6 +14,14 @@ def adalah_online(url: str) -> bool:
     return u.get_backend_name() == "postgresql" and (u.host or "localhost") not in _HOST_LOKAL
 
 
+def sumber_database(url: str) -> dict:
+    """Jenis dan alamat database untuk log dan dashboard. Tidak pernah memuat nama pengguna atau kata sandi."""
+    u = make_url(url)
+    if u.get_backend_name() == "sqlite":
+        return {"jenis": "sqlite", "host": None, "nama": (u.database or "").replace("\\", "/").rsplit("/", 1)[-1]}
+    return {"jenis": "online" if adalah_online(url) else "postgres_lokal", "host": u.host or "localhost", "nama": u.database}
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
@@ -22,6 +30,9 @@ class Settings(BaseSettings):
 
     # Database: Postgres 16 + pgvector di produksi; SQLite untuk dev lokal tanpa Docker.
     database_url: str = "sqlite:///./aage.db"
+    # API menolak start bila database bukan yang online, supaya agent tidak diam-diam menjawab dari aage.db.
+    # Hanya tes, eval, dan salinan uji yang menyalakan ini.
+    izinkan_db_lokal: bool = False
 
     # Auth
     jwt_secret: str = "dev-saja-ganti-JWT_SECRET-di-env-min-32-karakter"
@@ -98,6 +109,8 @@ class Settings(BaseSettings):
 
     # Prospek: Live Lead Scouting (OpenStreetMap Overpass, tanpa API key) + Opportunity Score
     serper_api_key: str = ""  # Live AI Search Audit (google.serper.dev); kosong = tidak terhubung
+    situs_resmi: str = ""  # Alamat situs resmi mitra untuk JSON-LD; kosong = tidak disebut, tidak dikarang
+    pola_url_produk: str = ""  # Alamat halaman produk, memuat {sku} atau {slug}; kosong = saran tautan tanpa alamat
     overpass_urls: str = "https://overpass-api.de/api/interpreter,https://overpass.private.coffee/api/interpreter"
     overpass_timeout_s: float = 25.0
     prospek_max_results: int = 100

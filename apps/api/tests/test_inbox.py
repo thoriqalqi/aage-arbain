@@ -2,10 +2,12 @@
 
 from datetime import timedelta
 
+from sqlalchemy import event
+
 from aage import clock
 from aage.agents.graph import handle_inbound
-from aage.db import SessionLocal
-from aage.models import Conversation, LedgerEvent
+from aage.db import SessionLocal, engine
+from aage.models import Conversation, LedgerEvent, Message
 
 
 def _conv(text: str, wa: str) -> int:
@@ -75,3 +77,41 @@ def test_conversation_list_reports_waiting_since(client, auth):
     items = client.get("/api/conversations?status=eskalasi", headers=auth).json()["items"]
     item = next(i for i in items if i["id"] == res.conversation_id)
     assert item["approval_menunggu"] >= 1 and item["menunggu_sejak"]
+
+
+def _jumlah_query(client, auth, path: str) -> tuple[int, dict]:
+    hitung = {"n": 0}
+
+    def tambah(*_):
+        hitung["n"] += 1
+
+    event.listen(engine, "before_cursor_execute", tambah)
+    try:
+        r = client.get(path, headers=auth)
+    finally:
+        event.remove(engine, "before_cursor_execute", tambah)
+    assert r.status_code == 200
+    return hitung["n"], r.json()
+
+
+def test_daftar_inbox_dan_approval_jumlah_query_tidak_ikut_jumlah_percakapan(client, auth):
+    _conv("ada madu stamina?", "6281300000201")
+    _conv("bisa menyembuhkan diabetes?", "6281300000202")
+    awal_inbox, _ = _jumlah_query(client, auth, "/api/conversations")
+    awal_approval, _ = _jumlah_query(client, auth, "/api/approvals?status=semua")
+
+    for i in range(203, 208):
+        _conv("bisa menyembuhkan diabetes?", f"62813000002{i - 200:02d}")
+
+    akhir_inbox, inbox = _jumlah_query(client, auth, "/api/conversations")
+    akhir_approval, approvals = _jumlah_query(client, auth, "/api/approvals?status=semua")
+    assert akhir_inbox == awal_inbox
+    assert akhir_approval == awal_approval
+
+    with SessionLocal() as db:
+        for item in inbox["items"]:
+            terakhir = db.query(Message).filter(Message.conversation_id == item["id"]).order_by(Message.id.desc()).first()
+            assert item["pesan_terakhir"]["id"] == terakhir.id
+            assert item["contact"]["id"] == db.get(Conversation, item["id"]).contact_id
+    terkait = [a for a in approvals["items"] if a["conversation_id"]]
+    assert terkait and all(a["contact"] for a in terkait)

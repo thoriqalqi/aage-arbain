@@ -71,6 +71,7 @@ IZIN = {
     "leads.atur": {"admin"},
     "penjualan": {"admin", "staf"},  # Inbox, simulator, balasan, approval non-konten, invoice
     "klaim.verifikasi": {"admin"},
+    "konten": {"admin", "marketing"},  # Studio Konten, audit halaman, approval konten
 }
 
 

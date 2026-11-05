@@ -550,7 +550,7 @@ export type KatalogMasalah = { baris: number; kolom: string; alasan: string; she
 export type KatalogPratinjau = {
   token: string
   nama_file: string
-  status: "pratinjau" | "diterapkan" | "dibatalkan"
+  status: "pratinjau" | "diproses" | "diterapkan" | "dibatalkan"
   dibuat_pada: string
   laporan: {
     ringkasan: {
@@ -574,4 +574,55 @@ export type KatalogPratinjau = {
     contoh: { baris: number; sku: string; nama: string; harga_dasar: number; moq: number; stok: number | null; no_izin_edar: string; halal: string | null; bko: string | null }[]
     ganti_kebijakan: boolean
   }
+}
+
+export type ModeGantiKatalog = "nonaktif" | "hapus"
+
+export type KatalogGantiDampak = {
+  produk: number
+  produk_nama: string[]
+  produk_terkunci: string[]
+  dokumen: string[]
+  dokumen_tetap: string[]
+  kebijakan: "diganti" | "tetap" | "hilang" | "tidak_ada"
+  konten_dilepas: number
+  draf_menunggu: number
+  klaim: number
+  tier: number
+  chunk: number
+  verifikasi: number
+}
+
+export type KatalogGantiRingkasan = {
+  sumber: { jenis: "online" | "postgres_lokal" | "sqlite"; host: string | null; nama: string | null }
+  mode_data: "produksi" | "demo"
+  sekarang: { produk: number; produk_arsip: number; tampak_demo: boolean; klaim: number; tier: number; chunk: number; dokumen: string[] }
+  terakhir_diganti: { pada: string; mode: ModeGantiKatalog } | null
+  tidak_disentuh: { ledger: number; percakapan: number; pesan: number; kontak: number }
+  konfirmasi_hapus: string
+  dampak?: KatalogGantiDampak
+}
+
+export type KatalogGantiHasil = {
+  versi: number
+  produk: number
+  klaim: number
+  status_fakta: Partial<Record<StatusVerifikasi, number>>
+  disingkirkan: {
+    mode: ModeGantiKatalog
+    produk: number
+    dokumen: number
+    produk_terkunci: number
+    konten_dilepas?: number
+    klaim: number
+    tier: number
+    chunk: number
+    verifikasi: number
+  }
+}
+
+export type KatalogGantiStatus = {
+  status: KatalogPratinjau["status"]
+  hasil: KatalogGantiHasil | null
+  gagal: string | null
 }

@@ -44,7 +44,7 @@ function useIsWide(px: number) {
 function ConversationList({ selected, onSelect }: { selected: number | null; onSelect: (id: number) => void }) {
   const [filter, setFilter] = useState("")
   const [q, setQ] = useState("")
-  const { data } = useSWR<{ items: ConversationSummary[]; jumlah_per_status: Record<string, number> }>(
+  const { data, error } = useSWR<{ items: ConversationSummary[]; jumlah_per_status: Record<string, number> }>(
     `/api/conversations${filter ? `?status=${filter}` : ""}`,
     fetcher,
     { refreshInterval: 5000 },
@@ -80,7 +80,11 @@ function ConversationList({ selected, onSelect }: { selected: number | null; onS
       </div>
       <div className="scrollbar-thin flex-1 overflow-y-auto">
         {!data ? (
-          <SkeletonRows className="p-3" rows={8} />
+          error ? (
+            <EmptyState title="Daftar percakapan belum termuat" description="Server lambat atau terputus. Halaman ini mencoba lagi otomatis." />
+          ) : (
+            <SkeletonRows className="p-3" rows={8} />
+          )
         ) : items.length === 0 ? (
           <EmptyState title="Belum ada percakapan" description="Pesan WhatsApp atau web chat akan muncul di sini." />
         ) : (
@@ -195,10 +199,10 @@ function ChatPanel({ id, onOpenContext, showContextButton }: { id: number; onOpe
   const [sending, setSending] = useState(false)
   const [blocked, setBlocked] = useState<CheckResult | null>(null)
   const [toggling, setToggling] = useState(false)
-  const bottom = useRef<HTMLDivElement>(null)
+  const kolomChat = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    bottom.current?.scrollIntoView({ block: "end" })
-  }, [data?.pesan.length])
+    if (kolomChat.current) kolomChat.current.scrollTop = kolomChat.current.scrollHeight
+  }, [id, data?.pesan.length])
 
   async function send() {
     if (!text.trim()) return
@@ -268,7 +272,7 @@ function ChatPanel({ id, onOpenContext, showContextButton }: { id: number; onOpe
           </AButton>
         )}
       </div>
-      <div className="scrollbar-thin flex-1 space-y-3 overflow-y-auto bg-canvas p-4">
+      <div ref={kolomChat} className="scrollbar-thin flex-1 space-y-3 overflow-y-auto bg-canvas p-4">
         {data.pesan.map((m) => (
           <div key={m.id}>
             <ChatBubble message={m} />
@@ -282,9 +286,8 @@ function ChatPanel({ id, onOpenContext, showContextButton }: { id: number; onOpe
                 ))}
           </div>
         ))}
-        <div ref={bottom} />
       </div>
-      <InlineApprovals approvals={data.approvals} onDone={() => mutate()} />
+      <InlineApprovals key={id} approvals={data.approvals} onDone={() => mutate()} />
       {handled && <SaranAI saran={data.saran_ai} onUse={setText} />}
       <WindowNotice jendela={data.jendela} />
       {blocked && (

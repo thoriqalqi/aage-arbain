@@ -8,7 +8,8 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPExcepti
 from fastapi.responses import HTMLResponse, PlainTextResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import func, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.exc import InterfaceError, OperationalError
+from sqlalchemy.orm import Session, joinedload
 
 from . import agent_status, claimguard, clock, eval_api, inbox, kpi, ledger, ledger_chain, llm, settings_store
 from . import approvals as approval_svc
@@ -23,7 +24,7 @@ from .config import get_settings
 from .content import audit as audit_svc
 from .content import studio
 from .db import SessionLocal, get_db
-from .kb import ingest, katalog_impor, verifikasi
+from .kb import ganti_katalog, ingest, katalog_impor, verifikasi
 from .kb.retriever import document_by_id
 from .models import (
     Approval,
@@ -101,15 +102,32 @@ def wa_verify(hub_mode: str = Query(None, alias="hub.mode"), hub_token: str = Qu
     raise HTTPException(403, "Token verifikasi tidak cocok")
 
 
+PESAN_DB_GANGGUAN = ("Maaf Kak, sistem kami sedang ada gangguan sehingga pesan ini belum bisa diproses. "
+                     "Mohon kirim lagi beberapa saat lagi ya 🙏")
+
+
+def _kabari_gangguan(m: InboundMessage) -> None:
+    """Database tidak terjangkau: tidak ada data untuk dijawab dan tidak ada sumber cadangan. Pembeli diberi tahu apa adanya.
+    Langsung lewat adapter karena sender.py perlu database; teksnya tetap dan tidak memuat fakta produk."""
+    try:
+        registry.get(m.channel).send_text(m.external_user_id, PESAN_DB_GANGGUAN)
+    except Exception:
+        log.exception("Pesan gangguan tidak terkirim untuk %s", m.external_message_id)
+
+
 def _process_inbound(messages: list[InboundMessage]) -> None:
     with SessionLocal() as db:
         for m in messages:
-            if db.scalar(select(Message.id).where(Message.external_message_id == m.external_message_id)):
-                continue  # kanal bisa mengirim ulang webhook yang sama
-            registry.get(m.channel).typing(m.external_user_id)
             try:
+                if db.scalar(select(Message.id).where(Message.external_message_id == m.external_message_id)):
+                    continue  # kanal bisa mengirim ulang webhook yang sama
+                registry.get(m.channel).typing(m.external_user_id)
                 handle_inbound(db, channel=m.channel, external_user_id=m.external_user_id, text=m.text,
                                external_message_id=m.external_message_id, nama=m.nama, telepon=m.telepon)
+            except (OperationalError, InterfaceError):
+                log.exception("Database tidak terjangkau saat memproses pesan %s", m.external_message_id)
+                db.rollback()
+                _kabari_gangguan(m)
             except Exception:
                 log.exception("Gagal memproses pesan %s", m.external_message_id)
                 db.rollback()
@@ -201,16 +219,18 @@ def chat_messages(session: str, after_id: int = 0, user: User = Depends(require_
 @router.get("/conversations")
 def conversations(status: str | None = None, q: str | None = None, user: User = Depends(require_izin("penjualan")),
                   db: Session = Depends(get_db)):
-    stmt = select(Conversation).order_by(Conversation.diperbarui_pada.desc()).limit(200)
+    stmt = select(Conversation).options(joinedload(Conversation.contact)).order_by(Conversation.diperbarui_pada.desc()).limit(200)
     if status:
         stmt = stmt.where(Conversation.status == status)
     convs = list(db.scalars(stmt))
+    id_terakhir = select(func.max(Message.id)).where(Message.conversation_id.in_([c.id for c in convs])).group_by(Message.conversation_id)
+    pesan_terakhir = {m.conversation_id: m for m in db.scalars(select(Message).where(Message.id.in_(id_terakhir)))}
     pending = {cid: (n, oldest) for cid, n, oldest in db.execute(
         select(Approval.conversation_id, func.count(), func.min(Approval.dibuat_pada))
         .where(Approval.status == "menunggu").group_by(Approval.conversation_id)).all()}
     out = []
     for c in convs:
-        last = db.scalar(select(Message).where(Message.conversation_id == c.id).order_by(Message.id.desc()))
+        last = pesan_terakhir.get(c.id)
         if q and q.lower() not in f"{c.contact.nama_toko or ''} {c.contact.nama_wa or ''} {last.teks if last else ''}".lower():
             continue
         n, oldest = pending.get(c.id, (0, None))
@@ -356,11 +376,12 @@ def approvals(status: str = "menunggu", user: User = Depends(current_user), db: 
         stmt = stmt.where(Approval.status == status)
     if not punya_izin(user, "penjualan"):
         stmt = stmt.where(Approval.objek_tipe == "konten")
-    items = []
-    for a in db.scalars(stmt.limit(200)):
-        conv = db.get(Conversation, a.conversation_id) if a.conversation_id else None
-        items.append(ser.approval(a, conv, user))
-    return {"items": items}
+    elif not punya_izin(user, "konten"):
+        stmt = stmt.where(Approval.objek_tipe != "konten")
+    baris = list(db.scalars(stmt.limit(200)))
+    id_conv = {a.conversation_id for a in baris if a.conversation_id}
+    convs = {c.id: c for c in db.scalars(select(Conversation).options(joinedload(Conversation.contact)).where(Conversation.id.in_(id_conv)))}
+    return {"items": [ser.approval(a, convs.get(a.conversation_id), user) for a in baris]}
 
 
 @router.post("/approvals/{approval_id}/decide")
@@ -368,6 +389,8 @@ def decide(approval_id: int, body: DecideIn, user: User = Depends(current_user),
     target = db.get(Approval, approval_id)
     if target is not None and target.objek_tipe != "konten" and not punya_izin(user, "penjualan"):
         raise HTTPException(403, "Peran Anda hanya bisa memutus approval konten")
+    if target is not None and target.objek_tipe == "konten" and not punya_izin(user, "konten"):
+        raise HTTPException(403, "Approval konten diputus oleh Marketing atau Admin")
     try:
         ap = approval_svc.decide(db, approval_id, aksi=body.aksi, user=user, teks=body.teks, catatan=body.catatan)
     except approval_svc.ApprovalError as exc:
@@ -548,6 +571,39 @@ def katalog_impor_batal(token: str, user: User = Depends(require_admin), db: Ses
     return _impor_json(imp)
 
 
+@router.get("/katalog/ganti/ringkasan")
+def katalog_ganti_ringkasan(token: str | None = None, user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    """Katalog yang sedang dipakai agent dan, bila ada pratinjau, apa saja yang akan disingkirkan. Hanya membaca."""
+    return ganti_katalog.ringkasan(db, token)
+
+
+class GantiKatalogIn(BaseModel):
+    mode: str
+    konfirmasi: str = ""
+    lewati_error: bool = False
+
+
+@router.post("/katalog/ganti/{token}", status_code=202)
+def katalog_ganti(token: str, body: GantiKatalogIn, background: BackgroundTasks, user: User = Depends(require_admin),
+                  db: Session = Depends(get_db)):
+    """Mengganti seluruh katalog di latar belakang; dashboard memantau lewat GET. Selesai = agent langsung memakai data baru."""
+    aktor = f"staf:{user.nama}"
+    try:
+        ganti_katalog.mulai(db, token, aktor, mode=body.mode, konfirmasi=body.konfirmasi, lewati_error=body.lewati_error)
+    except ganti_katalog.GantiDitolak as exc:
+        raise HTTPException(409, str(exc)) from None
+    background.add_task(ganti_katalog.jalankan, token, aktor, mode=body.mode, lewati_error=body.lewati_error)
+    return {"status": ganti_katalog.DIPROSES}
+
+
+@router.get("/katalog/ganti/{token}")
+def katalog_ganti_status(token: str, user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    hasil = ganti_katalog.status(db, token)
+    if hasil is None:
+        raise HTTPException(404, "Pratinjau tidak ditemukan")
+    return hasil
+
+
 @router.get("/kb/documents")
 def kb_documents(user: User = Depends(current_user), db: Session = Depends(get_db)):
     docs = db.scalars(select(Document).order_by(Document.id.desc()))
@@ -690,7 +746,7 @@ class GenerateIn(BaseModel):
 
 
 @router.post("/content/generate")
-def content_generate(body: GenerateIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def content_generate(body: GenerateIn, user: User = Depends(require_izin("konten")), db: Session = Depends(get_db)):
     try:
         d = studio.generate(db, product_id=body.product_id, topik=body.topik, target=body.target, tipe=body.tipe,
                             aktor=f"staf:{user.nama}")
@@ -700,7 +756,7 @@ def content_generate(body: GenerateIn, user: User = Depends(current_user), db: S
 
 
 @router.get("/content")
-def content_list(arsip: bool = False, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def content_list(arsip: bool = False, user: User = Depends(require_izin("konten")), db: Session = Depends(get_db)):
     stmt = select(ContentDraft).order_by(ContentDraft.id.desc())
     if not arsip:
         stmt = stmt.where(ContentDraft.status != "diarsipkan")
@@ -714,7 +770,7 @@ def content_sample_page():
 
 
 @router.get("/content/{content_id}")
-def content_get(content_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def content_get(content_id: int, user: User = Depends(require_izin("konten")), db: Session = Depends(get_db)):
     d = db.get(ContentDraft, content_id)
     if d is None:
         raise HTTPException(404, "Konten tidak ditemukan")
@@ -729,12 +785,50 @@ class ContentPatch(BaseModel):
 
 
 @router.patch("/content/{content_id}")
-def content_patch(content_id: int, body: ContentPatch, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def content_patch(content_id: int, body: ContentPatch, user: User = Depends(require_izin("konten")), db: Session = Depends(get_db)):
     d = db.get(ContentDraft, content_id)
     if d is None:
         raise HTTPException(404, "Konten tidak ditemukan")
     try:
         studio.edit(db, d, body.model_dump(), f"staf:{user.nama}")
+    except studio.ContentError as exc:
+        raise HTTPException(409, str(exc)) from None
+    return ser.content(d)
+
+
+def _draf_atau_404(db: Session, content_id: int) -> ContentDraft:
+    d = db.get(ContentDraft, content_id)
+    if d is None:
+        raise HTTPException(404, "Konten tidak ditemukan")
+    return d
+
+
+@router.get("/content/{content_id}/seo")
+def content_seo(content_id: int, user: User = Depends(require_izin("konten")), db: Session = Depends(get_db)):
+    return studio.seo_report(db, _draf_atau_404(db, content_id))
+
+
+@router.get("/content/{content_id}/versi")
+def content_versi(content_id: int, user: User = Depends(require_izin("konten")), db: Session = Depends(get_db)):
+    _draf_atau_404(db, content_id)
+    return {"items": [{"nomor": v.nomor, "perubahan": v.perubahan, "aktor": v.aktor, "judul": v.judul, "claim_verdict": v.claim_verdict,
+                       "dibuat_pada": ser.ts(v.dibuat_pada)} for v in studio.versi_list(db, content_id)]}
+
+
+@router.get("/content/{content_id}/versi/{nomor}")
+def content_versi_detail(content_id: int, nomor: int, user: User = Depends(require_izin("konten")), db: Session = Depends(get_db)):
+    try:
+        v = studio.beda_versi(db, _draf_atau_404(db, content_id), nomor)
+    except studio.ContentError as exc:
+        raise HTTPException(404, str(exc)) from None
+    return {**v, "dibuat_pada": ser.ts(v["dibuat_pada"])}
+
+
+@router.post("/content/{content_id}/versi/{nomor}/pulihkan")
+def content_pulihkan(content_id: int, nomor: int, user: User = Depends(require_izin("konten")), db: Session = Depends(get_db)):
+    d = _draf_atau_404(db, content_id)
+    try:
+        studio.pulihkan(db, d, nomor, f"staf:{user.nama}")
     except studio.ContentError as exc:
         raise HTTPException(409, str(exc)) from None
     return ser.content(d)
@@ -746,14 +840,14 @@ class RecheckIn(BaseModel):
 
 
 @router.post("/content/recheck")
-def content_recheck_text(body: RecheckIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def content_recheck_text(body: RecheckIn, user: User = Depends(require_izin("konten")), db: Session = Depends(get_db)):
     """ClaimGuard langsung saat staf mengetik (tanpa menyimpan). Jalur deterministik agar cepat dan gratis."""
     check = claimguard.check(db, body.teks, product_ids=[body.product_id] if body.product_id else None, use_llm=False)
     return check.to_dict()
 
 
 @router.post("/content/{content_id}/submit")
-def content_submit(content_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def content_submit(content_id: int, user: User = Depends(require_izin("konten")), db: Session = Depends(get_db)):
     d = db.get(ContentDraft, content_id)
     if d is None:
         raise HTTPException(404, "Konten tidak ditemukan")
@@ -765,7 +859,7 @@ def content_submit(content_id: int, user: User = Depends(current_user), db: Sess
 
 
 @router.post("/content/{content_id}/arsip")
-def content_archive(content_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def content_archive(content_id: int, user: User = Depends(require_izin("konten")), db: Session = Depends(get_db)):
     d = db.get(ContentDraft, content_id)
     if d is None:
         raise HTTPException(404, "Konten tidak ditemukan")
@@ -774,7 +868,7 @@ def content_archive(content_id: int, user: User = Depends(current_user), db: Ses
 
 
 @router.post("/content/{content_id}/approve")
-def content_approve(content_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def content_approve(content_id: int, user: User = Depends(require_izin("konten")), db: Session = Depends(get_db)):
     """Setujui langsung (tetap aturan dua orang). Alur utama: /submit → antrean Approval."""
     d = db.get(ContentDraft, content_id)
     if d is None:
@@ -794,7 +888,7 @@ def content_approve(content_id: int, user: User = Depends(current_user), db: Ses
 
 
 @router.get("/content/{content_id}/export")
-def content_export(content_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def content_export(content_id: int, user: User = Depends(require_izin("konten")), db: Session = Depends(get_db)):
     d = db.get(ContentDraft, content_id)
     if d is None:
         raise HTTPException(404, "Konten tidak ditemukan")
@@ -811,7 +905,7 @@ class AuditIn(BaseModel):
 
 
 @router.post("/content/audit")
-def content_audit(body: AuditIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def content_audit(body: AuditIn, user: User = Depends(require_izin("konten")), db: Session = Depends(get_db)):
     try:
         if body.contoh:
             return audit_svc.audit(db, html_doc=audit_svc.SAMPLE_PAGE, aktor=f"staf:{user.nama}")

@@ -12,7 +12,9 @@ Semua perintah dijalankan dari `apps/api` di PowerShell, memakai `.venv/Scripts/
 | Alamat dan sandi | Hanya di `apps/api/.env`, tidak pernah di git |
 | Perubahan skema | Lewat Alembic (`migrations/`) |
 | Backup | Tidak otomatis di paket gratis. Dibuat sendiri dengan `scripts/cadangan_db.py` |
-| Mode lokal | Tanpa `DATABASE_URL`, API memakai SQLite `aage.db` |
+| Mode lokal | API menolak start pada SQLite atau Postgres lokal, kecuali `IZINKAN_DB_LOKAL=true`. Tidak ada peralihan diam-diam ke `aage.db` |
+| Saat start | Log mencatat jenis, host, dan nama database, tanpa pengguna dan sandi |
+| Database tidak terjangkau | Pembeli menerima pesan aman, API mencatat galat. Pesan itu sendiri tidak tersimpan |
 
 ## Menyambungkan komputer baru
 
@@ -92,6 +94,31 @@ Migrasi ini membuat tabel `verifikasi_fakta` dengan RLS aktif dan memberi status
 Sesudah migrasi, mode produksi membuat bot tidak mengutip harga, izin, dan klaim dari katalog simulasi. Admin perlu memilih mode demo selama masih memakai data simulasi.
 
 `alembic downgrade 0002` menghapus tabel itu dan pilihan mode, termasuk hasil verifikasi yang sudah dicatat admin. Jejaknya tetap ada di Ledger.
+
+## Mengganti seluruh katalog
+
+Saat data asli mitra sudah ada, buka Pengaturan, Katalog, Ganti Katalog. Hanya admin yang bisa. Tidak perlu restart.
+
+1. Buat cadangan database dan unduh ekspor katalog aktif.
+2. Unggah Excel atau CSV sesuai template, lalu periksa pratinjau dan dampaknya.
+3. Pilih mode, lalu tekan **Ganti seluruh katalog**.
+
+| Mode | Yang terjadi | Bisa dikembalikan |
+|---|---|---|
+| Nonaktifkan (disarankan) | Produk, dokumen, dan potongan lama tidak lagi dibaca agent, tetapi barisnya tetap ada | Unggah file katalog lama |
+| Hapus permanen | Produk, klaim, tier, potongan beserta vektor, dokumen, dan baris verifikasi lama dihapus. Perlu mengetik `HAPUS PERMANEN` | Hanya dari cadangan |
+
+Ledger, percakapan, pesan, dan kontak tidak disentuh, kecuali Ledger bertambah catatan penggantian. Pesan berikutnya langsung dijawab dari katalog baru, dan pencarian vektor dibangun ulang saat penggantian.
+
+Yang perlu diketahui:
+
+- Penggantian berjalan dalam satu transaksi. Kalau gagal di tengah jalan, katalog lama tetap utuh.
+- Dokumen staf di luar katalog tetap aktif. Kebijakan diganti kalau file memuatnya. Kalau tidak, kebijakan asli tetap dipakai, sedangkan kebijakan simulasi ikut tersingkir dan panel dampak memberi tahu.
+- Produk yang dirujuk audit compliance atau draf marketing tidak bisa dihapus. Produk itu dinonaktifkan dan tidak terbaca agent.
+- Draf approval yang menunggu dari katalog lama tidak bisa disetujui apa adanya. Tolak, atau tulis ulang bila berupa balasan.
+- Mengembalikan katalog demo dari `katalog_simulasi.xlsx` tidak memulihkan dokumen "Panduan Izin Edar". Unggah ulang lewat tab Dokumen.
+- Fakta mitra berstatus belum diverifikasi tidak dikutip agent sampai admin memverifikasinya. Mode produksi juga menahan data simulasi.
+- Mengubah harga langsung dengan SQL membuat agent memakai harga baru, tetapi teks potongan masih memuat harga lama. Jalur resminya tetap impor, yang membangun ulang potongan.
 
 ## Backup dan restore
 

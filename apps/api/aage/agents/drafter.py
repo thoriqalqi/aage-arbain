@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, object_session, selectinload
 
-from .. import clock, llm
+from .. import clock, llm, settings_store
 from ..kb import verifikasi
 from ..kb.retriever import Hit, find_products, retrieve
 from ..models import ApprovedClaim, Contact, Conversation, OrderDraft, PricingRule, Product
@@ -19,6 +19,7 @@ from .pemahaman import KOTA_JATENG, KOTA_LUAR_JATENG
 HOLD_STAF = "Pertanyaan Kakak sudah kami teruskan ke staf penjualan, mohon tunggu sebentar ya 🙏"
 PESANAN_BESAR_BOX = 300  # di atas ini harga disiapkan manajemen, bukan tier otomatis
 MIN_SKOR_DOKUMEN = 0.3
+KATALOG_KOSONG = "Daftar produk kami belum tersedia saat ini."
 
 # Kata tanya/percakapan yang bukan nama barang — tidak dihitung saat mencari istilah di luar katalog.
 _KATA_TANYA = set(
@@ -154,7 +155,9 @@ def _history(conv: Conversation | None, n: int = 4) -> str:
     """Beberapa pesan sebelum pesan masuk saat ini, agar "yang tadi berapa?" bisa dipahami LLM."""
     if conv is None:
         return ""
-    msgs = list(conv.messages)[:-1][-n:]
+    # Pesan dari sebelum katalog diganti memuat produk dan harga lama, jadi tidak ikut sebagai konteks.
+    batas = settings_store.katalog_diganti(object_session(conv)).get("pesan_id") or 0
+    msgs = [m for m in list(conv.messages)[:-1] if m.id > batas][-n:]
     return "\n".join(f"{'Pembeli' if m.arah == 'masuk' else 'AAGE'}: {' '.join(m.teks.split())[:200]}" for m in msgs)
 
 
@@ -245,6 +248,10 @@ def _istilah(terms: list[str]) -> str:
     return " ".join(dict.fromkeys(bersih or terms))[:160].lower()
 
 
+def _katalog_kosong(db: Session) -> bool:
+    return db.scalar(select(Product.id).where(Product.aktif.is_(True)).limit(1)) is None
+
+
 def _di_luar_katalog(db: Session, text: str, terms: list[str]) -> Draft:
     """Jawab tuntas tanpa meneruskan ke staf: jujur belum ada, tawarkan yang sejenis, staf hanya pilihan. Tidak pernah
     membuat draf atau formulir pesanan untuk barang yang tidak ada."""
@@ -252,6 +259,8 @@ def _di_luar_katalog(db: Session, text: str, terms: list[str]) -> Draft:
     nama = " dan ".join(f"*{p.nama}*" for p in terdekat)
     if terdekat:
         lanjut = f"Yang paling dekat di katalog kami: {nama}. Mau saya bantu info harganya?"
+    elif _katalog_kosong(db):
+        lanjut = KATALOG_KOSONG
     elif _KEBUTUHAN_RE.search(text):
         lanjut = "Bila ingin melihat seluruh produk kami, ketik *daftar produk*."
     else:
@@ -1265,6 +1274,9 @@ def draft_daftar_produk(db: Session, text: str, **_) -> Draft:
     products = [p for p in semua if _sar(db).boleh_produk(p, "produk")]
     if semua and not products:
         return _draf_tertahan("Data daftar produk kami")
+    if not semua:
+        return Draft(f"Mohon maaf, Kak 🙏 {KATALOG_KOSONG} {TAWAR_STAF}", sources=[_template_source("katalog kosong")],
+                     konteks={"tawar_staf": True}, template="katalog_kosong")
     groups: dict[str, list[str]] = {}
     for p in products:
         groups.setdefault(p.kategori or "Lainnya", []).append(p.nama)

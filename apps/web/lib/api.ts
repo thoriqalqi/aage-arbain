@@ -4,6 +4,7 @@
 
 const TOKEN_KEY = "aage.token"
 const USER_KEY = "aage.user"
+const sedangJalan = new Map<string, Promise<unknown>>()
 
 export type SessionUser = { id: number; nama: string; email: string; role: "admin" | "staf" | "marketing" }
 
@@ -85,10 +86,20 @@ export async function api<T = unknown>(path: string, init: RequestInit & { json?
     const detail = typeof data === "object" && data && "detail" in data ? (data as { detail: unknown }).detail : data
     throw new ApiError(res.status, messageFrom(detail, `Permintaan gagal (${res.status})`), detail)
   }
+  if ((init.method ?? "GET") !== "GET") sedangJalan.clear() // jawaban yang masih di jalan sudah basi
   return data as T
 }
 
-export const fetcher = <T,>(path: string) => api<T>(path)
+/** Polling dari beberapa komponen berbagi satu permintaan selama jawabannya belum tiba, supaya tidak bertumpuk. */
+export const fetcher = <T,>(path: string): Promise<T> => {
+  const jalan = sedangJalan.get(path)
+  if (jalan) return jalan as Promise<T>
+  const baru: Promise<T> = api<T>(path).finally(() => {
+    if (sedangJalan.get(path) === baru) sedangJalan.delete(path)
+  })
+  sedangJalan.set(path, baru)
+  return baru
+}
 
 /** Unduh file dari API (dengan token) lalu simpan lewat browser. */
 export async function unduh(path: string, namaFile: string): Promise<void> {

@@ -174,7 +174,7 @@ class ContentIn(BaseModel):
 
 
 @router.post("/content")
-def content(body: ContentIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def content(body: ContentIn, user: User = Depends(require_izin("konten")), db: Session = Depends(get_db)):
     _pagar_data_demo(db)
     p = crew_mod.db().find(body.produk)
     if p is None:

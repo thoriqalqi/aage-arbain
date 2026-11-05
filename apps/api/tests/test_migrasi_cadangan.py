@@ -149,6 +149,43 @@ def test_migrasi_0002_mengisi_baris_lead_lama_tanpa_menghapus():
 
 
 @perlu_postgres
+def test_migrasi_0004_hanya_menambah_tabel_kosong_ber_rls_dan_bisa_dibatalkan():
+    engine = create_engine(URL)
+    _kosongkan(engine)
+    assert _alembic("upgrade", "0003").returncode == 0
+    with engine.begin() as c:
+        c.execute(text("INSERT INTO content_drafts (tipe, topik, target, judul, isi, faq, meta, json_ld, claim_verdict, claim_report, status, dibuat_pada) "
+                       "VALUES ('artikel', 'lama', 'apotek', 'Judul lama', 'Isi lama', '[]', '{}', '[]', 'allowed', '{}', 'disetujui', now())"))
+
+    def draf():
+        with engine.connect() as c:
+            return [tuple(b) for b in c.execute(text("SELECT id, judul, isi, status FROM content_drafts ORDER BY id"))]
+
+    sebelum = draf()
+    h = _alembic("upgrade", "head")
+    assert h.returncode == 0, h.stderr
+    assert draf() == sebelum, "draf lama tidak boleh berubah"
+    with engine.connect() as c:
+        assert c.scalar(text("SELECT count(*) FROM content_versions")) == 0
+        assert c.scalar(text("SELECT relrowsecurity FROM pg_class WHERE relname='content_versions'")) is True
+    h = _alembic("check")
+    assert h.returncode == 0 and "No new upgrade operations" in h.stdout + h.stderr, h.stdout + h.stderr
+    with engine.begin() as c:
+        c.execute(text("INSERT INTO content_versions (content_id, nomor, judul, isi, faq, meta, json_ld, claim_verdict, claim_report, perubahan, aktor, dibuat_pada) "
+                       "SELECT id, 1, judul, isi, faq, meta, json_ld, claim_verdict, claim_report, 'dibuat', 'tes', now() FROM content_drafts"))
+    with pytest.raises(Exception, match="uq_content_versions_nomor"), engine.begin() as c:
+        c.execute(text("INSERT INTO content_versions (content_id, nomor, judul, isi, faq, meta, json_ld, claim_verdict, claim_report, perubahan, aktor, dibuat_pada) "
+                       "SELECT id, 1, judul, isi, faq, meta, json_ld, claim_verdict, claim_report, 'dibuat', 'tes', now() FROM content_drafts"))
+    h = _alembic("downgrade", "0003")
+    assert h.returncode == 0, h.stderr
+    assert draf() == sebelum
+    with engine.connect() as c:
+        assert c.scalar(text("SELECT to_regclass('public.content_versions')")) is None
+    assert _alembic("upgrade", "head").returncode == 0
+    engine.dispose()
+
+
+@perlu_postgres
 def test_migrasi_0003_status_simulasi_rls_bisa_diulang_dan_rollback():
     engine = create_engine(URL)
     _kosongkan(engine)

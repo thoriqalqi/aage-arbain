@@ -67,6 +67,15 @@ def mode_data(db: Session) -> str:
     return mode if mode in MODE_DATA else MODE_DATA[0]
 
 
+def katalog_diganti(db: Session) -> dict:
+    """Batas penggantian katalog terakhir: pesan dan approval sampai id ini lahir dari katalog lama."""
+    return _raw(db, "katalog_diganti")
+
+
+def catat_katalog_diganti(db: Session, nilai: dict, aktor: str) -> None:
+    _put(db, "katalog_diganti", nilai, aktor)
+
+
 def pasang_mode_data(db: Session, mode: str, aktor: str = "uji") -> None:
     """Untuk tes dan eval pada database sementara. Perubahan dari dashboard lewat `update` agar tercatat di Ledger."""
     if mode not in MODE_DATA:

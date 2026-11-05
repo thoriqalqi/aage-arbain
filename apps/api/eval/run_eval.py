@@ -49,7 +49,7 @@ def _prepare_env(mode: str, dataset: str = "realistis") -> Path:
     if adalah_online(url):
         sys.exit("AAGE_EVAL_DATABASE_URL mengarah ke database online; eval menghapus isi database.")
     os.environ.update({
-        "DATABASE_URL": url, "TELEGRAM_BOT_TOKEN": "",
+        "DATABASE_URL": url, "IZINKAN_DB_LOKAL": "true", "TELEGRAM_BOT_TOKEN": "",
         "WATI_API_KEY": "", "WA_ACCESS_TOKEN": "", "WA_PHONE_NUMBER_ID": "", "WA_APP_SECRET": "",
         "FONNTE_TOKEN": "", "SERPER_API_KEY": "", "ANTHROPIC_API_KEY": "", "WATI_ALLOWLIST": "",
         "WA_PROVIDER": "wati", "WATI_WEBHOOK_TOKEN": WEBHOOK_TOKEN, "ENV": "dev",

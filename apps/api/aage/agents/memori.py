@@ -8,6 +8,7 @@ Kedaluwarsa setelah `memori_retensi_hari` tanpa aktivitas — percakapan baru mu
 import re
 from datetime import datetime, timedelta
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .. import clock
@@ -32,6 +33,46 @@ def kedaluwarsa(memori: dict | None, now: datetime | None = None) -> bool:
     if terakhir.tzinfo is None and now.tzinfo is not None:
         terakhir = terakhir.replace(tzinfo=now.tzinfo)
     return now - terakhir > timedelta(days=get_settings().memori_retensi_hari)
+
+
+def produk_usang(db: Session, konteks: dict) -> dict:
+    """Bagian konteks yang masih menunjuk produk yang sudah nonaktif atau terhapus, sudah dibersihkan.
+
+    Katalog bisa diganti di tengah percakapan. Membersihkan di satu pintu masuk ini berarti semua langkah agent sesudahnya
+    hanya melihat produk yang masih ada. Kosong bila tidak ada yang usang.
+    """
+    pending, kutipan = konteks.get("order_pending") or {}, konteks.get("last_quote") or {}
+    baris, baris_pending = konteks.get("last_lines") or [], pending.get("lines") or []
+    ids = {*(konteks.get("last_product_ids") or []), *(pending.get("product_ids") or []), kutipan.get("product_id"),
+           *(b[0] for b in baris), *(b[0] for b in baris_pending)} - {None}
+    m, sales = konteks.get("memori") or {}, konteks.get("sales") or {}
+    nama = {*(m.get("produk") or []), *(m.get("jumlah") or {}), sales.get("produk")} - {None}
+    if not ids and not nama:
+        return {}
+    ada_id = set(db.scalars(select(Product.id).where(Product.id.in_(ids), Product.aktif.is_(True)))) if ids else set()
+    ada_nama = set(db.scalars(select(Product.nama).where(Product.nama.in_(nama), Product.aktif.is_(True)))) if nama else set()
+    if ids <= ada_id and nama <= ada_nama:
+        return {}
+
+    out = {}
+    if "last_product_ids" in konteks:
+        out["last_product_ids"] = [i for i in konteks["last_product_ids"] or [] if i in ada_id]
+    if kutipan.get("product_id") not in ada_id:
+        out["last_quote"] = None
+    if any(b[0] not in ada_id for b in baris):
+        out["last_lines"] = None
+    if pending:
+        sisa = [i for i in pending.get("product_ids") or [] if i in ada_id]
+        lines = [b for b in baris_pending if b[0] in ada_id]
+        out["order_pending"] = {**pending, "product_ids": sisa, "lines": lines} if sisa else None
+        if out["order_pending"] and not lines:
+            out["order_pending"].pop("lines")
+    if m:
+        out["memori"] = {**m, "produk": [n for n in m.get("produk") or [] if n in ada_nama],
+                         "jumlah": {n: q for n, q in (m.get("jumlah") or {}).items() if n in ada_nama}}
+    if sales.get("produk") and sales["produk"] not in ada_nama:
+        out["sales"] = {k: v for k, v in sales.items() if k != "produk"}
+    return out
 
 
 def _tambah(daftar: list[str], item: str, maks: int) -> list[str]:

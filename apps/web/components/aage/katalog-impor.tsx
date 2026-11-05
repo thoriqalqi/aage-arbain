@@ -63,55 +63,11 @@ function Daftar({ judul, items }: { judul: string; items: string[] }) {
   )
 }
 
-function Pratinjau({ data, onSelesai, onBatal }: { data: KatalogPratinjau; onSelesai: () => void; onBatal: () => void }) {
+export function RincianPratinjau({ data }: { data: KatalogPratinjau }) {
   const r = data.laporan.ringkasan
-  const [lewati, setLewati] = useState(false)
-  const [busy, setBusy] = useState(false)
   const adaError = data.laporan.error.length > 0
-  const bisa = r.valid > 0 && (!adaError || lewati)
-
-  async function terapkan() {
-    setBusy(true)
-    try {
-      const h = await api<{ versi: number; produk: number; dinonaktifkan: number; kebijakan_versi: number | null }>(
-        `/api/katalog/impor/${data.token}/terapkan`,
-        { method: "POST", json: { lewati_error: lewati } },
-      )
-      toast.success(
-        `Katalog v${h.versi} aktif: ${h.produk} produk` +
-          (h.dinonaktifkan ? `, ${h.dinonaktifkan} dinonaktifkan` : "") +
-          (h.kebijakan_versi ? ", kebijakan diganti" : ""),
-      )
-      onSelesai()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Gagal menerapkan katalog")
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function batal() {
-    await api(`/api/katalog/impor/${data.token}/batal`, { method: "POST" }).catch(() => undefined)
-    onBatal()
-  }
-
   return (
-    <Panel className="space-y-4 p-5">
-      <div className="flex flex-wrap items-start gap-3">
-        <FileSpreadsheet className="mt-0.5 size-5 text-forest-700" aria-hidden />
-        <div className="min-w-0 flex-1">
-          <div className="font-semibold">Pratinjau: {data.nama_file}</div>
-          <div className="text-[12.5px] text-muted-foreground">
-            Katalog belum berubah. Periksa ringkasan di bawah, lalu terapkan atau batalkan.
-            {r.status_verifikasi &&
-              ` Status baris: ${r.status_verifikasi.simulasi ?? 0} simulasi, ${r.status_verifikasi.belum_diverifikasi ?? 0} belum diverifikasi, ${r.status_verifikasi.kedaluwarsa ?? 0} kedaluwarsa. Impor tidak menandai data terverifikasi; admin memverifikasinya di tab Verifikasi.`}
-          </div>
-        </div>
-        <AButton size="icon" variant="ghost" onClick={batal} aria-label="Batalkan pratinjau">
-          <X className="size-4" />
-        </AButton>
-      </div>
-
+    <>
       <div className="flex flex-wrap gap-1.5">
         <Pill className="bg-ok-bg text-ok">{r.valid} baris valid</Pill>
         {r.error > 0 && <Pill className="bg-blocked-bg text-blocked">{r.error} baris error</Pill>}
@@ -192,6 +148,60 @@ function Pratinjau({ data, onSelesai, onBatal }: { data: KatalogPratinjau; onSel
           )}
         </Surface>
       )}
+    </>
+  )
+}
+
+function Pratinjau({ data, onSelesai, onBatal }: { data: KatalogPratinjau; onSelesai: () => void; onBatal: () => void }) {
+  const r = data.laporan.ringkasan
+  const [lewati, setLewati] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const adaError = data.laporan.error.length > 0
+  const bisa = r.valid > 0 && (!adaError || lewati)
+
+  async function terapkan() {
+    setBusy(true)
+    try {
+      const h = await api<{ versi: number; produk: number; dinonaktifkan: number; kebijakan_versi: number | null }>(
+        `/api/katalog/impor/${data.token}/terapkan`,
+        { method: "POST", json: { lewati_error: lewati } },
+      )
+      toast.success(
+        `Katalog v${h.versi} aktif: ${h.produk} produk` +
+          (h.dinonaktifkan ? `, ${h.dinonaktifkan} dinonaktifkan` : "") +
+          (h.kebijakan_versi ? ", kebijakan diganti" : ""),
+      )
+      onSelesai()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menerapkan katalog")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function batal() {
+    await api(`/api/katalog/impor/${data.token}/batal`, { method: "POST" }).catch(() => undefined)
+    onBatal()
+  }
+
+  return (
+    <Panel className="space-y-4 p-5">
+      <div className="flex flex-wrap items-start gap-3">
+        <FileSpreadsheet className="mt-0.5 size-5 text-forest-700" aria-hidden />
+        <div className="min-w-0 flex-1">
+          <div className="font-semibold">Pratinjau: {data.nama_file}</div>
+          <div className="text-[12.5px] text-muted-foreground">
+            Katalog belum berubah. Periksa ringkasan di bawah, lalu terapkan atau batalkan.
+            {r.status_verifikasi &&
+              ` Status baris: ${r.status_verifikasi.simulasi ?? 0} simulasi, ${r.status_verifikasi.belum_diverifikasi ?? 0} belum diverifikasi, ${r.status_verifikasi.kedaluwarsa ?? 0} kedaluwarsa. Impor tidak menandai data terverifikasi; admin memverifikasinya di tab Verifikasi.`}
+          </div>
+        </div>
+        <AButton size="icon" variant="ghost" onClick={batal} aria-label="Batalkan pratinjau">
+          <X className="size-4" />
+        </AButton>
+      </div>
+
+      <RincianPratinjau data={data} />
 
       <div className="flex flex-wrap items-center gap-3 border-t border-line pt-4">
         {adaError && r.valid > 0 && (
@@ -213,36 +223,30 @@ function Pratinjau({ data, onSelesai, onBatal }: { data: KatalogPratinjau; onSel
   )
 }
 
-export function KatalogImpor({ onSelesai }: { onSelesai: () => void }) {
+export function UnggahKatalog({
+  label,
+  petunjuk,
+  onPratinjau,
+}: {
+  label: string
+  petunjuk: string
+  onPratinjau: (data: KatalogPratinjau) => void
+}) {
   const input = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [over, setOver] = useState(false)
-  const [pratinjau, setPratinjau] = useState<KatalogPratinjau | null>(null)
 
   async function kirim(f: File) {
     setBusy(true)
     try {
       const form = new FormData()
       form.append("file", f)
-      setPratinjau(await api<KatalogPratinjau>("/api/katalog/impor", { method: "POST", body: form }))
+      onPratinjau(await api<KatalogPratinjau>("/api/katalog/impor", { method: "POST", body: form }))
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "File tidak bisa dibaca")
     } finally {
       setBusy(false)
     }
-  }
-
-  if (pratinjau) {
-    return (
-      <Pratinjau
-        data={pratinjau}
-        onBatal={() => setPratinjau(null)}
-        onSelesai={() => {
-          setPratinjau(null)
-          onSelesai()
-        }}
-      />
-    )
   }
 
   return (
@@ -268,10 +272,8 @@ export function KatalogImpor({ onSelesai }: { onSelesai: () => void }) {
         )}
       >
         {busy ? <LoaderCircle className="size-6 animate-spin text-forest-700" /> : <UploadCloud className="size-6 text-forest-700" />}
-        <span className="font-medium">Unggah katalog mitra (Excel/CSV)</span>
-        <span className="text-[12px] text-muted-foreground">
-          Seret file ke sini atau klik · .xlsx / .csv · pratinjau dulu, katalog baru diganti setelah Anda konfirmasi
-        </span>
+        <span className="font-medium">{label}</span>
+        <span className="text-[12px] text-muted-foreground">{petunjuk}</span>
         <input
           ref={input}
           type="file"
@@ -297,5 +299,30 @@ export function KatalogImpor({ onSelesai }: { onSelesai: () => void }) {
         ))}
       </div>
     </div>
+  )
+}
+
+export function KatalogImpor({ onSelesai }: { onSelesai: () => void }) {
+  const [pratinjau, setPratinjau] = useState<KatalogPratinjau | null>(null)
+
+  if (pratinjau) {
+    return (
+      <Pratinjau
+        data={pratinjau}
+        onBatal={() => setPratinjau(null)}
+        onSelesai={() => {
+          setPratinjau(null)
+          onSelesai()
+        }}
+      />
+    )
+  }
+
+  return (
+    <UnggahKatalog
+      label="Unggah katalog mitra (Excel/CSV)"
+      petunjuk="Seret file ke sini atau klik · .xlsx / .csv · pratinjau dulu, katalog baru diganti setelah Anda konfirmasi"
+      onPratinjau={setPratinjau}
+    />
   )
 }

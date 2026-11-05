@@ -47,6 +47,8 @@ EVENT_TYPES = {
     "pengingat_repeat_order": "Pengingat repeat order",
     "katalog_diimpor": "Katalog diimpor",
     "katalog_pratinjau": "Pratinjau impor katalog",
+    "katalog_diganti": "Seluruh katalog diganti",
+    "katalog_ganti_gagal": "Ganti katalog gagal",
     "dokumen_diingest": "Dokumen di-ingest",
     "claimguard_playground": "Pemeriksaan Playground",
     "agen_hitl": "Agen: menunggu persetujuan manusia",

@@ -49,6 +49,8 @@ export const EVENT_META: Record<string, { label: string; icon: LucideIcon }> = {
   prospek_status: { label: "Status prospek", icon: Gavel },
   pengingat_repeat_order: { label: "Pengingat repeat order", icon: ArrowUpRight },
   katalog_diimpor: { label: "Katalog diimpor", icon: FileSearch },
+  katalog_diganti: { label: "Seluruh katalog diganti", icon: FileSearch },
+  katalog_ganti_gagal: { label: "Ganti katalog gagal", icon: FileSearch },
   dokumen_diingest: { label: "Dokumen di-ingest", icon: FileSearch },
   claimguard_playground: { label: "Playground ClaimGuard", icon: ShieldCheck },
   prospek_riset: { label: "Riset prospek", icon: FileSearch },

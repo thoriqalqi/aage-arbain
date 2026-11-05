@@ -4,7 +4,7 @@ import difflib
 import re
 from dataclasses import dataclass
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from .. import llm
@@ -41,12 +41,16 @@ def _keyword_score(query_terms: set[str], text: str) -> float:
 
 
 def retrieve(db: Session, query: str, *, k: int = 4, product_ids: list[int] | None = None,
-             min_score: float = 0.18, saring: bool = True) -> list[Hit]:
+             min_score: float = 0.18, saring: bool = True, dokumen_saja: bool = False) -> list[Hit]:
     """Dokumen yang tidak lolos verifikasi tidak ikut. Chunk katalog tetap ikut karena dipakai mencocokkan produk;
-    faktanya disaring per jenis oleh penyusun jawaban."""
+    faktanya disaring per jenis oleh penyusun jawaban. `dokumen_saja` membuang chunk katalog dan menyisakan dokumen
+    umum serta dokumen milik `product_ids`."""
     qvec = llm.embed(query)
     stmt = select(Chunk).options(joinedload(Chunk.document)).where(Chunk.aktif.is_(True))
-    if product_ids:
+    if dokumen_saja:
+        stmt = stmt.where(Chunk.document.has(Document.tipe != "katalog"),
+                          or_(Chunk.product_id.is_(None), Chunk.product_id.in_(product_ids or [])))
+    elif product_ids:
         stmt = stmt.where(Chunk.product_id.in_(product_ids))
     if IS_POSTGRES:
         from pgvector.sqlalchemy import Vector

@@ -254,6 +254,26 @@ class ContentDraft(Base):
     dibuat_pada: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
+class ContentVersion(Base):
+    """Isi draf konten pada satu titik. Baris tidak pernah diubah; memulihkan versi lama menambah versi baru."""
+
+    __tablename__ = "content_versions"
+    __table_args__ = (UniqueConstraint("content_id", "nomor", name="uq_content_versions_nomor"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    content_id: Mapped[int] = mapped_column(ForeignKey("content_drafts.id"))
+    nomor: Mapped[int] = mapped_column(Integer)
+    judul: Mapped[str] = mapped_column(String(200))
+    isi: Mapped[str] = mapped_column(Text)
+    faq: Mapped[list] = mapped_column(JSON, default=list)
+    meta: Mapped[dict] = mapped_column(JSON, default=dict)
+    json_ld: Mapped[list] = mapped_column(JSON, default=list)
+    claim_verdict: Mapped[str] = mapped_column(String(16))
+    claim_report: Mapped[dict] = mapped_column(JSON, default=dict)
+    perubahan: Mapped[str] = mapped_column(String(24))  # dibuat | diedit | dipulihkan | sebelum_riwayat
+    aktor: Mapped[str] = mapped_column(String(120))
+    dibuat_pada: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
 class Prospect(Base):
     __tablename__ = "prospects"
     id: Mapped[int] = mapped_column(primary_key=True)

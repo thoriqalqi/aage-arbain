@@ -4,7 +4,7 @@ diperiksa ClaimGuard — staf pun tidak bisa mengirim klaim yang diblokir."""
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import claimguard, clock, inbox, ledger
+from . import claimguard, clock, inbox, ledger, settings_store
 from .channels import sender
 from .models import Approval, ContentDraft, Conversation, LedgerEvent, OrderDraft, User
 
@@ -40,6 +40,18 @@ def _decide_content(db: Session, ap: Approval, *, aksi: str, actor: str) -> None
     ap.verdict = d.claim_verdict
 
 
+def _tolak_draf_katalog_lama(db: Session, ap: Approval, aksi: str) -> None:
+    """Draf dari sebelum katalog diganti bisa memuat produk atau harga lama, jadi tidak boleh terkirim apa adanya.
+    Balasan yang ditulis ulang staf (Edit) tetap boleh: teksnya baru dan tetap diperiksa ClaimGuard."""
+    if aksi == "tolak" or ap.objek_tipe not in {"balasan", "order_draft", "konten"}:
+        return
+    batas = settings_store.katalog_diganti(db).get("approval_id")
+    if batas is None or ap.id > batas or (aksi == "edit" and ap.objek_tipe == "balasan"):
+        return
+    raise ApprovalError("Draf ini dibuat sebelum katalog diganti, jadi bisa memuat produk atau harga lama. Tolak draf ini"
+                        + (", atau pakai Edit untuk menulis ulang balasannya." if ap.objek_tipe == "balasan" else "."))
+
+
 def decide(db: Session, approval_id: int, *, aksi: str, user: User, teks: str | None = None,
            catatan: str | None = None) -> Approval:
     ap = db.get(Approval, approval_id)
@@ -47,6 +59,7 @@ def decide(db: Session, approval_id: int, *, aksi: str, user: User, teks: str | 
         raise ApprovalError("Approval tidak ditemukan")
     if ap.status != "menunggu":
         raise ApprovalError(f"Approval sudah {ap.status}")
+    _tolak_draf_katalog_lama(db, ap, aksi)
     conv = db.get(Conversation, ap.conversation_id) if ap.conversation_id else None
     actor = f"staf:{user.nama}"
     if conv is not None and ap.objek_tipe != "konten":

@@ -480,18 +480,24 @@ def test_studio_menolak_data_belum_terverifikasi_di_produksi(db, produksi):
     db.rollback()
 
 
-def test_studio_lewat_api_memberi_alasan_jelas(client, auth, db, produksi):
+def test_studio_lewat_api_memberi_alasan_jelas(client, db, produksi):
+    auth = _token(client, "marketing@aage.local", "marketing123")
     r = client.post("/api/content/generate", headers=auth, json={"product_id": _produk(db).id, "topik": "stamina saat musim hujan", "target": "apotek", "tipe": "artikel"})
     assert r.status_code >= 400 and "belum terverifikasi" in r.text
 
 
 @pytest.mark.parametrize("metode,alamat,isi", [
     ("post", "/api/agents/negotiate", {"produk": "Madu Stamina", "qty_box": 10}),
-    ("post", "/api/agents/content", {"produk": "Madu Stamina", "topik": "stamina"}),
     ("post", "/api/agents/invoice/approve", {"produk": "Madu Stamina", "qty_box": 10, "diskon_disetujui": 0}),
 ])
 def test_agen_data_contoh_ditolak_di_produksi(client, auth, produksi, metode, alamat, isi):
     r = getattr(client, metode)(alamat, json=isi, headers=auth)
+    assert r.status_code == 409 and "mode demo" in r.text
+
+
+def test_agen_konten_data_contoh_ditolak_di_produksi(client, produksi):
+    auth = _token(client, "marketing@aage.local", "marketing123")
+    r = client.post("/api/agents/content", json={"produk": "Madu Stamina", "topik": "stamina"}, headers=auth)
     assert r.status_code == 409 and "mode demo" in r.text
 
 

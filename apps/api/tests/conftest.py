@@ -9,6 +9,7 @@ _DB = Path(tempfile.gettempdir()) / f"aage-test-{os.getpid()}.db"
 # AAGE_TES_DATABASE_URL opsional: menjalankan tes di Postgres lokal. Isi database itu dihapus, jadi yang online ditolak.
 _URL_TES = os.environ.get("AAGE_TES_DATABASE_URL") or f"sqlite:///{_DB.as_posix()}"
 os.environ["DATABASE_URL"] = _URL_TES
+os.environ["IZINKAN_DB_LOKAL"] = "true"
 os.environ["GEMINI_API_KEY"] = ""
 os.environ["LLM_MODEL"] = "gemini/model-tes"
 os.environ["LLM_API_KEY"] = ""  # tes tidak memakai kuota LLM sungguhan (provider mana pun)

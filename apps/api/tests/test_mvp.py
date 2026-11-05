@@ -142,7 +142,9 @@ def test_whatsapp_webhook_signature(client):
     assert ok.status_code == 200 and ok.json()["diterima"] == 1
 
 
-def test_content_generate_approve_export(client, auth):
+def test_content_generate_approve_export(client):
+    tok = client.post("/api/auth/login", json={"email": "marketing@aage.local", "password": "marketing123"}).json()["token"]
+    auth = {"Authorization": f"Bearer {tok}"}
     d = client.post("/api/content/generate", headers=auth, json={"product_id": 1, "topik": "daya tahan tubuh"}).json()
     assert d["claim_verdict"] != "blocked" and not d["claim_report"]["json_ld_errors"]
     assert client.get(f"/api/content/{d['id']}/export", headers=auth).status_code == 422  # belum disetujui

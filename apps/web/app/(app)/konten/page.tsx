@@ -1,11 +1,11 @@
 "use client"
 
-import { Archive, Check, CheckCircle2, Copy, Download, FileSearch, LoaderCircle, Pencil, Send, Sparkles, XCircle } from "lucide-react"
+import { Archive, Check, CheckCircle2, Copy, Download, FileSearch, LoaderCircle, Pencil, RotateCcw, Send, Sparkles, XCircle } from "lucide-react"
 import { motion } from "motion/react"
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import useSWR from "swr"
+import useSWR, { mutate as segarkanKunci } from "swr"
 
 import { AButton } from "@/components/aage/button"
 import { ClaimHighlight } from "@/components/aage/claim-highlight"
@@ -21,7 +21,29 @@ import { cn } from "@/lib/utils"
 const field = "h-10 w-full rounded-md border border-line bg-white px-3 text-[14px] outline-none focus:border-brand-500"
 
 type Draft = Omit<BaseDraft, "tipe" | "status"> & { tipe: string; status: string }
-type Report = CheckResult & { json_ld_errors: string[]; sumber_generator: string }
+type Referensi = {
+  jenis: "katalog" | "klaim" | "dokumen"
+  judul: string
+  status: string
+  sku?: string
+  fakta?: string[]
+  kutipan?: string
+  versi?: number
+  halaman?: number | null
+  skor?: number | null
+}
+type Report = CheckResult & { json_ld_errors: string[]; sumber_generator: string; data_kosong?: string[]; fakta_asing?: string[]; referensi?: Referensi[] }
+type SaranTautan = { product_id: number; nama: string; url: string | null; alasan: string }
+type SeoReport = {
+  kata_kunci: string
+  cek: { id: string; label: string; lulus: boolean; detail: string; saran: string }[]
+  harga_beda: string[]
+  harga_katalog: string | null
+  situs_resmi: string | null
+  tautan: { internal: number; total: number; situs_diketahui: boolean; saran: SaranTautan[] }
+}
+type VersiRingkas = { nomor: number; perubahan: string; aktor: string; judul: string; claim_verdict: Verdict; dibuat_pada: string }
+type VersiDetail = VersiRingkas & { isi: string; beda: { jenis: "hapus" | "tambah"; teks: string }[] }
 type FormatInfo = { label: string; web: boolean }
 
 const FORMATS: Record<string, FormatInfo> = {
@@ -41,9 +63,36 @@ const STATUS: Record<string, { label: string; cls: string }> = {
   diarsipkan: { label: "Diarsipkan", cls: "bg-soft text-subtle-foreground" },
 }
 
+const STATUS_FAKTA: Record<string, string> = {
+  terverifikasi: "Terverifikasi",
+  simulasi: "Data simulasi",
+  belum_diverifikasi: "Belum diverifikasi",
+  kedaluwarsa: "Kedaluwarsa",
+}
+const JENIS_SUMBER: Record<Referensi["jenis"], string> = { katalog: "Katalog", klaim: "Klaim disetujui", dokumen: "Dokumen" }
+const PERUBAHAN: Record<string, string> = { dibuat: "Dibuat", diedit: "Diedit", dipulihkan: "Dipulihkan", sebelum_riwayat: "Isi sebelum ada riwayat" }
+
+function segarkanDraf(id: number) {
+  segarkanKunci((k) => typeof k === "string" && k.startsWith(`/api/content/${id}/`))
+}
+
 function StatusPill({ status }: { status: string }) {
   const s = STATUS[status] ?? STATUS.draf
   return <span className={cn("inline-flex h-6 items-center rounded-full px-2.5 text-[12px] font-medium", s.cls)}>{s.label}</span>
+}
+
+/** Tebal dan tautan http/https. Tautan selain itu tetap tampil sebagai teks. */
+function Inline({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(/(\*\*[^*]+\*\*|\[[^\]\n]+\]\(https?:\/\/[^)\s]+\))/g).map((p, j) => {
+        if (p.startsWith("**")) return <strong key={j}>{p.slice(2, -2)}</strong>
+        const tautan = p.match(/^\[([^\]\n]+)\]\((https?:\/\/[^)\s]+)\)$/)
+        if (tautan) return <a key={j} href={tautan[2]} target="_blank" rel="noreferrer" className="text-info underline">{tautan[1]}</a>
+        return p
+      })}
+    </>
+  )
 }
 
 function Markdown({ text }: { text: string }) {
@@ -69,13 +118,12 @@ function Markdown({ text }: { text: string }) {
         if (b.startsWith("- "))
           return (
             <ul key={i} className="list-disc space-y-1 pl-5">
-              {b.split("\n").map((l, j) => <li key={j}>{l.replace(/^- /, "")}</li>)}
+              {b.split("\n").map((l, j) => <li key={j}><Inline text={l.replace(/^- /, "")} /></li>)}
             </ul>
           )
-        const parts = b.split(/(\*\*[^*]+\*\*)/g)
         return (
           <p key={i} className="whitespace-pre-line">
-            {parts.map((p, j) => (p.startsWith("**") ? <strong key={j}>{p.slice(2, -2)}</strong> : p))}
+            <Inline text={b} />
           </p>
         )
       })}
@@ -184,6 +232,160 @@ function DraftEditor({ draft, onSaved, onCancel }: { draft: Draft; onSaved: (d: 
   )
 }
 
+function SumberPanel({ items }: { items?: Referensi[] }) {
+  if (!items?.length) return <p className="text-[13px] text-muted-foreground">Draf ini dibuat sebelum sumber dicatat.</p>
+  return (
+    <div className="space-y-3">
+      <p className="text-[13px] text-muted-foreground">Sumber yang dipakai saat draf disusun. Editan staf sesudahnya tidak termasuk.</p>
+      {items.map((s, i) => (
+        <div key={i} className="rounded-lg border border-line bg-white p-3 text-[13px]">
+          <div className="flex flex-wrap items-center gap-2">
+            <Pill>{JENIS_SUMBER[s.jenis]}</Pill>
+            <span className="font-medium">{s.judul}</span>
+            {s.jenis === "dokumen" && s.versi != null && <span className="text-subtle-foreground">versi {s.versi}{s.halaman ? `, halaman ${s.halaman}` : ""}</span>}
+            <span className="ml-auto text-[12px] text-subtle-foreground">{STATUS_FAKTA[s.status] ?? s.status}</span>
+          </div>
+          {s.fakta && <p className="mt-1 text-muted-foreground">SKU {s.sku}: {s.fakta.join(", ")}</p>}
+          {s.kutipan && <p className="mt-1 text-muted-foreground">{s.kutipan}</p>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function SeoPanel({ seo, gagal }: { seo?: SeoReport; gagal: boolean }) {
+  if (gagal && !seo) return <p className="text-[13px] text-muted-foreground">Pemeriksaan kata kunci belum bisa dimuat dari server.</p>
+  if (!seo) return <div className="shimmer h-40 rounded-lg" />
+  async function salin(s: SaranTautan) {
+    await navigator.clipboard?.writeText(s.url ? `[${s.nama}](${s.url})` : s.nama).catch(() => undefined)
+    toast.success(s.url ? "Tautan disalin. Tempel di isi lewat Edit." : "Nama produk disalin")
+  }
+  return (
+    <div className="space-y-4">
+      <p className="text-[13px] text-muted-foreground">Kata kunci: <strong>{seo.kata_kunci}</strong>. Ini pemeriksaan isi draf, bukan jaminan peringkat, dan tidak menghalangi pengajuan.</p>
+      <div className="divide-y divide-line rounded-lg border border-line bg-white">
+        {seo.cek.map((c) => (
+          <div key={c.id} className="flex items-start gap-2.5 p-3 text-[13px]">
+            {c.lulus ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-ok" /> : <XCircle className="mt-0.5 size-4 shrink-0 text-review" />}
+            <div className="min-w-0">
+              <div className="font-medium">{c.label}</div>
+              <div className="text-muted-foreground">{c.detail}</div>
+              {c.saran && <div className="text-forest-700">Saran: {c.saran}</div>}
+            </div>
+          </div>
+        ))}
+      </div>
+      {seo.tautan.saran.length > 0 && (
+        <div>
+          <div className="mb-1 text-[13px] font-semibold">Saran internal link</div>
+          <p className="mb-2 text-[12px] text-muted-foreground">
+            {seo.tautan.saran.some((s) => s.url)
+              ? "Tidak ditambahkan otomatis. Salin yang cocok, lalu tempel di isi lewat Edit."
+              : "Alamat halaman belum diketahui, jadi hanya nama produk yang bisa disalin. Alamat muncul setelah POLA_URL_PRODUK diisi."}
+          </p>
+          <ul className="space-y-2">
+            {seo.tautan.saran.map((s) => (
+              <li key={s.product_id} className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-white p-3 text-[13px]">
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium">{s.nama}</div>
+                  <div className="text-[12px] text-subtle-foreground">{s.url ?? "Alamat belum diketahui"} · {s.alasan}</div>
+                </div>
+                <AButton variant="outline" onClick={() => salin(s)}><Copy className="size-4" /> Salin</AButton>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <p className="text-[12px] text-subtle-foreground">
+        {seo.tautan.total} tautan di isi draf{seo.tautan.situs_diketahui ? `, ${seo.tautan.internal} ke situs resmi.` : ". Tautan internal belum bisa dihitung karena SITUS_RESMI belum diisi."}
+      </p>
+    </div>
+  )
+}
+
+function RiwayatPanel({ draft, onRestored }: { draft: Draft; onRestored: (d: Draft) => void }) {
+  const { data, error } = useSWR<{ items: VersiRingkas[] }>(`/api/content/${draft.id}/versi`, fetcher)
+  const [nomor, setNomor] = useState<number | null>(null)
+  const [yakin, setYakin] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const { data: detail } = useSWR<VersiDetail>(nomor != null ? `/api/content/${draft.id}/versi/${nomor}` : null, fetcher)
+  const terbaru = data?.items[0]?.nomor
+  const bisaPulihkan = !["menunggu_approval", "diarsipkan"].includes(draft.status)
+
+  async function pulihkan() {
+    if (nomor == null) return
+    setBusy(true)
+    try {
+      onRestored(await api<Draft>(`/api/content/${draft.id}/versi/${nomor}/pulihkan`, { method: "POST" }))
+      toast.success(`Versi ${nomor} dipulihkan sebagai versi baru dan diperiksa ulang ClaimGuard`)
+      setNomor(null)
+      setYakin(false)
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (error && !data) return <p className="text-[13px] text-muted-foreground">Riwayat belum bisa dimuat dari server.</p>
+  if (!data) return <div className="shimmer h-32 rounded-lg" />
+  if (data.items.length === 0) return <p className="text-[13px] text-muted-foreground">Belum ada riwayat. Draf lama mendapat versi pertamanya saat pertama kali diedit.</p>
+  return (
+    <div className="space-y-3">
+      <ul className="divide-y divide-line rounded-lg border border-line bg-white">
+        {data.items.map((v) => (
+          <li key={v.nomor}>
+            <button
+              onClick={() => { setNomor(v.nomor === nomor ? null : v.nomor); setYakin(false) }}
+              className={cn("flex w-full flex-wrap items-center gap-2 p-3 text-left text-[13px] hover:bg-brand-50", nomor === v.nomor && "bg-brand-50")}
+            >
+              <span className="font-semibold">Versi {v.nomor}{v.nomor === terbaru ? " (sekarang)" : ""}</span>
+              <span className="text-muted-foreground">{PERUBAHAN[v.perubahan] ?? v.perubahan} oleh {v.aktor.replace(/^staf:/, "")}</span>
+              <VerdictBadge verdict={v.claim_verdict} />
+              <span className="ml-auto text-[12px] text-subtle-foreground">{formatDateTime(v.dibuat_pada)}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      {nomor != null && !detail && <div className="shimmer h-24 rounded-lg" />}
+      {detail && nomor === detail.nomor && (
+        <div className="rounded-lg border border-line bg-white p-3 text-[13px]">
+          <div className="mb-2 font-semibold">Perbedaan versi {detail.nomor} dengan isi sekarang</div>
+          {detail.beda.length === 0 ? (
+            <p className="text-muted-foreground">Isinya sama dengan isi sekarang.</p>
+          ) : (
+            <div className="scrollbar-thin max-h-80 space-y-1 overflow-auto">
+              {detail.beda.map((b, i) => (
+                <div key={i} className={cn("rounded px-2 py-1 whitespace-pre-wrap", b.jenis === "hapus" ? "bg-soft" : "bg-brand-50")}>
+                  <span className="mr-1 font-semibold">{b.jenis === "hapus" ? `Versi ${detail.nomor}:` : "Sekarang:"}</span>{b.teks}
+                </div>
+              ))}
+            </div>
+          )}
+          {detail.beda.length > 0 && bisaPulihkan && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {yakin ? (
+                <>
+                  <span className="text-muted-foreground">
+                    {draft.status === "disetujui" ? "Persetujuan draf ini batal dan harus diajukan ulang. Lanjutkan?" : "Isi versi ini menjadi versi baru. Lanjutkan?"}
+                  </span>
+                  <AButton onClick={pulihkan} disabled={busy}>
+                    {busy ? <LoaderCircle className="size-4 animate-spin" /> : <RotateCcw className="size-4" />} Ya, pulihkan
+                  </AButton>
+                  <AButton variant="ghost" onClick={() => setYakin(false)} disabled={busy}>Batal</AButton>
+                </>
+              ) : (
+                <AButton variant="outline" onClick={() => setYakin(true)}><RotateCcw className="size-4" /> Pulihkan versi {detail.nomor}</AButton>
+              )}
+            </div>
+          )}
+          {detail.beda.length > 0 && !bisaPulihkan && <p className="mt-2 text-muted-foreground">Draf yang menunggu approval atau diarsipkan tidak bisa dipulihkan.</p>}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function Studio() {
   const { data: products } = useSWR<{ items: Product[] }>("/api/kb/products", fetcher)
   const { data: list, mutate: mutateList } = useSWR<{ items: Draft[]; format?: Record<string, FormatInfo> }>("/api/content", fetcher)
@@ -197,6 +399,7 @@ function Studio() {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<Draft | null>(null)
   const [elapsed, setElapsed] = useState<number | null>(null)
+  const { data: seo, error: seoGagal } = useSWR<SeoReport>(draft ? `/api/content/${draft.id}/seo` : null, fetcher)
   const topikOk = (topik.match(/[A-Za-z]/g)?.length ?? 0) >= 3
 
   useEffect(() => {
@@ -229,6 +432,7 @@ function Studio() {
       setDraft(await api<Draft>(`/api/content/${draft.id}/${path}`, { method: "POST" }))
       toast.success(ok)
       mutateList()
+      segarkanDraf(draft.id)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Gagal memproses")
     } finally {
@@ -334,6 +538,22 @@ function Studio() {
                 <VerdictBadge verdict={draft.claim_verdict} rules={report?.rules_triggered} size="md" animate />
               </div>
 
+              {report?.data_kosong && report.data_kosong.length > 0 && (
+                <p className="rounded-lg bg-review-bg/70 px-3 py-2 text-[13px] text-foreground">
+                  Belum ada di katalog: {report.data_kosong.join(", ")}. Bagian itu tidak ditulis dalam draf ini.
+                </p>
+              )}
+              {seo && seo.harga_beda.length > 0 && (
+                <p className="rounded-lg bg-review-bg/70 px-3 py-2 text-[13px] text-foreground">
+                  Harga di draf berbeda dengan katalog: {seo.harga_beda.join(", ")}. Harga katalog sekarang {seo.harga_katalog ?? "belum ada"}.
+                </p>
+              )}
+              {report?.fakta_asing && report.fakta_asing.length > 0 && (
+                <p className="rounded-lg bg-review-bg/70 px-3 py-2 text-[13px] text-foreground">
+                  Draf AI diganti template karena memuat fakta di luar data produk: {report.fakta_asing.join(", ")}.
+                </p>
+              )}
+
               {editing ? (
                 <DraftEditor
                   key={draft.id}
@@ -343,16 +563,20 @@ function Studio() {
                     setDraft(d)
                     setEditing(false)
                     mutateList()
+                    segarkanDraf(d.id)
                   }}
                 />
               ) : (
                 <Tabs defaultValue="isi" key={draft.id}>
-                  <TabsList>
+                  <TabsList className="w-full flex-wrap justify-start group-data-horizontal/tabs:h-auto">
                     <TabsTrigger value="isi">Isi</TabsTrigger>
                     {fmt?.web && <TabsTrigger value="faq">FAQ</TabsTrigger>}
                     {fmt?.web && <TabsTrigger value="jsonld">JSON-LD</TabsTrigger>}
                     {fmt?.web && <TabsTrigger value="meta">Meta</TabsTrigger>}
                     <TabsTrigger value="claimguard">ClaimGuard</TabsTrigger>
+                    <TabsTrigger value="sumber">Sumber</TabsTrigger>
+                    <TabsTrigger value="seo">Kata kunci & tautan</TabsTrigger>
+                    <TabsTrigger value="riwayat">Riwayat</TabsTrigger>
                   </TabsList>
                   <TabsContent value="isi" className="pt-3">
                     <Markdown text={draft.isi ?? ""} />
@@ -381,7 +605,7 @@ function Studio() {
                     <div className="rounded-lg border border-line bg-white p-4">
                       <div className="text-[12px] text-subtle-foreground">Pratinjau hasil pencarian</div>
                       <div className="mt-1 text-[17px] text-info">{draft.meta?.title}</div>
-                      <div className="text-[13px] text-ok">arbain.co.id › produk</div>
+                      {seo?.situs_resmi && <div className="text-[13px] text-ok">{seo.situs_resmi.replace(/^https?:\/\//, "")}</div>}
                       <div className="text-[13px] text-muted-foreground">{draft.meta?.description}</div>
                     </div>
                     <div className="text-[12px] text-muted-foreground">
@@ -390,6 +614,22 @@ function Studio() {
                   </TabsContent>
                   <TabsContent value="claimguard" className="pt-3">
                     {report && <ClaimHighlight text={reportText(draft)} result={report} />}
+                  </TabsContent>
+                  <TabsContent value="sumber" className="pt-3">
+                    <SumberPanel items={report?.referensi} />
+                  </TabsContent>
+                  <TabsContent value="seo" className="pt-3">
+                    <SeoPanel seo={seo} gagal={Boolean(seoGagal)} />
+                  </TabsContent>
+                  <TabsContent value="riwayat" className="pt-3">
+                    <RiwayatPanel
+                      draft={draft}
+                      onRestored={(d) => {
+                        setDraft(d)
+                        mutateList()
+                        segarkanDraf(d.id)
+                      }}
+                    />
                   </TabsContent>
                 </Tabs>
               )}
@@ -468,6 +708,9 @@ type AuditReport = {
   sumber: string
   skor_sebelum: number
   skor_sesudah: number
+  skor_potensi: number
+  perlu_perbaikan_struktur: string[]
+  kalimat_perlu_ditinjau: number
   cek: { id: string; label: string; status: "lulus" | "gagal"; bobot: number; detail: string; saran: string }[]
   perbaikan_kalimat: { sebelum: string; sesudah: string; verdict: Verdict; aturan: string[] }[]
   ringkasan: { kalimat: number; berisiko: number; diblokir: number; statistik_tanpa_sumber: number }
@@ -515,9 +758,14 @@ function Audit() {
               </p>
             </Panel>
             <Panel className="p-5">
-              <div className="text-[12px] font-medium text-muted-foreground">Sesudah (saran diterapkan)</div>
+              <div className="text-[12px] font-medium text-muted-foreground">Sesudah kalimat diganti</div>
               <div className="tabular text-[40px] leading-[48px] font-[650] text-ok">{rep.skor_sesudah}</div>
-              <p className="text-[13px] text-muted-foreground">Kalimat diganti klaim disetujui + meta, heading, FAQ, dan JSON-LD dari Studio.</p>
+              <p className="text-[13px] text-muted-foreground">
+                {rep.perlu_perbaikan_struktur.length > 0
+                  ? `Bisa menjadi ${rep.skor_potensi} bila diperbaiki juga: ${rep.perlu_perbaikan_struktur.join(", ")}.`
+                  : "Struktur halaman sudah lulus pemeriksaan."}
+                {rep.kalimat_perlu_ditinjau > 0 && ` ${rep.kalimat_perlu_ditinjau} kalimat pengganti masih perlu ditinjau staf.`}
+              </p>
             </Panel>
           </div>
           <Surface className="divide-y divide-line">

@@ -2,7 +2,7 @@
 
 Asisten AI sales untuk CV Arba'in: produk herbal/suplemen, penjualan grosir B2B ke apotek dan toko.
 
-- `apps/api`: backend FastAPI, LangGraph. Tanpa `DATABASE_URL` memakai SQLite (`aage.db`); data sungguhan ada di Supabase Postgres, lihat `docs/DATABASE_ONLINE.md`.
+- `apps/api`: backend FastAPI, LangGraph. Data sungguhan ada di Supabase Postgres, lihat `docs/DATABASE_ONLINE.md`. API menolak start pada database lain, termasuk SQLite `aage.db`, kecuali `IZINKAN_DB_LOKAL=true`, yang hanya untuk pengembangan dan tes.
 - `apps/web`: dashboard Next.js, meneruskan `/api` ke port 8000.
 - LLM: lewat TokenHarbor (DeepSeek), memakai jalur `openai_compat`.
 - Katalog di repo masih simulasi, bukan data resmi mitra.

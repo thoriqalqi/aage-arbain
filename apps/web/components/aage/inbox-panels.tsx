@@ -1,6 +1,6 @@
 "use client"
 
-import { Check, Clock, Pencil, Sparkles, TriangleAlert, X } from "lucide-react"
+import { Check, ChevronDown, Clock, Pencil, Sparkles, TriangleAlert, X } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
 
@@ -12,6 +12,7 @@ import type { Approval, CheckResult, Contact, ConversationDetail } from "@/lib/t
 import { cn } from "@/lib/utils"
 
 const SLA_MENIT = 15
+const APPROVAL_TERBUKA_MAKS = 2 // lebih dari ini langsung terlipat supaya chat tetap terbaca
 
 /** Lama pembeli menunggu staf. Merah setelah melewati SLA 15 menit. */
 export function WaitBadge({ since, className }: { since: string | null | undefined; className?: string }) {
@@ -74,7 +75,9 @@ export function InlineApprovals({ approvals, onDone }: { approvals: Approval[]; 
   const [text, setText] = useState("")
   const [busy, setBusy] = useState(false)
   const [blocked, setBlocked] = useState<CheckResult | null>(null)
+  const [terbuka, setTerbuka] = useState<boolean | null>(null)
   if (!pending.length) return null
+  const tampil = terbuka ?? pending.length <= APPROVAL_TERBUKA_MAKS
 
   async function decide(a: Approval, aksi: "setujui" | "edit" | "tolak", teks?: string) {
     setBusy(true)
@@ -96,7 +99,19 @@ export function InlineApprovals({ approvals, onDone }: { approvals: Approval[]; 
   }
 
   return (
-    <div className="mx-3 mb-2 space-y-2">
+    <section className="mx-3 mb-2 flex max-h-[38%] shrink-0 flex-col">
+      <button
+        type="button"
+        aria-expanded={tampil}
+        onClick={() => setTerbuka(!tampil)}
+        className="flex shrink-0 items-center gap-2 rounded-lg bg-escalate-bg/70 px-3 py-2 text-left text-[13px] font-semibold text-escalate"
+      >
+        <ChevronDown className={cn("size-4 shrink-0 transition-transform", !tampil && "-rotate-90")} aria-hidden />
+        {pending.length} approval menunggu
+        <WaitBadge since={pending[pending.length - 1].dibuat_pada} className="ml-auto" />
+      </button>
+      {tampil && (
+      <div className="scrollbar-thin mt-2 min-h-0 flex-1 space-y-2 overflow-y-auto">
       {pending.map((a) => (
         <div key={a.id} className="rounded-lg bg-escalate-bg/70 p-3 text-[13px]">
           <div className="flex items-start gap-2">
@@ -152,7 +167,9 @@ export function InlineApprovals({ approvals, onDone }: { approvals: Approval[]; 
           </div>
         </div>
       ))}
-    </div>
+      </div>
+      )}
+    </section>
   )
 }
 

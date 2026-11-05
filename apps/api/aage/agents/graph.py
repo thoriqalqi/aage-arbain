@@ -466,6 +466,7 @@ def handle_inbound(db: Session, *, channel: str, external_user_id: str, text: st
 
         link_contact(db, conv.contact)
     inbox.expire_if_idle(db, conv)
+    _merge_konteks(conv, memori.produk_usang(db, conv.konteks or {}))
     trace = ledger.new_trace_id()
     if memori.kedaluwarsa((conv.konteks or {}).get("memori")):
         _merge_konteks(conv, {"memori": {}})

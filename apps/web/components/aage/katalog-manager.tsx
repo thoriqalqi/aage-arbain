@@ -1,12 +1,13 @@
 "use client"
 
 import { FileUp, Link2, LoaderCircle, ShieldCheck, UploadCloud } from "lucide-react"
-import { useRef, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import { toast } from "sonner"
 import useSWR from "swr"
 
 import { AButton } from "@/components/aage/button"
 import { SkeletonRows } from "@/components/aage/empty-state"
+import { KatalogGanti } from "@/components/aage/katalog-ganti"
 import { KatalogImpor } from "@/components/aage/katalog-impor"
 import { Panel, Surface } from "@/components/aage/panel"
 import { Pill } from "@/components/aage/status"
@@ -84,6 +85,11 @@ export function KatalogManager() {
     }
   }
 
+  const segarkan = useCallback(() => {
+    mutateProducts()
+    mutateDocs()
+  }, [mutateProducts, mutateDocs])
+
   const semua = products?.items ?? []
   const items = semua.filter((p) => p.aktif)
   const arsip = semua.length - items.length
@@ -101,6 +107,7 @@ export function KatalogManager() {
           <TabsTrigger value="dokumen">Dokumen</TabsTrigger>
           <TabsTrigger value="klaim">Klaim disetujui</TabsTrigger>
           <TabsTrigger value="tier">Tier harga</TabsTrigger>
+          {isAdmin && <TabsTrigger value="ganti">Ganti Katalog</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="produk" className="space-y-4">
@@ -237,6 +244,12 @@ export function KatalogManager() {
             ))}
           </Surface>
         </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="ganti">
+            <KatalogGanti onSelesai={segarkan} />
+          </TabsContent>
+        )}
 
         <TabsContent value="tier">
           <Surface className="overflow-x-auto">
