@@ -1,6 +1,6 @@
 {
   "_catatan": "Registry rujukan regulasi & kebijakan aturan ClaimGuard. Satu-satunya sumber rujukan pasal untuk ClaimGuard (WA pipeline, agen CrewAI, dan Compliance Check). Setiap rujukan VERIFIED dibaca langsung dari PDF resmi peraturan.go.id pada tanggal last_verified_at (batang tubuh lewat ekstraksi teks; Lampiran I Perban 34/2022 dari pindaian halaman 14-18). Ringkasan adalah parafrase, bukan kutipan resmi. ClaimGuard adalah alat bantu penyaringan awal, bukan pengganti keputusan ahli regulasi atau penasihat hukum. Ubah file ini (dan naikkan rules_version) untuk memperbarui frasa/rujukan tanpa mengubah kode. Kategori dan risiko adalah klasifikasi internal AAGE, bukan istilah regulasi, dan tidak mengubah keputusan aturan.",
-  "rules_version": "2.1.0",
+  "rules_version": "2.2.0",
   "tingkat_risiko": ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
   "kategori_klaim": {
     "SUPPORTED_CLAIM": {"label": "Klaim terdukung", "celah_bukti": ""},
@@ -91,6 +91,9 @@
     "R18": {"kategori": "UNSUPPORTED_CLAIM", "risiko": "MEDIUM", "description": "Klaim keamanan", "severity": "review", "confidence": "sedang", "status_aturan": "DITINJAU", "references": ["B34_L1_I2"]},
     "R19": {"kategori": "UNSUPPORTED_CLAIM", "risiko": "MEDIUM", "description": "Endorsement tenaga kesehatan", "severity": "review", "confidence": "sedang", "status_aturan": "DITINJAU", "references": ["B34_L1_III2", "B34_L1_I15"]},
     "R20": {"kategori": "UNSUPPORTED_CLAIM", "risiko": "HIGH", "description": "Frasa larangan overclaim produk (config/mock_products.json)", "severity": "review", "confidence": "sedang", "status_aturan": "DATA_SIMULASI", "references": [], "catatan": "Daftar frasa berasal dari data produk simulasi, bukan sumber regulasi resmi. Tanpa aturan terverifikasi lain yang cocok, hasilnya NEED_REVIEW."},
+    "R21": {"kategori": "GUARANTEE", "risiko": "HIGH", "description": "Jaminan terselubung", "severity": "blocked", "confidence": "sedang", "status_aturan": "BELUM_DITINJAU", "references": ["B34_L1_III13", "B34_L1_I2"], "catatan": "Pola baru dari dataset tim; belum ditinjau manusia, jadi di Compliance hasilnya NEED_REVIEW."},
+    "R22": {"kategori": "THERAPEUTIC_CLAIM", "risiko": "HIGH", "description": "Klaim penyakit tidak kambuh atau penyumbatan", "severity": "blocked", "confidence": "sedang", "status_aturan": "BELUM_DITINJAU", "references": ["B34_L1_III5", "B34_P3_2"], "catatan": "Pola baru dari dataset tim; belum ditinjau manusia, jadi di Compliance hasilnya NEED_REVIEW."},
+    "R23": {"kategori": "UNSUPPORTED_CLAIM", "risiko": "MEDIUM", "description": "Klaim kandungan unggulan", "severity": "review", "confidence": "sedang", "status_aturan": "BELUM_DITINJAU", "references": ["B34_P3_2"]},
     "KLAIM_TIDAK_TERDAFTAR": {"kategori": "UNSUPPORTED_CLAIM", "risiko": "MEDIUM", "description": "Klaim manfaat tidak ada di daftar klaim resmi produk", "severity": "review", "confidence": "sedang", "status_aturan": "DITINJAU", "references": ["B34_P3_2", "B30_P2_4", "B30_P5_1"]},
     "X01": {"kategori": "UNSUPPORTED_CLAIM", "risiko": "HIGH", "description": "Kata terlarang eksplisit Lampiran I Perban 34/2022", "severity": "blocked", "confidence": "tinggi", "status_aturan": "DITINJAU", "references": ["B34_L1_III12", "B34_L1_I5"],
             "frasa": ["anti penuaan", "anti aging", "awet muda", "umur panjang", "afrodisiak", "hormon releaser", "keajaiban", "magic", "surgawi", "terbaik di dunia", "obat instan", "fantastis", "sensasional"]},

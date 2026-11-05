@@ -127,7 +127,7 @@ def test_llm_meloloskan_klaim_tanpa_padanan_tetap_kategori_ragu(db):
 
 def test_to_dict_memuat_temuan_dan_versi(db):
     d = _periksa(db, "Menyembuhkan diabetes.").to_dict()
-    assert d["rules_version"] == registry.rules_version() == "2.1.0"
+    assert d["rules_version"] == registry.rules_version() == "2.2.0"
     assert d["keputusan"] == "BLOCK"
     assert set(d["temuan"][0]) == {"finding_id", "matched_text", "start", "end", "claim_type", "severity", "rule_id", "reason",
                                    "evidence_gap", "suggested_correction", "decision"}
@@ -161,35 +161,35 @@ def _draf(client, h):
 def test_versi_aturan_di_playground(client, admin, db):
     r = client.post("/api/claimguard/check", json={"text": "Menyembuhkan diabetes.", "use_llm": False}, headers=admin)
     assert r.status_code == 200, r.text
-    assert r.json()["rules_version"] == "2.1.0"
+    assert r.json()["rules_version"] == "2.2.0"
     assert r.json()["temuan"][0]["rule_id"] == "R01"
-    assert _terakhir(db, "claimguard_playground").data["versi_aturan"] == "2.1.0"
+    assert _terakhir(db, "claimguard_playground").data["versi_aturan"] == "2.2.0"
 
 
 def test_versi_aturan_di_percakapan_dan_rantai_utuh(db):
     from aage.agents.graph import handle_inbound
 
     handle_inbound(db, channel="webchat", external_user_id="uji-temuan-1", text="berapa harga madu?")
-    assert _terakhir(db, "claimguard").data["versi_aturan"] == "2.1.0"
+    assert _terakhir(db, "claimguard").data["versi_aturan"] == "2.2.0"
     assert ledger_chain.verify(db)["utuh"]
 
 
 def test_versi_aturan_dan_temuan_di_draf_konten(client, marketing, admin, db):
     d = _draf(client, marketing)
-    assert d["claim_report"]["rules_version"] == "2.1.0"
+    assert d["claim_report"]["rules_version"] == "2.2.0"
     assert "temuan" in d["claim_report"]
-    assert _terakhir(db, "konten_dibuat").data["versi_aturan"] == "2.1.0"
+    assert _terakhir(db, "konten_dibuat").data["versi_aturan"] == "2.2.0"
 
     r = client.patch(f"/api/content/{d['id']}", headers=marketing, json={"isi": d["isi"] + " Madu ini menyembuhkan diabetes."})
     assert r.status_code == 200
     assert any(t["rule_id"] == "R01" for t in r.json()["claim_report"]["temuan"])
-    assert _terakhir(db, "konten_diedit").data["versi_aturan"] == "2.1.0"
+    assert _terakhir(db, "konten_diedit").data["versi_aturan"] == "2.2.0"
 
 
 def test_versi_aturan_di_audit_halaman(client, marketing, db):
     assert client.post("/api/content/audit", headers=marketing, json={"contoh": True}).status_code == 200
     data = _terakhir(db, "audit_halaman").data
-    assert data["versi_aturan"] == "2.1.0"
+    assert data["versi_aturan"] == "2.2.0"
 
 
 def test_draf_lama_tanpa_versi_diperiksa_ulang_saat_disetujui(client, marketing, admin, db):
@@ -202,7 +202,7 @@ def test_draf_lama_tanpa_versi_diperiksa_ulang_saat_disetujui(client, marketing,
     db.commit()
     r = client.post(f"/api/content/{d['id']}/approve", headers=admin)
     assert r.status_code == 200, r.text
-    assert _terakhir(db, "konten_disetujui").data["versi_aturan"] == "2.1.0"
+    assert _terakhir(db, "konten_disetujui").data["versi_aturan"] == "2.2.0"
     assert ledger_chain.verify(db)["utuh"]
 
 
@@ -267,4 +267,4 @@ def test_runner_berjalan_di_semua_baris(db):
 
     baris = jalankan(db)
     assert len(baris) == len(baca_dataset())
-    assert all(b["prediksi_kategori"] in KATEGORI and b["versi_aturan"] == "2.1.0" for b in baris)
+    assert all(b["prediksi_kategori"] in KATEGORI and b["versi_aturan"] == "2.2.0" for b in baris)

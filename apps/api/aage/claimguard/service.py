@@ -23,7 +23,8 @@ KEPUTUSAN = {ALLOWED: "PASS", REVIEW: "NEEDS_REVIEW", BLOCKED: "BLOCK"}
 _RANK = {ALLOWED: 0, REVIEW: 1, BLOCKED: 2}
 
 ADVISORY_RE = re.compile(
-    r"\b(konsultasi\w*|tanyakan|hubungi|periksakan)\b.{0,40}\b(dokter|apoteker|tenaga kesehatan|tenaga medis)\b",
+    r"\b(konsultasi\w*|tanyakan|hubungi|periksakan)\b.{0,40}\b(dokter|apoteker|tenaga kesehatan|tenaga medis)\b"
+    r"|\befek samping yang mungkin\b",
     re.IGNORECASE,
 )
 MATCH_THRESHOLD = 0.5
@@ -116,7 +117,8 @@ class CheckResult:
         return list(dict.fromkeys(out))
 
 
-_SENT_RE = re.compile(r"[^.!?\n]+[.!?]*", re.MULTILINE)
+# Titik di antara angka (10.000, Rp 2.880.000) bukan akhir kalimat.
+_SENT_RE = re.compile(r"(?:[^.!?\n]|(?<=\d)\.(?=\d))+[.!?]*", re.MULTILINE)
 
 
 def _sentences(text: str) -> list[tuple[str, int, int]]:
@@ -146,6 +148,11 @@ def _stage1(sentence: str) -> tuple[str, list[RuleHit], list[str]]:
                 continue
             hits.append(RuleHit(rule.id, rule.label, rule.severity, m.group(0), rule.alasan))
             break
+    for rule_id, pattern in registry.phrase_rules():  # X01-X03, sama untuk bot dan Compliance
+        m = pattern.search(sentence)
+        if m and not is_negated(sentence, m.start()):
+            r = registry.rule(rule_id)
+            hits.append(RuleHit(rule_id, r["description"], r["severity"], m.group(0), r["description"]))
     stat = stat_without_source(sentence)
     if stat:
         hits.append(RuleHit("R17", "Statistik tanpa sumber", REVIEW, stat.group(0),

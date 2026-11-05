@@ -12,7 +12,7 @@ DISEASES = [
     "gerd", "wasir", "ambeien", "hemoroid", "alzheimer", "parkinson", "autis", "autisme", "impotensi",
     "ejakulasi dini", "disfungsi ereksi", "infertilitas", "mandul", "lupus", "vertigo", "migrain",
     "insomnia", "depresi", "demam berdarah", "dbd", "tifus", "tipes", "malaria", "sinusitis", "polip",
-    "katarak", "glaukoma", "psoriasis", "eksim", "obesitas", "anemia", "maag kronis", "tukak lambung",
+    "katarak", "glaukoma", "psoriasis", "eksim", "obesitas", "anemia", "maag kronis", "maag", "tukak lambung",
     "radang", "infeksi", "virus", "bakteri", "kanker serviks", "kanker payudara", "leukemia", "epilepsi",
     "sakit gula", "gula darah tinggi", "penyakit kronis", "penyakit degeneratif", "tumor ganas",
 ]
@@ -81,6 +81,14 @@ RULES: list[Rule] = [
     Rule("R15", "Klaim seksual/hormonal", "blocked",
          _p(r"\b(obat kuat|perkasa|keperkasaan|ereksi|ejakulasi|libido|gairah pria|vitalitas pria|tahan lama di ranjang|memperbesar)\b"),
          alasan="Klaim fungsi seksual tidak diizinkan untuk produk herbal umum."),
+    Rule("R21", "Jaminan terselubung", "blocked",
+         _p(r"\b(?:tidak|tak|nggak|gak)\s+mungkin\s+gagal\b|\b(?:tidak|tak)\s+akan\s+mengecewakan\b|\bpasti\s+merasakan\b"
+            r"|\buang\s+kembali\b.{0,40}\b(?:manfaat\w*|khasiat\w*|hasil\w*|efek\w*|terasa)\b"
+            r"|\b(?:bebas|tanpa|tak ada|tidak ada|nol)\s+risiko\b(?!\s+(?:kerusakan|kerugian|kehabisan|pengiriman|stok))"),
+         negatable=False, alasan="Janji hasil atau keamanan tetap jaminan walau tidak memakai kata dijamin."),
+    Rule("R22", "Klaim penyakit tidak kambuh atau penyumbatan", "blocked",
+         _p(r"\b(?:tidak|tak|nggak|gak)\s+(?:akan\s+|bakal\s+)?kambuh\b|\bsumbatan\b.{0,25}\b(?:darah|pembuluh|arteri)\b"),
+         negatable=False, alasan="Menjanjikan penyakit tidak kambuh atau sumbatan hilang adalah klaim terapi."),
     Rule("R05", "Penyebutan nama penyakit", "review",
          _p(rf"\b(?:{_DIS})\b"),
          negatable=False, alasan="Ada nama penyakit; pastikan tidak dikaitkan dengan khasiat produk."),
@@ -88,11 +96,16 @@ RULES: list[Rule] = [
          _p(r"\b(ampuh|manjur|paling (?:ampuh|manjur|efektif|bagus|baik|aman)|nomor\s*1|no\.?\s*1|terbaik|terampuh|termanjur|instan|seketika|permanen|selamanya|tuntas|super ampuh|luar biasa|terlaris|paling laris|drastis|berlipat|signifikan|maksimal dalam waktu singkat|rahasia awet muda)\b"),
          alasan="Superlatif perlu bukti dan sering dianggap menyesatkan."),
     Rule("R11", "Perbandingan merek", "review",
-         _p(r"\b(lebih (?:baik|bagus|ampuh|efektif|manjur|unggul|aman) (?:dari|daripada|dibanding)|dibanding(?:kan)? (?:merek|produk) (?:lain|sebelah)|merek lain|produk sebelah|kompetitor|mengalahkan)\b"),
+         _p(r"\b(lebih (?:baik|bagus|ampuh|efektif|manjur|unggul|aman) (?:dari|daripada|dibanding)|dibanding(?:kan)? (?:merek|produk) (?:lain|sebelah)|merek lain|produk sebelah|kompetitor|mengalahkan"
+            r"|lebih\s+(?!murah\b|mahal\b|banyak\b|sedikit\b|besar\b|kecil\b|dari\b)\w+\s+(?:dan\s+lebih\s+\w+\s+)?(?:dari|daripada|dibanding\w*|ketimbang)"
+            r"|merek\s+(?:pesaing|sebelah|impor)|produk\s+pesaing|dibanding(?:kan)?\s+\w+\s+biasa|tidak\s+seperti\s+(?:produk|merek)|beda\s+dari\s+yang\s+lain|satu-satunya)\b"),
          alasan="Perbandingan dengan merek lain memerlukan data pembanding yang sah."),
     Rule("R13", "Klaim detoks/peluruh", "review",
          _p(r"\b(detoks|detox|membuang racun|mengeluarkan racun|meluruhkan|peluruh|membersihkan darah|cuci darah)\b"),
          alasan="Klaim detoks/peluruh perlu dicocokkan dengan klaim terdaftar."),
+    Rule("R23", "Klaim kandungan unggulan", "review",
+         _p(r"\b(?:antioksidan\s+(?:tinggi|kuat)|kaya\s+antioksidan)\b"),
+         alasan="Keunggulan kandungan perlu dicocokkan dengan klaim terdaftar."),
     Rule("R18", "Klaim keamanan", "review",
          _p(r"\baman\s+(?:dikonsumsi|diminum|untuk)\b.{0,30}\b(?:setiap hari|jangka panjang|semua (?:usia|umur|orang)|anak|ibu hamil|selamanya)\b"),
          negatable=False, alasan="Klaim keamanan umum memerlukan bukti dan sebaiknya mengikuti label."),
@@ -104,16 +117,19 @@ RULES: list[Rule] = [
          negatable=False, alasan="Angka 100% perlu bukti (mis. sertifikat) yang dirujuk."),
 ]
 
-STAT_RE = _p(r"\b\d+(?:[.,]\d+)?\s*(?:%|persen|kali lipat|x lipat)|\b\d+\s+dari\s+\d+\b")
+_ANGKA = r"satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh|\d+"
+STAT_RE = _p(rf"\b\d+(?:[.,]\d+)?\s*(?:%|persen|kali lipat|x lipat)|\b(?:{_ANGKA})\s+dari\s+(?:sepuluh|seratus|\d+)\b"
+             rf"|\b(?:{_ANGKA})\s+kali\s+(?:lipat|lebih)\b|\b\d[\d.,]*\s+(?:responden|pasien)\b"
+             r"|\b(?:mayoritas|kebanyakan|rata-rata|sebagian besar)\s+(?:pengguna|pemakai|pelanggan|pembeli|pasien|responden)\b")
 STAT_EXEMPT_RE = _p(r"\b(diskon|potongan|hemat|ppn|pajak|harga|cashback|bunga|dp|uang muka|kadar air|kemasan|isi|rh|kelembapan|suhu|stabilitas|margin|tempo)\b")
-STAT_HEALTH_RE = _p(r"\b(meningkat\w*|peningkatan|menurun\w*|efektif|pasien|responden|pengguna|pelanggan|dokter|metabolisme|merasakan|tubuh|imun\w*|energi|stamina|sembuh\w*|penelitian|studi|riset|uji|terbukti|khasiat|manfaat|kesehatan|risiko)\b")
+STAT_HEALTH_RE = _p(r"\b(meningkat\w*|peningkatan|menurun\w*|efektif|pasien|responden|pengguna|pemakai|pelanggan|dokter|hasil\w*|vitamin\w*|kandungan|metabolisme|merasakan|tubuh|imun\w*|energi|stamina|sembuh\w*|penelitian|studi|riset|uji|terbukti|khasiat|manfaat|kesehatan|risiko)\b")
 SOURCE_RE = _p(r"(\bsumber\s*:|\bmenurut\b|\bdikutip\b|\bjurnal\b|\(\s*\w[^)]*\d{4}\s*\)|\[\d+\]|https?://)")
 
 BENEFIT_RE = _p(
     r"\b(membantu|memelihara|menjaga|meningkatkan|mendukung|menguatkan|memperkuat|melancarkan|meredakan|"
     r"mengurangi|menyegarkan|menambah|menghangatkan|bermanfaat|berkhasiat|khasiat|manfaat|baik untuk|"
     r"cocok untuk|berguna|ampuh|efektif|digunakan untuk|untuk kesehatan|untuk daya tahan|merawat|membuat|"
-    r"menyeimbangkan|memperbaiki|diformulasikan untuk)\b"
+    r"menyeimbangkan|memperbaiki|diformulasikan untuk|menjernihkan|jadi lebih|menjadi lebih|terasa lebih|tumbuh lebih)\b"
 )
 
 HEALTH_OBJ_RE = _p(
@@ -121,7 +137,7 @@ HEALTH_OBJ_RE = _p(
     r"nafsu makan|tidur|rileks|pegal|linu|nyeri|otot|sendi|haid|batuk|tenggorokan|kulit|rambut|hati|liver|"
     r"ingat|konsentrasi|tulang|nutrisi|gizi|masuk angin|kembung|hangat|segar|organ|darah|jantung|ginjal|"
     r"metabolisme|vitalitas|fungsi|pemulihan|kolesterol|gula|tensi|berat badan|awet muda|penuaan|racun|"
-    r"subur|kesuburan|hormon|sperma|kecantikan|langsing|lelah|konsentrasi|peredaran)\b"
+    r"subur|kesuburan|hormon|sperma|kecantikan|langsing|lelah|konsentrasi|peredaran|otak)\b"
 )
 
 

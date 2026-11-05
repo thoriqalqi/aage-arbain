@@ -111,7 +111,10 @@ Kategori ClaimGuard diukur tanpa LLM. `klaim_kategori.csv` sengaja memuat parafr
 ```powershell
 # apps/api
 .venv/Scripts/python -m eval.run_klaim --keluaran hasil_kerja
+.venv/Scripts/python -m eval.run_klaim --dataset holdout --keluaran hasil_kerja
 ```
+
+Jangan menyetel aturan dari baris holdout yang gagal; baris itu berhenti menjadi holdout.
 
 ## Catatan kejujuran angka
 

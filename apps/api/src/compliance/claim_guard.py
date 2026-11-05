@@ -26,8 +26,7 @@ from sqlalchemy.orm import Session
 
 from aage import claimguard
 from aage.claimguard import registry
-from aage.claimguard.rules import is_negated
-from aage.claimguard.service import _best_claim, _product_name_re
+from aage.claimguard.service import _best_claim
 from aage.config import get_settings
 from aage.models import ApprovedClaim, Product
 
@@ -172,7 +171,6 @@ class ClaimGuardEngine:
 
     def _stage_a(self, product: Product, text: str) -> tuple[claimguard.CheckResult, list[RuleMatch], dict[int, list[RuleMatch]]]:
         chk = claimguard.check(self.db, text, product_ids=[product.id], use_llm=False)
-        name_re = _product_name_re([p.nama for p in self.db.scalars(select(Product))])
         kategori = product.kategori
         matches: list[RuleMatch] = []
         per_sentence: dict[int, list[RuleMatch]] = {}
@@ -194,11 +192,6 @@ class ClaimGuardEngine:
         for i, s in enumerate(chk.sentences):
             for h in s.rules:
                 add(h.id, h.match, s, i)
-            masked = name_re.sub(lambda mm: "x" * len(mm.group(0)), s.text) if name_re else s.text
-            for rule_id, pattern in registry.phrase_rules():
-                m = pattern.search(masked)
-                if m and not is_negated(masked, m.start()):
-                    add(rule_id, s.text[m.start():m.end()], s, i)
             if s.stage == "pencocokan":
                 add("KLAIM_TIDAK_TERDAFTAR", s.text, s, i)
         return chk, matches, per_sentence

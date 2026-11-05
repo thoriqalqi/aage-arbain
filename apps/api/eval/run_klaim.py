@@ -4,6 +4,10 @@ Dataset eval/datasets/klaim_kategori.csv memuat parafrase yang sengaja belum ten
 bukan gerbang lolos, dan dataset ditulis tim, jadi ini bukan uji buta. Jangan menyetel aturan hanya demi angka ini.
 
     python -m eval.run_klaim --keluaran hasil_kerja
+    python -m eval.run_klaim --dataset holdout --keluaran hasil_kerja
+
+Holdout tidak dipakai untuk menyusun aturan. Jangan menyetel aturan dari baris holdout yang gagal; kalau itu terjadi,
+baris tersebut bukan holdout lagi.
 """
 
 import argparse
@@ -15,6 +19,7 @@ from eval.metrik_klaim import biner, macro_f1, per_kategori
 
 HERE = Path(__file__).resolve().parent
 DATASET = HERE / "datasets" / "klaim_kategori.csv"
+HOLDOUT = HERE / "datasets" / "klaim_kategori_holdout.csv"
 AMAN = {"SUPPORTED_CLAIM", "SAFE_PRODUCT_DESCRIPTION"}
 TANPA_DASAR = "UNSUPPORTED_CLAIM"
 _RANK_KEPUTUSAN = {"PASS": 0, "NEEDS_REVIEW": 1, "BLOCK": 2}
@@ -60,11 +65,11 @@ def nilai(baris: list[dict]) -> dict:
     }
 
 
-def jalankan(db) -> list[dict]:
+def jalankan(db, path: Path = DATASET) -> list[dict]:
     from aage import claimguard
 
     baris = []
-    for r in baca_dataset():
+    for r in baca_dataset(path):
         hasil = claimguard.check(db, r["kalimat"], use_llm=False).to_dict()
         baris.append({**r, "prediksi_kategori": prediksi_kategori(hasil["sentences"]), "prediksi_keputusan": hasil["keputusan"],
                       "aturan": hasil["rules_triggered"], "versi_aturan": hasil["rules_version"]})
@@ -73,12 +78,13 @@ def jalankan(db) -> list[dict]:
 
 def main() -> None:
     p = argparse.ArgumentParser()
+    p.add_argument("--dataset", choices=["kategori", "holdout"], default="kategori")
     p.add_argument("--keluaran", required=True, help="folder di eval/ untuk hasil; jangan di-commit")
     args = p.parse_args()
 
     from eval import run_eval
 
-    run_eval._prepare_env("template", "klaim")
+    run_eval._prepare_env("template", f"klaim_{args.dataset}")
     from aage import settings_store
     from aage.db import SessionLocal, init_db
     from aage.seed import seed_base
@@ -87,11 +93,11 @@ def main() -> None:
     with SessionLocal() as db:
         seed_base(db)
         settings_store.pasang_mode_data(db, "demo", "eval")  # dataset bergantung pada katalog simulasi
-        baris = jalankan(db)
+        baris = jalankan(db, HOLDOUT if args.dataset == "holdout" else DATASET)
     ringkas = nilai(baris)
     folder = HERE / args.keluaran
     folder.mkdir(parents=True, exist_ok=True)
-    (folder / "hasil_klaim.json").write_text(json.dumps({"ringkasan": ringkas, "baris": baris}, ensure_ascii=False, indent=2), encoding="utf-8")
+    (folder / f"hasil_klaim_{args.dataset}.json").write_text(json.dumps({"ringkasan": ringkas, "baris": baris}, ensure_ascii=False, indent=2), encoding="utf-8")
 
     print(f"Versi aturan {baris[0]['versi_aturan']}, {ringkas['n']} kalimat, tanpa LLM. Ukuran, bukan uji buta.")
     for k, v in ringkas["per_kategori"].items():

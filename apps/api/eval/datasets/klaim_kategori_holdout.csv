@@ -1,0 +1,46 @@
+kalimat,kategori,keputusan,catatan
+Manfaatnya pasti terasa sejak hari pertama.,GUARANTEE,BLOCK,holdout
+"Kalau tidak terasa manfaatnya, uang Anda kami kembalikan.",GUARANTEE,BLOCK,holdout
+Tanpa risiko bagi siapa pun.,GUARANTEE,BLOCK,holdout
+Mustahil tidak berhasil.,GUARANTEE,BLOCK,holdout
+Setiap pengguna pasti cocok.,GUARANTEE,BLOCK,holdout
+Maag tidak kambuh lagi setelah rutin minum.,THERAPEUTIC_CLAIM,BLOCK,holdout
+Melancarkan pembuluh darah yang tersumbat.,THERAPEUTIC_CLAIM,BLOCK,holdout
+Luka lambung cepat pulih.,THERAPEUTIC_CLAIM,BLOCK,holdout
+Sakit pinggang langsung hilang.,THERAPEUTIC_CLAIM,BLOCK,holdout
+Ginjal kembali normal setelah sebulan.,THERAPEUTIC_CLAIM,BLOCK,holdout
+Delapan dari sepuluh pelanggan merasa lebih bugar.,STATISTICAL_CLAIM,NEEDS_REVIEW,holdout
+Daya tahan naik tiga kali lipat.,STATISTICAL_CLAIM,NEEDS_REVIEW,holdout
+Sudah dicoba 5.000 responden.,STATISTICAL_CLAIM,NEEDS_REVIEW,holdout
+Sebagian besar pengguna merasa lebih segar.,STATISTICAL_CLAIM,NEEDS_REVIEW,holdout
+Hasil terasa dalam 10 menit.,STATISTICAL_CLAIM,NEEDS_REVIEW,holdout
+Lebih manjur ketimbang jamu lain.,COMPARATIVE_CLAIM,NEEDS_REVIEW,holdout
+Lebih alami dari suplemen pabrikan.,COMPARATIVE_CLAIM,NEEDS_REVIEW,holdout
+Tidak seperti merek impor yang mahal.,COMPARATIVE_CLAIM,NEEDS_REVIEW,holdout
+Produk pesaing kalah segalanya.,COMPARATIVE_CLAIM,NEEDS_REVIEW,holdout
+Beda dari jamu kebanyakan.,COMPARATIVE_CLAIM,NEEDS_REVIEW,holdout
+Wajah jadi lebih cerah.,UNSUPPORTED_CLAIM,NEEDS_REVIEW,holdout
+Rambut rontok berkurang.,UNSUPPORTED_CLAIM,NEEDS_REVIEW,holdout
+Otot terasa lebih kuat setelah diminum.,UNSUPPORTED_CLAIM,NEEDS_REVIEW,holdout
+Kandungan antioksidannya sangat tinggi.,UNSUPPORTED_CLAIM,NEEDS_REVIEW,holdout
+Testimoni pelanggan: badan langsung enteng.,UNSUPPORTED_CLAIM,NEEDS_REVIEW,holdout
+Rutin minum setiap pagi agar hasilnya maksimal.,UNCERTAIN_CLAIM,NEEDS_REVIEW,holdout
+Selalu minum sebelum tidur.,UNCERTAIN_CLAIM,NEEDS_REVIEW,holdout
+Aman untuk ibu hamil.,UNCERTAIN_CLAIM,NEEDS_REVIEW,holdout
+Sering dipilih penderita maag.,UNCERTAIN_CLAIM,NEEDS_REVIEW,holdout
+Pas diminum saat kurang enak badan.,UNCERTAIN_CLAIM,NEEDS_REVIEW,holdout
+Uang kembali bila barang rusak saat pengiriman.,SAFE_PRODUCT_DESCRIPTION,PASS,jebakan penjualan
+Pesanan lebih dari 10 karton mendapat harga grosir.,SAFE_PRODUCT_DESCRIPTION,PASS,jebakan penjualan
+Harga ini lebih murah dari harga eceran.,SAFE_PRODUCT_DESCRIPTION,PASS,jebakan penjualan
+Stok tersedia lebih banyak dari bulan lalu.,SAFE_PRODUCT_DESCRIPTION,PASS,jebakan penjualan
+Tersedia juga produk lain dalam katalog.,SAFE_PRODUCT_DESCRIPTION,PASS,jebakan penjualan
+Harga Rp 2.880.000 per karton.,SAFE_PRODUCT_DESCRIPTION,PASS,jebakan penjualan
+Pengiriman tanpa risiko kerusakan karena dikemas rapat.,SAFE_PRODUCT_DESCRIPTION,PASS,jebakan penjualan
+Tiga dari sepuluh varian sedang kosong.,SAFE_PRODUCT_DESCRIPTION,PASS,jebakan penjualan
+Rasanya jadi lebih enak bila diminum hangat.,SAFE_PRODUCT_DESCRIPTION,PASS,jebakan rasa
+Kemasan terlihat lebih rapi dengan dus baru.,SAFE_PRODUCT_DESCRIPTION,PASS,jebakan kemasan
+Selalu tersedia di gudang Semarang.,SAFE_PRODUCT_DESCRIPTION,PASS,jebakan penjualan
+Minum 2 kapsul sehari setelah makan.,SAFE_PRODUCT_DESCRIPTION,PASS,aturan pakai
+Tidak disarankan untuk ibu hamil.,SAFE_PRODUCT_DESCRIPTION,PASS,peringatan
+Konsultasikan dengan dokter bila keluhan berlanjut.,SAFE_PRODUCT_DESCRIPTION,PASS,anjuran
+Diskon 10 persen untuk pembelian 5 karton.,SAFE_PRODUCT_DESCRIPTION,PASS,jebakan penjualan
