@@ -475,6 +475,174 @@ def test_idempotency_draf_berbeda_ditolak(client, admin, db, engine_with):
     assert _audit_draf(client, h, b).status_code == 409
 
 
+# ------------------------------------------------------------------ tinjauan manusia
+
+
+@pytest.fixture
+def marketing(client):
+    tok = client.post("/api/auth/login", json={"email": "marketing@aage.local", "password": "marketing123"}).json()["token"]
+    return {"Authorization": f"Bearer {tok}"}
+
+
+def _ajukan(db, pid):
+    from aage.content import studio
+    from aage.models import ContentDraft
+
+    db.expire_all()
+    return studio.submit(db, db.get(ContentDraft, pid), "staf:pembuat").id
+
+
+def _putus(client, headers, approval_id, aksi, catatan=None):
+    return client.post(f"/api/approvals/{approval_id}/decide", json={"aksi": aksi, "catatan": catatan}, headers=headers)
+
+
+def _event(db, tipe, objek_ref):
+    from aage.models import LedgerEvent
+
+    db.expire_all()
+    return db.scalar(select(LedgerEvent).where(LedgerEvent.tipe_event == tipe, LedgerEvent.objek_ref == objek_ref).order_by(LedgerEvent.id.desc()))
+
+
+def test_need_review_hanya_admin_dengan_catatan(client, admin, marketing, db, engine_with):
+    from aage.models import Approval, ContentDraft
+
+    pid = _draf(db)
+    engine_with(FakeReviewer(review("NEED_REVIEW", [("apotek mitra", "absolut", None)])))
+    assert _audit_draf(client, admin, pid).json()["draft"]["claim_verdict"] == "review"
+    aid = _ajukan(db, pid)
+
+    tolak = _putus(client, marketing, aid, "setujui", "sudah saya cek")
+    assert tolak.status_code == 422 and "admin" in tolak.json()["detail"]["pesan"]
+    assert _putus(client, admin, aid, "setujui", "   ").status_code == 422
+    assert client.post(f"/api/content/{pid}/approve", headers=admin).status_code == 422  # jalur langsung tunduk pada aturan yang sama
+    db.expire_all()
+    assert db.get(Approval, aid).status == "menunggu" and db.get(ContentDraft, pid).status == "menunggu_approval"
+
+    assert _putus(client, admin, aid, "setujui", "Dicek tim regulasi: aman").status_code == 200
+    db.expire_all()
+    assert db.get(ContentDraft, pid).status == "disetujui" and db.get(Approval, aid).catatan == "Dicek tim regulasi: aman"
+    assert _event(db, "konten_disetujui", f"content:{pid}").alasan == "Dicek tim regulasi: aman"
+    assert _event(db, "approval_diputus", f"approval:{aid}").alasan == "Dicek tim regulasi: aman"
+
+
+def test_draf_diizinkan_tetap_bisa_disetujui_marketing_tanpa_catatan(client, admin, marketing, db):
+    from aage.models import ContentDraft
+
+    pid = _draf(db)
+    aid = _ajukan(db, pid)
+    assert _putus(client, marketing, aid, "setujui").status_code == 200
+    db.expire_all()
+    assert db.get(ContentDraft, pid).status == "disetujui"
+
+
+def test_blokir_saat_antrean_terlihat_peninjau_dan_tidak_bisa_disetujui(client, admin, db, engine_with):
+    from aage.models import Approval, ContentDraft
+
+    pid = _draf(db)
+    aid = _ajukan(db, pid)
+    engine_with(FakeReviewer(review("BLOCKED", [("apotek mitra", "absolut", "R07")])))
+    _audit_draf(client, admin, pid)
+    db.expire_all()
+    assert db.get(Approval, aid).verdict == "blocked"
+    assert _putus(client, admin, aid, "setujui", "Saya yakin ini aman").status_code == 422  # catatan admin tidak melepas blokir
+    assert _putus(client, admin, aid, "revisi", "Kalimat apotek mitra perlu bukti").status_code == 200
+    db.expire_all()
+    assert db.get(ContentDraft, pid).status == "perlu_revisi"
+
+
+def test_minta_revisi_memaksa_teks_berubah_dan_pengajuan_ulang(client, admin, marketing, db):
+    from aage.content import studio
+    from aage.models import Approval, ContentDraft
+
+    pid = _draf(db)
+    aid = _ajukan(db, pid)
+    assert _putus(client, marketing, aid, "revisi").status_code == 422  # tanpa catatan, pembuat tidak tahu apa yang diperbaiki
+    assert _putus(client, marketing, aid, "revisi", "Perjelas ukuran kemasan").status_code == 200
+    db.expire_all()
+    assert db.get(Approval, aid).status == "revisi" and db.get(ContentDraft, pid).status == "perlu_revisi"
+    assert _event(db, "approval_diputus", f"approval:{aid}").alasan == "Perjelas ukuran kemasan"
+
+    d = db.get(ContentDraft, pid)
+    with pytest.raises(studio.ContentError):
+        studio.submit(db, d, "staf:pembuat")
+    assert client.post(f"/api/content/{pid}/approve", headers=admin).status_code == 422
+    assert client.patch(f"/api/content/{pid}", json={"isi": d.isi}, headers=admin).status_code == 409  # belum ada yang berubah
+    db.expire_all()
+    assert db.get(ContentDraft, pid).status == "perlu_revisi"
+
+    d = db.get(ContentDraft, pid)
+    studio.edit(db, d, {"isi": CLEAN + " Kemasan botol tersedia untuk grosir."}, "staf:pembuat")
+    assert d.status == "draf"
+    baru = _ajukan(db, pid)
+    assert baru != aid and _putus(client, marketing, baru, "setujui").status_code == 200
+
+
+def test_revisi_hanya_untuk_konten_dan_catatan_tanpa_nomor(client, auth, admin, db):
+    from aage.models import Approval, ContentDraft
+
+    ap = Approval(objek_tipe="balasan", alasan="uji", ringkasan="uji", draf="uji")
+    db.add(ap)
+    db.commit()
+    assert _putus(client, auth, ap.id, "revisi", "Perbaiki").status_code == 422
+    db.expire_all()
+    assert db.get(Approval, ap.id).status == "menunggu"
+
+    pid = _draf(db)
+    aid = _ajukan(db, pid)
+    r = _putus(client, admin, aid, "tolak", "Hubungi pembeli di 0812 3456 7890")
+    assert r.status_code == 422 and "nomor telepon" in r.json()["detail"]["pesan"]
+    assert _putus(client, admin, aid, "tolak", "x" * 501).status_code == 422
+    db.expire_all()
+    assert db.get(ContentDraft, pid).status == "menunggu_approval"
+    assert _putus(client, admin, aid, "tolak").status_code == 200  # catatan tolak tidak wajib
+
+
+def test_saran_audit_tidak_memakai_klaim_yang_belum_terverifikasi(db):
+    from aage import settings_store
+
+    r = ClaimGuardEngine(db, FakeReviewer(review("ALLOWED"))).verify_content(OBA, RISKY)
+    assert r.recommendation  # mode demo: katalog simulasi boleh dipakai
+    settings_store.pasang_mode_data(db, "produksi")
+    db.commit()
+    try:
+        r = ClaimGuardEngine(db, FakeReviewer(review("ALLOWED"))).verify_content(OBA, RISKY)
+        assert r.recommendation is None and "belum memiliki klaim terverifikasi" in r.recommendation_note
+    finally:
+        settings_store.pasang_mode_data(db, "demo")
+        db.commit()
+
+
+def test_tinjauan_memuat_audit_dan_keputusan_tanpa_memanggil_llm(client, auth, admin, marketing, db, engine_with):
+    from aage.content import studio
+    from aage.models import ContentDraft
+
+    pid = _draf(db)
+    assert client.get(f"/api/compliance/tinjauan/{pid}").status_code == 401
+    assert client.get(f"/api/compliance/tinjauan/{pid}", headers=auth).status_code == 403
+    assert client.get("/api/compliance/tinjauan/999999", headers=admin).status_code == 404
+    kosong = client.get(f"/api/compliance/tinjauan/{pid}", headers=marketing).json()
+    assert kosong["audits"] == [] and kosong["keputusan"] == [] and kosong["product_sku"] == OBA
+
+    reviewer = FakeReviewer(review("NEED_REVIEW", [("apotek mitra", "absolut", None)]))
+    engine_with(reviewer)
+    _audit_draf(client, admin, pid)
+    aid = _ajukan(db, pid)
+    _putus(client, marketing, aid, "revisi", "Perjelas sumbernya")
+    panggilan = reviewer.calls
+
+    t = client.get(f"/api/compliance/tinjauan/{pid}", headers=marketing).json()
+    assert reviewer.calls == panggilan
+    assert t["status"] == "perlu_revisi" and t["claim_verdict"] == "review"
+    assert t["kategori"]["GUARANTEE"]["label"] == "Jaminan hasil"
+    assert t["audits"][0]["berlaku"] is True and t["audits"][0]["oleh"] and t["audits"][0]["evidence"]
+    assert t["keputusan"][0]["status"] == "revisi" and t["keputusan"][0]["catatan"] == "Perjelas sumbernya" and t["keputusan"][0]["diputus_pada"]
+
+    db.expire_all()
+    studio.edit(db, db.get(ContentDraft, pid), {"isi": CLEAN + " Teks baru."}, "staf:pembuat")
+    t = client.get(f"/api/compliance/tinjauan/{pid}", headers=marketing).json()
+    assert t["audits"][0]["berlaku"] is False and t["claim_verdict"] == "allowed"  # audit lama tidak berlaku untuk teks baru
+
+
 def test_audit_append_only(db, client, auth):
     from sqlalchemy import select
 

@@ -28,6 +28,7 @@ from aage import claimguard
 from aage.claimguard import registry
 from aage.claimguard.service import _best_claim
 from aage.config import get_settings
+from aage.kb import verifikasi
 from aage.models import ApprovedClaim, Product
 
 from .llm_adapter import ContextReviewer, ReviewerError, ReviewerNotConfigured, ReviewRequest
@@ -208,9 +209,10 @@ class ClaimGuardEngine:
     def _recommend(self, product: Product, chk: claimguard.CheckResult, flagged: set[int]) -> tuple[str | None, str]:
         if not flagged:
             return None, f"Tidak ada kalimat spesifik yang dapat diperbaiki otomatis — tinjau secara manual. {HUMAN_REVIEW_NOTE}"
-        claims = self._claims(product)
+        saringan = verifikasi.Saringan(self.db)
+        claims = [c for c in self._claims(product) if saringan.boleh_klaim(c)]
         if not claims:
-            return None, ("Produk belum memiliki klaim resmi di katalog — tulis ulang secara manual; "
+            return None, ("Produk belum memiliki klaim terverifikasi di katalog — tulis ulang secara manual; "
                           f"ClaimGuard tidak membuat klaim pengganti. {HUMAN_REVIEW_NOTE}")
         flagged_text = " ".join(chk.sentences[i].text for i in sorted(flagged))
         claim, _ = _best_claim(flagged_text, claims, strict=False)

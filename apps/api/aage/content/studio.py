@@ -36,7 +36,7 @@ FORMATS: dict[str, dict] = {
     "marketplace": {"label": "Deskripsi marketplace", "web": False, "panjang": "judul ≤80 karakter + poin-poin"},
     "brosur": {"label": "Brosur grosir apotek", "web": False, "panjang": "judul, 3 poin, tabel harga grosir & tier"},
 }
-STATUSES = {"draf", "menunggu_approval", "disetujui", "ditolak", "diarsipkan"}
+STATUSES = {"draf", "menunggu_approval", "perlu_revisi", "disetujui", "ditolak", "diarsipkan"}
 OPT_OUT = "Balas STOP bila tidak ingin menerima info produk lagi."
 MAKS_TITLE, MAKS_DESKRIPSI, MAKS_JUDUL = 60, 155, 200
 MAKS_CUPLIKAN, MAKS_SARAN_TAUTAN, BATAS_KEPADATAN = 3, 3, 3.0
@@ -566,6 +566,8 @@ def edit(db: Session, d: ContentDraft, changes: dict, aktor: str, *, perubahan: 
     if nomor_versi(db, d.id) == 0:  # draf dari sebelum ada riwayat: isi lamanya disimpan dulu
         _simpan_versi(db, d, "sebelum_riwayat", "sistem")
     berubah = any(changes.get(k) is not None and changes[k] != getattr(d, k) for k in ("judul", "isi", "faq", "meta"))
+    if d.status == "perlu_revisi" and not berubah:
+        raise ContentError("Penyetuju meminta revisi. Ubah isinya dulu sebelum disimpan.")
     for k in ("judul", "isi", "faq", "meta"):
         if changes.get(k) is not None:
             setattr(d, k, changes[k])
@@ -715,6 +717,8 @@ def submit(db: Session, d: ContentDraft, aktor: str) -> Approval:
         raise ContentError("Draf sudah diarsipkan.")
     if d.status == "disetujui":
         raise ContentError("Draf sudah disetujui.")
+    if d.status == "perlu_revisi":
+        raise ContentError("Penyetuju meminta revisi. Edit draf dulu sebelum diajukan ulang.")
     _produk_aktif(db, d)
     existing = pending_approval(db, d)
     if existing:
@@ -723,7 +727,7 @@ def submit(db: Session, d: ContentDraft, aktor: str) -> Approval:
     if d.claim_verdict == claimguard.BLOCKED:
         ledger.simpan_kegagalan_llm(db, objek_ref=f"content:{d.id}", product_id=d.product_id)
         db.commit()
-        raise ContentError("Draf Diblokir ClaimGuard. Perbaiki kalimat bertanda merah sebelum diajukan.")
+        raise ContentError("Draf Diblokir ClaimGuard. Perbaiki kalimat yang bermasalah sebelum diajukan. Alasannya ada di tab ClaimGuard dan Tinjauan.")
     label = FORMATS.get(d.tipe, {}).get("label", d.tipe)
     ap = Approval(objek_tipe="konten", objek_id=d.id, intent="konten",
                   alasan=f"{label} menunggu persetujuan (mode Setujui dulu, aturan dua orang)",
@@ -738,16 +742,24 @@ def submit(db: Session, d: ContentDraft, aktor: str) -> Approval:
     return ap
 
 
-def approve(db: Session, d: ContentDraft, aktor: str, *, commit: bool = True) -> ContentDraft:
+def approve(db: Session, d: ContentDraft, aktor: str, *, commit: bool = True, admin: bool = False, catatan: str | None = None) -> ContentDraft:
+    """Blokir hanya selesai lewat revisi teks. Draf yang Perlu Tinjauan boleh disetujui admin dengan catatan alasannya."""
+    if d.status == "perlu_revisi":
+        raise ContentError("Penyetuju meminta revisi. Draf harus diedit dan diajukan ulang.")
     if aktor in creators(db, d):
         raise ContentError("Aturan dua orang: pembuat atau pengedit draf tidak boleh menyetujui drafnya sendiri.")
     _produk_aktif(db, d)
     recheck(db, d)
     if d.claim_verdict == claimguard.BLOCKED:
         raise ContentError("Draf berstatus Diblokir oleh ClaimGuard dan tidak dapat disetujui/diekspor.")
+    if d.claim_verdict == claimguard.REVIEW:
+        if not admin:
+            raise ContentError("Draf ini Perlu Tinjauan ClaimGuard, jadi hanya admin yang bisa menyetujuinya.")
+        if not catatan:
+            raise ContentError("Draf ini Perlu Tinjauan ClaimGuard. Tulis catatan alasan menyetujuinya.")
     d.status = "disetujui"
     ledger.record(db, "konten_disetujui", objek_ref=f"content:{d.id}", product_id=d.product_id, aktor=aktor,
-                  ringkasan=f"Konten '{d.judul}' disetujui", verdict=d.claim_verdict, outcome="disetujui",
+                  ringkasan=f"Konten '{d.judul}' disetujui", verdict=d.claim_verdict, outcome="disetujui", alasan=catatan,
                   data={"versi": nomor_versi(db, d.id), "versi_aturan": (d.claim_report or {}).get("rules_version")})
     if commit:
         db.commit()
@@ -775,7 +787,7 @@ KANAL_TERBIT = {
 }
 _TIPE_TERBIT = ("konten_diterbitkan", "konten_terbit_dibatalkan")
 _MAKS_ALAMAT = 500
-_MAKS_CATATAN = 500
+MAKS_CATATAN = 500
 # Ledger tidak bisa dihapus, jadi nomor pelanggan tidak boleh ikut tercatat.
 _NOMOR_HP = re.compile(r"(?<!\d)(?:\+?62|0)[\s.-]?8(?:[\s.-]?\d){7,}")
 
@@ -788,7 +800,7 @@ class KonflikTerbit(ContentError):
     pass
 
 
-def _tolak_nomor(teks: str, kolom: str) -> None:
+def tolak_nomor(teks: str, kolom: str) -> None:
     if _NOMOR_HP.search(teks):
         raise ContentError(f"{kolom} memuat nomor telepon. Catatan ini tidak bisa dihapus, jadi tulis tanpa nomor.")
 
@@ -809,7 +821,7 @@ def _rapikan_alamat(alamat: str) -> str:
         raise ContentError("Alamat harus lengkap dan diawali http:// atau https://.")
     if u.username is not None or u.password is not None:
         raise ContentError("Alamat tidak boleh memuat nama pengguna atau kata sandi.")
-    _tolak_nomor(alamat, "Alamat")
+    tolak_nomor(alamat, "Alamat")
     return alamat
 
 
@@ -867,9 +879,9 @@ def catat_terbit(db: Session, d: ContentDraft, *, kanal: str, alamat: str, tangg
         raise ContentError(f"Kanal {info['label']} wajib menyertakan alamat halaman atau unggahan.")
     if not alamat and not catatan:
         raise ContentError("Tanpa alamat, isi catatan tentang tempat konten ini terbit.")
-    if len(catatan) > _MAKS_CATATAN:
-        raise ContentError(f"Catatan maksimal {_MAKS_CATATAN} karakter.")
-    _tolak_nomor(catatan, "Catatan")
+    if len(catatan) > MAKS_CATATAN:
+        raise ContentError(f"Catatan maksimal {MAKS_CATATAN} karakter.")
+    tolak_nomor(catatan, "Catatan")
     if tanggal > clock.now().astimezone(clock.WIB).date():
         raise ContentError("Tanggal terbit tidak boleh di masa depan.")
     if tanggal < clock.aware(d.dibuat_pada).astimezone(clock.WIB).date():
@@ -892,9 +904,9 @@ def batalkan_terbit(db: Session, d: ContentDraft, event_id: int, *, alasan: str,
     alasan = alasan.strip()
     if len(re.findall(r"[^\W\d_]", alasan)) < 3:
         raise ContentError("Isi alasan pembatalan.")
-    if len(alasan) > _MAKS_CATATAN:
-        raise ContentError(f"Alasan maksimal {_MAKS_CATATAN} karakter.")
-    _tolak_nomor(alasan, "Alasan")
+    if len(alasan) > MAKS_CATATAN:
+        raise ContentError(f"Alasan maksimal {MAKS_CATATAN} karakter.")
+    tolak_nomor(alasan, "Alasan")
     catatan = next((x for x in daftar_terbit(db, d) if x["event_id"] == event_id), None)
     if catatan is None:
         raise TerbitTakAda("Catatan terbit tidak ditemukan pada konten ini.")

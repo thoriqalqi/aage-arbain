@@ -12,10 +12,11 @@ import { ClaimHighlight } from "@/components/aage/claim-highlight"
 import { EmptyState } from "@/components/aage/empty-state"
 import { Panel, PageHeader, SectionTitle, Surface } from "@/components/aage/panel"
 import { Pill, ScanningBadge, VerdictBadge } from "@/components/aage/status"
+import { kunciTinjauan, TinjauanPanel } from "@/components/aage/tinjauan-panel"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { api, fetcher } from "@/lib/api"
 import { formatDateTime } from "@/lib/format"
-import type { CheckResult, ContentDraft as BaseDraft, Product, SentenceResult, Verdict } from "@/lib/types"
+import type { CheckResult, ContentDraft as BaseDraft, Product, SentenceResult, Tinjauan, Verdict } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 const field = "h-10 w-full rounded-md border border-line bg-white px-3 text-[14px] outline-none focus:border-brand-500"
@@ -73,6 +74,7 @@ const FORMATS: Record<string, FormatInfo> = {
 const STATUS: Record<string, { label: string; cls: string }> = {
   draf: { label: "Draf", cls: "bg-soft text-muted-foreground" },
   menunggu_approval: { label: "Menunggu approval", cls: "bg-escalate-bg text-escalate" },
+  perlu_revisi: { label: "Perlu revisi", cls: "bg-review-bg text-review" },
   disetujui: { label: "Disetujui", cls: "bg-ok-bg text-ok" },
   ditolak: { label: "Ditolak", cls: "bg-blocked-bg text-blocked" },
   diarsipkan: { label: "Diarsipkan", cls: "bg-soft text-subtle-foreground" },
@@ -88,7 +90,7 @@ const JENIS_SUMBER: Record<Referensi["jenis"], string> = { katalog: "Katalog", k
 const PERUBAHAN: Record<string, string> = { dibuat: "Dibuat", diedit: "Diedit", dipulihkan: "Dipulihkan", sebelum_riwayat: "Isi sebelum ada riwayat" }
 
 function segarkanDraf(id: number) {
-  segarkanKunci((k) => typeof k === "string" && k.startsWith(`/api/content/${id}/`))
+  segarkanKunci((k) => typeof k === "string" && (k.startsWith(`/api/content/${id}/`) || k === kunciTinjauan(id)))
 }
 
 function StatusPill({ status }: { status: string }) {
@@ -573,6 +575,8 @@ function Studio() {
   const { data: terbit, error: terbitGagal, mutate: mutateTerbit } = useSWR<DataTerbit>(draft ? `/api/content/${draft.id}/terbit` : null, fetcher)
   const terbitAktif = terbit?.items.filter((t) => !t.dibatalkan) ?? []
   const terbitLama = terbitAktif.filter((t) => t.versi_berbeda)
+  const { data: tinjauan } = useSWR<Tinjauan>(draft ? kunciTinjauan(draft.id) : null, fetcher)
+  const catatanPenyetuju = draft && ["perlu_revisi", "ditolak"].includes(draft.status) ? tinjauan?.keputusan.find((k) => k.status === (draft.status === "ditolak" ? "ditolak" : "revisi"))?.catatan : null
   const topikOk = (topik.match(/[A-Za-z]/g)?.length ?? 0) >= 3
 
   useEffect(() => {
@@ -641,7 +645,7 @@ function Studio() {
   const fmt = draft ? (formats[draft.tipe] ?? { label: draft.tipe, web: true }) : null
   const adaTerbitKini = terbitAktif.length > terbitLama.length
   const step = !draft ? 1 : draft.status !== "disetujui" ? 2 : adaTerbitKini ? 4 : 3
-  const canEdit = draft && ["draf", "ditolak", "disetujui"].includes(draft.status)
+  const canEdit = draft && ["draf", "perlu_revisi", "ditolak", "disetujui"].includes(draft.status)
   const blocked = draft?.claim_verdict === "blocked"
 
   return (
@@ -713,6 +717,11 @@ function Studio() {
                 <VerdictBadge verdict={draft.claim_verdict} rules={report?.rules_triggered} size="md" animate />
               </div>
 
+              {catatanPenyetuju && (
+                <p className="mb-2 rounded-lg bg-review-bg/70 px-3 py-2 text-[13px] break-words text-foreground">
+                  <span className="font-semibold">Catatan penyetuju:</span> {catatanPenyetuju}
+                </p>
+              )}
               {report?.data_kosong && report.data_kosong.length > 0 && (
                 <p className="rounded-lg bg-review-bg/70 px-3 py-2 text-[13px] text-foreground">
                   Belum ada di katalog: {report.data_kosong.join(", ")}. Bagian itu tidak ditulis dalam draf ini.
@@ -754,6 +763,7 @@ function Studio() {
                     {fmt?.web && <TabsTrigger value="jsonld">JSON-LD</TabsTrigger>}
                     {fmt?.web && <TabsTrigger value="meta">Meta</TabsTrigger>}
                     <TabsTrigger value="claimguard">ClaimGuard</TabsTrigger>
+                    <TabsTrigger value="tinjauan">Tinjauan</TabsTrigger>
                     <TabsTrigger value="sumber">Sumber</TabsTrigger>
                     <TabsTrigger value="seo">Kata kunci & tautan</TabsTrigger>
                     <TabsTrigger value="riwayat">Riwayat</TabsTrigger>
@@ -795,6 +805,17 @@ function Studio() {
                   </TabsContent>
                   <TabsContent value="claimguard" className="pt-3">
                     {report && <ClaimHighlight text={reportText(draft)} result={report} />}
+                  </TabsContent>
+                  <TabsContent value="tinjauan" className="pt-3">
+                    <TinjauanPanel
+                      draftId={draft.id}
+                      bisaAudit
+                      onAudited={() => {
+                        const id = draft.id
+                        api<Draft>(`/api/content/${id}`).then((d) => setDraft((kini) => (kini?.id === id ? d : kini)), () => undefined)
+                        mutateList()
+                      }}
+                    />
                   </TabsContent>
                   <TabsContent value="sumber" className="pt-3">
                     <SumberPanel items={report?.referensi} />
@@ -857,14 +878,16 @@ function Studio() {
                   )}
                   <span className="text-[12px] text-muted-foreground">
                     {blocked
-                      ? "Diblokir ClaimGuard: edit kalimat bertanda merah sebelum diajukan."
+                      ? "Diblokir ClaimGuard: alasannya ada di tab ClaimGuard dan Tinjauan. Blokir hanya selesai dengan merevisi teks."
                       : draft.status === "menunggu_approval"
                         ? "Menunggu persetujuan staf lain. Pembuat tidak boleh menyetujui drafnya sendiri."
-                        : draft.status === "disetujui"
-                          ? "Disetujui lewat Approval. Mengedit akan membuatnya perlu disetujui ulang."
-                          : draft.status === "ditolak"
-                            ? "Ditolak penyetuju. Edit lalu ajukan ulang."
-                            : "Ekspor hanya setelah disetujui staf lain di menu Approval."}
+                        : draft.status === "perlu_revisi"
+                          ? "Penyetuju meminta revisi. Edit isinya, lalu ajukan ulang."
+                          : draft.status === "disetujui"
+                            ? "Disetujui lewat Approval. Mengedit akan membuatnya perlu disetujui ulang."
+                            : draft.status === "ditolak"
+                              ? "Ditolak penyetuju. Edit lalu ajukan ulang."
+                              : "Ekspor hanya setelah disetujui staf lain di menu Approval."}
                   </span>
                 </div>
               )}

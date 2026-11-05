@@ -19,7 +19,7 @@ from src.compliance.claim_guard import text_hash
 
 from . import clock, ledger
 from .content import studio
-from .models import ComplianceAudit, ContentDraft, Product, User
+from .models import Approval, ComplianceAudit, ContentDraft, Product, User
 from .security import punya_izin
 
 
@@ -112,6 +112,9 @@ def run_audit(db: Session, *, engine: ClaimGuardEngine, product_id: str, text: s
     db.add(audit)
     if perbarui:
         draft.claim_verdict = putusan_baru
+        antrean = studio.pending_approval(db, draft)
+        if antrean is not None:  # peninjau harus melihat putusan terbaru
+            antrean.verdict = putusan_baru
     sasaran = f"draf #{draft_id} v{versi}" if draft else "tanpa draf"
     ledger.record(
         db, "compliance_audit", objek_ref=f"audit:{audit.audit_id}", product_id=product.id, aktor=_aktor(user),
@@ -152,6 +155,29 @@ def history(db: Session, draft_id: int) -> list[ComplianceAudit]:
     return list(db.scalars(select(ComplianceAudit).where(ComplianceAudit.draft_id == draft_id).order_by(ComplianceAudit.id.desc())))
 
 
+BATAS_RIWAYAT_TINJAUAN = 20
+
+
+def tinjauan(db: Session, d: ContentDraft) -> dict:
+    """Bahan tinjauan satu draf: audit dan keputusan, tanpa memanggil LLM. Audit berlaku hanya untuk teks persis yang diperiksa."""
+    from .claimguard import registry
+
+    produk = db.get(Product, d.product_id) if d.product_id else None
+    hash_kini = text_hash(studio.full_text(d))
+    audits = history(db, d.id)[:BATAS_RIWAYAT_TINJAUAN]
+    keputusan = db.scalars(select(Approval).where(Approval.objek_tipe == "konten", Approval.objek_id == d.id)
+                           .order_by(Approval.id.desc()).limit(BATAS_RIWAYAT_TINJAUAN))
+    nama = {u.id: u.nama for u in db.scalars(select(User).where(User.id.in_({a.actor_id for a in audits if a.actor_id})))}
+    return {
+        "draft_id": d.id, "status": d.status, "claim_verdict": d.claim_verdict, "product_sku": produk.sku if produk else None,
+        "kategori": registry.load()["kategori_klaim"],
+        "audits": [{**serialize_audit(a), "berlaku": a.input_text_hash == hash_kini, "oleh": nama.get(a.actor_id)} for a in audits],
+        "keputusan": [{"approval_id": a.id, "status": a.status, "ditinjau_oleh": a.ditinjau_oleh, "catatan": a.catatan,
+                       "verdict": a.verdict, "dibuat_pada": a.dibuat_pada.isoformat() if a.dibuat_pada else None,
+                       "diputus_pada": a.diputus_pada.isoformat() if a.diputus_pada else None} for a in keputusan],
+    }
+
+
 def registry_view() -> dict:
     from .claimguard import registry
 
@@ -165,4 +191,4 @@ def registry_view() -> dict:
 
 
 __all__ = ["ComplianceError", "ContextReviewer", "history", "latest_audit", "registry_view", "run_audit", "serialize_audit",
-           "serialize_draft"]
+           "serialize_draft", "tinjauan"]

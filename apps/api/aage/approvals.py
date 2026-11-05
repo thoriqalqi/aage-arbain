@@ -15,8 +15,8 @@ class ApprovalError(Exception):
         self.check = check
 
 
-def _decide_content(db: Session, ap: Approval, *, aksi: str, actor: str) -> None:
-    """Konten pemasaran: disetujui/ditolak di sini, diedit di Studio Konten. Aturan dua orang berlaku."""
+def _decide_content(db: Session, ap: Approval, *, aksi: str, actor: str, user: User, catatan: str | None) -> None:
+    """Konten pemasaran: disetujui, ditolak, atau diminta revisi di sini, diedit di Studio Konten. Aturan dua orang berlaku."""
     from .content import studio
 
     d = db.get(ContentDraft, ap.objek_id) if ap.objek_id else None
@@ -26,14 +26,20 @@ def _decide_content(db: Session, ap: Approval, *, aksi: str, actor: str) -> None
         ap.status = "ditolak"
         d.status = "ditolak"
         return
+    if aksi == "revisi":
+        if not catatan:
+            raise ApprovalError("Tulis catatan: bagian mana yang perlu direvisi dan kenapa.")
+        ap.status = "revisi"
+        d.status = "perlu_revisi"
+        return
     if aksi != "setujui":
-        raise ApprovalError("Konten diedit di Studio Konten; di sini hanya Setujui atau Tolak.")
+        raise ApprovalError("Konten diedit di Studio Konten; di sini hanya Setujui, Minta revisi, atau Tolak.")
     submitter = db.scalar(select(LedgerEvent.aktor).where(LedgerEvent.tipe_event == "approval_dibuat",
                                                           LedgerEvent.objek_ref == f"approval:{ap.id}"))
     if actor == submitter:
         raise ApprovalError("Aturan dua orang: pengaju draf tidak boleh menyetujui drafnya sendiri.")
     try:
-        studio.approve(db, d, actor, commit=False)
+        studio.approve(db, d, actor, commit=False, admin=user.role == "admin", catatan=catatan)
     except studio.ContentError as exc:
         raise ApprovalError(str(exc)) from None
     ap.status = "disetujui"
@@ -43,13 +49,27 @@ def _decide_content(db: Session, ap: Approval, *, aksi: str, actor: str) -> None
 def _tolak_draf_katalog_lama(db: Session, ap: Approval, aksi: str) -> None:
     """Draf dari sebelum katalog diganti bisa memuat produk atau harga lama, jadi tidak boleh terkirim apa adanya.
     Balasan yang ditulis ulang staf (Edit) tetap boleh: teksnya baru dan tetap diperiksa ClaimGuard."""
-    if aksi == "tolak" or ap.objek_tipe not in {"balasan", "order_draft", "konten"}:
+    if aksi in {"tolak", "revisi"} or ap.objek_tipe not in {"balasan", "order_draft", "konten"}:
         return
     batas = settings_store.katalog_diganti(db).get("approval_id")
     if batas is None or ap.id > batas or (aksi == "edit" and ap.objek_tipe == "balasan"):
         return
     raise ApprovalError("Draf ini dibuat sebelum katalog diganti, jadi bisa memuat produk atau harga lama. Tolak draf ini"
                         + (", atau pakai Edit untuk menulis ulang balasannya." if ap.objek_tipe == "balasan" else "."))
+
+
+def _rapikan_catatan(catatan: str | None) -> str | None:
+    """Catatan masuk Ledger yang tidak bisa dihapus, jadi nomor pelanggan tidak boleh ikut tertulis."""
+    from .content import studio
+
+    catatan = (catatan or "").strip()
+    if len(catatan) > studio.MAKS_CATATAN:
+        raise ApprovalError(f"Catatan terlalu panjang, maksimal {studio.MAKS_CATATAN} karakter.")
+    try:
+        studio.tolak_nomor(catatan, "Catatan")
+    except studio.ContentError as exc:
+        raise ApprovalError(str(exc)) from None
+    return catatan or None
 
 
 def decide(db: Session, approval_id: int, *, aksi: str, user: User, teks: str | None = None,
@@ -59,6 +79,7 @@ def decide(db: Session, approval_id: int, *, aksi: str, user: User, teks: str | 
         raise ApprovalError("Approval tidak ditemukan")
     if ap.status != "menunggu":
         raise ApprovalError(f"Approval sudah {ap.status}")
+    catatan = _rapikan_catatan(catatan)
     _tolak_draf_katalog_lama(db, ap, aksi)
     conv = db.get(Conversation, ap.conversation_id) if ap.conversation_id else None
     actor = f"staf:{user.nama}"
@@ -66,7 +87,7 @@ def decide(db: Session, approval_id: int, *, aksi: str, user: User, teks: str | 
         conv.konteks = {**(conv.konteks or {}), "sensitif_terbuka": False}  # staf sudah memutuskan kasusnya
 
     if ap.objek_tipe == "konten":
-        _decide_content(db, ap, aksi=aksi, actor=actor)
+        _decide_content(db, ap, aksi=aksi, actor=actor, user=user, catatan=catatan)
     elif aksi == "tolak":
         ap.status = "ditolak"
         if ap.objek_tipe == "order_draft" and ap.objek_id:
@@ -108,7 +129,7 @@ def decide(db: Session, approval_id: int, *, aksi: str, user: User, teks: str | 
         if aksi == "edit":
             ap.draf = text
     else:
-        raise ApprovalError("Aksi harus setujui, edit, atau tolak")
+        raise ApprovalError("Aksi ini hanya untuk konten. Pilih setujui, edit, atau tolak.")
 
     ap.ditinjau_oleh = user.nama
     ap.catatan = catatan

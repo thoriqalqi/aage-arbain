@@ -363,7 +363,7 @@ def conversation_reply(conv_id: int, body: ReplyIn, user: User = Depends(require
 
 
 class DecideIn(BaseModel):
-    aksi: str = Field(..., pattern="^(setujui|edit|tolak)$")
+    aksi: str = Field(..., pattern="^(setujui|edit|tolak|revisi)$")
     teks: str | None = None
     catatan: str | None = None
 

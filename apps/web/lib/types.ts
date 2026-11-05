@@ -93,7 +93,7 @@ export type Approval = {
   draf: string
   verdict: Verdict | null
   verdict_label: string | null
-  status: "menunggu" | "disetujui" | "ditolak"
+  status: "menunggu" | "disetujui" | "ditolak" | "revisi"
   ditinjau_oleh: string | null
   catatan: string | null
   trace_id: string | null
@@ -413,6 +413,8 @@ export type ComplianceEvidence = {
   sumber: "aturan" | "pencocokan_klaim" | "llm"
   rule_id: string | null
   alasan: string
+  kategori: string
+  risiko: string
 }
 
 export type ComplianceAudit = {
@@ -444,31 +446,23 @@ export type ComplianceAudit = {
   created_at: string | null
 }
 
-export type DraftStatus =
-  | "draf"
-  | "diblokir"
-  | "perlu_review"
-  | "lolos_pemeriksaan"
-  | "audit_gagal"
-  | "menunggu_audit_ulang"
-  | "disetujui"
-  | "dibuang"
-
-export type MarketingDraft = {
-  id: number
-  product_id: string | null
-  product_name: string | null
-  teks: string
-  status: DraftStatus
-  versi: number
-  catatan_keputusan: string | null
-  keputusan_oleh: number | null
-  keputusan_pada: string | null
-  dibuat_pada: string
-  diperbarui_pada: string
+export type Tinjauan = {
+  draft_id: number
+  status: string
+  claim_verdict: Verdict
+  product_sku: string | null
+  kategori: Record<string, { label: string; celah_bukti: string }>
+  audits: (ComplianceAudit & { berlaku: boolean; oleh: string | null })[]
+  keputusan: {
+    approval_id: number
+    status: string
+    ditinjau_oleh: string | null
+    catatan: string | null
+    verdict: Verdict | null
+    dibuat_pada: string | null
+    diputus_pada: string | null
+  }[]
 }
-
-export type LatestAuditResponse = { state: "ada" | "kosong"; audit: ComplianceAudit | null; draft: MarketingDraft | null }
 
 export type ComplianceRegistry = {
   rules_version: string

@@ -22,8 +22,9 @@ import {
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { AnimatePresence, motion } from "motion/react"
+import { motion } from "motion/react"
 import { useCallback, useEffect, useRef, useState } from "react"
+import { toast } from "sonner"
 import useSWR from "swr"
 
 import type { Activity, AgentId } from "@/components/command-center/OfficeScene"
@@ -245,9 +246,7 @@ function InterventionDesk({ external }: { external: Audit | null }) {
       setBusy(false)
     }
   }, [])
-  useEffect(() => {
-    run(PROMO_MELANGGAR)
-  }, [run])
+  // Audit contoh dijalankan lewat tombol, karena hasilnya masuk Ledger permanen dan tidak boleh bertambah tiap halaman dibuka.
   useEffect(() => {
     if (external && external.status === "BLOCKED") {
       setFixed(false)
@@ -258,8 +257,12 @@ function InterventionDesk({ external }: { external: Audit | null }) {
 
   async function correct() {
     if (!audit) return
-    const safe = audit.teks_terpotong || "Membantu memelihara stamina dan kebugaran tubuh."
-    const corrected = `${safe} Madu Stamina Plus memiliki nomor izin edar POM TR SIM260002 dan bersertifikat halal. Untuk keluhan kesehatan, konsultasikan dengan dokter atau apoteker.`
+    // Hanya memotong kalimat yang melanggar. Izin edar dan sertifikat tidak ditulis di sini karena harus datang dari data terverifikasi.
+    const corrected = audit.teks_terpotong.trim()
+    if (!corrected) {
+      toast.error("Semua kalimat contoh melanggar, jadi tidak ada teks yang tersisa.")
+      return
+    }
     setText(corrected)
     setFixed(true)
     await run(corrected)
@@ -273,24 +276,31 @@ function InterventionDesk({ external }: { external: Audit | null }) {
       <div className="grid gap-4 p-5 md:grid-cols-2">
         <div className="flex flex-col rounded-xl border border-zinc-800 bg-zinc-950/70 p-4">
           <div className="mb-3 flex items-center gap-2 text-[12px] text-zinc-400">
-            <FileWarning className="size-4 text-amber-300" /> Draf promosi — Madu Stamina Plus
+            <FileWarning className="size-4 text-amber-300" /> Teks contoh untuk uji, bukan draf sungguhan
             <span className={cn("ml-auto rounded-full px-2 py-0.5 text-[10.5px] font-bold", fixed && !blocked ? "bg-emerald-500/15 text-emerald-300" : "bg-rose-500/15 text-rose-300")}>
-              {fixed && !blocked ? "TERKOREKSI" : "DRAF MARKETING"}
+              {fixed && !blocked ? "TERKOREKSI" : "CONTOH"}
             </span>
           </div>
           <p className="flex-1 text-[13.5px] leading-6 text-zinc-200">{highlight(text, audit)}</p>
           <p className="mt-3 text-[11px] text-zinc-500">Kalimat bergaris merah = diblokir; kuning = perlu review.</p>
         </div>
 
-        <AnimatePresence mode="wait">
-          {busy && !audit ? (
-            <div key="load" className="flex items-center justify-center rounded-xl border border-zinc-800 text-zinc-500"><LoaderCircle className="size-5 animate-spin" /></div>
+          {!audit ? (
+            <div key="awal" className="flex flex-col items-center justify-center gap-3 rounded-xl border border-zinc-800 p-5 text-center text-[12.5px] text-zinc-400">
+              {busy ? (
+                <LoaderCircle className="size-5 animate-spin" />
+              ) : (
+                <>
+                  <p>Draf sungguhan ditinjau lewat Studio Konten dan Approval. Panel ini hanya menguji aturan pada teks contoh.</p>
+                  <button onClick={() => run(text)} className="h-9 rounded-lg border border-zinc-700 px-3 text-zinc-200 hover:bg-zinc-800">Periksa teks contoh</button>
+                </>
+              )}
+            </div>
           ) : blocked ? (
             <motion.div
               key="alert"
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1, x: [0, -3, 3, 0] }}
-              exit={{ opacity: 0 }}
               transition={{ duration: 0.42 }}
               className="relative overflow-hidden rounded-xl border border-rose-500/70 bg-[linear-gradient(160deg,rgba(127,29,29,0.75),rgba(24,24,27,0.9))] p-4 shadow-[0_0_40px_-6px_rgba(244,63,94,0.7)]"
             >
@@ -324,12 +334,11 @@ function InterventionDesk({ external }: { external: Audit | null }) {
             <motion.div key="ok" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
               className="flex flex-col justify-center rounded-xl border border-emerald-500/50 bg-emerald-950/40 p-5 shadow-[0_0_30px_-8px_rgba(16,185,129,0.6)]">
               <div className="flex items-center gap-2 font-mono text-[12.5px] font-bold text-emerald-300"><ShieldCheck className="size-4" /> KEPATUHAN BPOM: {audit?.status === "REVIEW" ? "PERLU REVIEW" : "LOLOS"}</div>
-              <p className="mt-2 text-[12.5px] text-emerald-100/80">Klaim kini hanya memuat klaim resmi terdaftar + izin edar. Siap disetujui staf untuk diterbitkan.</p>
+              <p className="mt-2 text-[12.5px] text-emerald-100/80">Teks contoh lolos pemeriksaan aturan. Ini bukan persetujuan terbit.</p>
               <button onClick={() => { setFixed(false); setText(PROMO_MELANGGAR); run(PROMO_MELANGGAR) }}
                 className="mt-4 h-9 rounded-lg border border-zinc-700 text-[12.5px] text-zinc-300 hover:bg-zinc-800">Muat ulang draf melanggar</button>
             </motion.div>
           )}
-        </AnimatePresence>
       </div>
     </section>
   )

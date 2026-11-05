@@ -1,11 +1,11 @@
 "use client"
 
-import { ArrowDownUp, Bot, Check, Keyboard, Megaphone, MessageSquareText, Pencil, ReceiptText, Search, X } from "lucide-react"
+import { ArrowDownUp, Bot, Check, Keyboard, Megaphone, MessageSquareText, Pencil, ReceiptText, RotateCcw, Search, X } from "lucide-react"
 import Link from "next/link"
 import { motion } from "motion/react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
-import useSWR from "swr"
+import useSWR, { mutate as segarkanKunci } from "swr"
 
 import { AButton } from "@/components/aage/button"
 import { WaText } from "@/components/aage/chat-bubble"
@@ -13,11 +13,15 @@ import { EmptyState, SkeletonRows } from "@/components/aage/empty-state"
 import { WaitBadge } from "@/components/aage/inbox-panels"
 import { PageHeader } from "@/components/aage/panel"
 import { Pill, VerdictBadge } from "@/components/aage/status"
+import { kunciTinjauan, STATUS_KEPUTUSAN, TinjauanPanel } from "@/components/aage/tinjauan-panel"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { ApiError, api, fetcher } from "@/lib/api"
+import { ApiError, api, fetcher, getUser } from "@/lib/api"
 import { contactName, relativeTime } from "@/lib/format"
+import { normalizeRole } from "@/lib/rbac"
 import { INTENT_LABEL, type Approval, type CheckResult } from "@/lib/types"
 import { cn } from "@/lib/utils"
+
+type AksiApproval = "setujui" | "edit" | "tolak" | "revisi"
 
 const AGENT_LABEL: Record<string, string> = {
   agen_negosiasi: "Eskalasi negosiasi · Sales Agent",
@@ -91,6 +95,33 @@ function BarisAntrean({ a, dipilih, onPilih }: { a: Approval; dipilih: boolean; 
   )
 }
 
+/** Alasan tombol Setujui konten ditahan. Backend tetap menegakkan aturan yang sama; ini supaya peninjau tahu lebih awal. */
+function alasanSetujuDitahan(a: Approval, catatan: string): string | null {
+  if (a.objek_tipe !== "konten") return null
+  if (a.verdict === "blocked") return "Diblokir ClaimGuard. Blokir hanya selesai lewat revisi teks, jadi pilih Minta revisi atau Tolak."
+  if (a.verdict !== "review") return null
+  if (normalizeRole(getUser()?.role) !== "admin") return "Perlu Tinjauan ClaimGuard: hanya admin yang bisa menyetujui."
+  return catatan.trim() ? null : "Perlu Tinjauan ClaimGuard: tulis catatan alasan menyetujui."
+}
+
+const BATAS_CATATAN = 500
+
+function KolomCatatan({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <label className="block text-[12px] font-medium text-muted-foreground">
+      Catatan peninjau
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        rows={2}
+        maxLength={BATAS_CATATAN}
+        placeholder="Wajib untuk Minta revisi. Tersimpan permanen di Ledger, jadi jangan tulis nomor telepon."
+        className="mt-1 w-full rounded-lg border border-line bg-white p-2.5 text-[13px] leading-5 font-normal text-foreground outline-none focus:border-brand-500"
+      />
+    </label>
+  )
+}
+
 function DetailApproval({
   a,
   editing,
@@ -103,12 +134,14 @@ function DetailApproval({
   a: Approval
   editing: boolean
   onEdit: (v: boolean) => void
-  onDecide: (aksi: "setujui" | "edit" | "tolak", teks?: string) => void
+  onDecide: (aksi: AksiApproval, teks?: string, catatan?: string) => void
   onKembali: () => void
   busy: boolean
   error: CheckResult | null
 }) {
   const [draft, setDraft] = useState(a.draf)
+  const [catatan, setCatatan] = useState("")
+  const ditahan = alasanSetujuDitahan(a, catatan)
   const area = useRef<HTMLTextAreaElement>(null)
   useEffect(() => {
     if (editing) area.current?.focus()
@@ -193,6 +226,18 @@ function DetailApproval({
             </div>
           )}
         </div>
+        {isContent && a.objek_id && (
+          <>
+            <section>
+              <h3 className="mb-1.5 text-[12px] font-medium text-muted-foreground">Temuan audit dan riwayat</h3>
+              <TinjauanPanel draftId={a.objek_id} />
+            </section>
+            <div>
+              <KolomCatatan value={catatan} onChange={setCatatan} />
+              {ditahan && <p className="mt-1 text-[12px] text-review">{ditahan}</p>}
+            </div>
+          </>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-2 border-t border-line p-3">
@@ -207,7 +252,7 @@ function DetailApproval({
           </>
         ) : (
           <>
-            <AButton className="flex-1 sm:flex-none" onClick={() => onDecide("setujui")} disabled={busy || !a.draf}>
+            <AButton className="flex-1 sm:flex-none" onClick={() => onDecide("setujui", undefined, catatan)} disabled={busy || !a.draf || Boolean(ditahan)}>
               <Check className="size-4" /> {isContent ? "Setujui" : "Setujui & kirim"} <kbd className="ml-1 hidden font-mono text-[11px] opacity-60 md:inline">A</kbd>
             </AButton>
             {!isContent && (
@@ -215,7 +260,12 @@ function DetailApproval({
                 <Pencil className="size-4" /> Edit <kbd className="ml-1 hidden font-mono text-[11px] opacity-60 md:inline">E</kbd>
               </AButton>
             )}
-            <AButton variant="destructive" onClick={() => onDecide("tolak")} disabled={busy}>
+            {isContent && (
+              <AButton variant="outline" onClick={() => onDecide("revisi", undefined, catatan)} disabled={busy || !catatan.trim()}>
+                <RotateCcw className="size-4" /> Minta revisi
+              </AButton>
+            )}
+            <AButton variant="destructive" onClick={() => onDecide("tolak", undefined, catatan)} disabled={busy}>
               <X className="size-4" /> Tolak <kbd className="ml-1 hidden font-mono text-[11px] opacity-60 md:inline">R</kbd>
             </AButton>
             <span className="ml-auto hidden items-center gap-1.5 text-[12px] text-muted-foreground lg:inline-flex">
@@ -235,9 +285,11 @@ function dampakKeputusan(a: Approval, aksi: "setujui" | "tolak") {
 }
 
 /** Pintas keyboard hanya satu ketukan, jadi keputusannya dikonfirmasi. Fokus awal di Batal supaya ketukan nyasar tidak mengirim apa pun. */
-function KonfirmasiPintas({ a, aksi, onBatal, onYakin }: { a: Approval; aksi: "setujui" | "tolak"; onBatal: () => void; onYakin: () => void }) {
+function KonfirmasiPintas({ a, aksi, onBatal, onYakin }: { a: Approval; aksi: "setujui" | "tolak"; onBatal: () => void; onYakin: (catatan: string) => void }) {
   const batal = useRef<HTMLButtonElement>(null)
   const setuju = aksi === "setujui"
+  const [catatan, setCatatan] = useState("")
+  const ditahan = setuju ? alasanSetujuDitahan(a, catatan) : null
   return (
     <Dialog open onOpenChange={(o) => !o && onBatal()}>
       <DialogContent initialFocus={batal}>
@@ -248,11 +300,13 @@ function KonfirmasiPintas({ a, aksi, onBatal, onYakin }: { a: Approval; aksi: "s
           </DialogDescription>
         </DialogHeader>
         {a.draf && <p className="scrollbar-thin max-h-40 overflow-y-auto rounded-lg border border-line bg-soft p-3 text-[13px] break-words whitespace-pre-wrap">{a.draf}</p>}
+        {a.objek_tipe === "konten" && <KolomCatatan value={catatan} onChange={setCatatan} />}
+        {ditahan && <p className="text-[12px] text-review">{ditahan}</p>}
         <DialogFooter>
           <AButton ref={batal} variant="outline" onClick={onBatal}>
             Batal
           </AButton>
-          <AButton variant={setuju ? "default" : "destructive"} onClick={onYakin}>
+          <AButton variant={setuju ? "default" : "destructive"} onClick={() => onYakin(catatan)} disabled={Boolean(ditahan)}>
             {setuju ? <Check className="size-4" /> : <X className="size-4" />} {setuju ? "Ya, setujui" : "Ya, tolak"}
           </AButton>
         </DialogFooter>
@@ -309,13 +363,15 @@ export default function ApprovalPage() {
   }, [aktif, aktifIdx, pilihId, posisi])
 
   const decide = useCallback(
-    async (a: Approval, aksi: "setujui" | "edit" | "tolak", teks?: string) => {
+    async (a: Approval, aksi: AksiApproval, teks?: string, catatan?: string) => {
       setBusy(true)
       try {
-        await api(`/api/approvals/${a.id}/decide`, { method: "POST", json: { aksi, teks } })
+        await api(`/api/approvals/${a.id}/decide`, { method: "POST", json: { aksi, teks, catatan: catatan?.trim() || undefined } })
         setEditing(null)
         await mutate({ items: items.filter((x) => x.id !== a.id) }, { revalidate: true })
+        if (a.objek_tipe === "konten" && a.objek_id) segarkanKunci(kunciTinjauan(a.objek_id))
         if (aksi === "tolak") toast("Draf ditolak — tidak ada pesan terkirim.")
+        else if (aksi === "revisi") toast("Revisi diminta. Draf kembali ke Studio Konten dengan catatan Anda.")
         else
           toast.success(
             a.objek_tipe === "order_draft"
@@ -374,9 +430,9 @@ export default function ApprovalPage() {
           a={konfirmasi.a}
           aksi={konfirmasi.aksi}
           onBatal={() => setKonfirmasi(null)}
-          onYakin={() => {
+          onYakin={(catatan) => {
             setKonfirmasi(null)
-            decide(konfirmasi.a, konfirmasi.aksi)
+            decide(konfirmasi.a, konfirmasi.aksi, undefined, catatan)
           }}
         />
       )}
@@ -448,18 +504,14 @@ export default function ApprovalPage() {
                   <li key={a.id} className="px-4 py-3 text-[13px]">
                     <div className="flex items-center gap-2">
                       <span className="truncate font-medium">{namaOf(a)}</span>
-                      <span
-                        className={cn(
-                          "ml-auto inline-flex h-5 items-center rounded-md px-1.5 text-[11.5px] font-semibold",
-                          a.status === "disetujui" ? "bg-ok-bg text-ok" : "bg-blocked-bg text-blocked",
-                        )}
-                      >
-                        {a.status === "disetujui" ? "Disetujui" : "Ditolak"}
+                      <span className={cn("ml-auto inline-flex h-5 items-center rounded-md px-1.5 text-[11.5px] font-semibold", STATUS_KEPUTUSAN[a.status]?.cls)}>
+                        {STATUS_KEPUTUSAN[a.status]?.label ?? a.status}
                       </span>
                     </div>
                     <div className="mt-0.5 text-[12px] text-subtle-foreground">
                       {a.ditinjau_oleh} · {relativeTime(a.diputus_pada)}
                     </div>
+                    {a.catatan && <p className="mt-1 text-[12px] break-words text-muted-foreground">{a.catatan}</p>}
                   </li>
                 ))}
                 {decided.length === 0 && <li className="px-4 py-3 text-[13px] text-muted-foreground">Belum ada keputusan.</li>}
@@ -495,7 +547,7 @@ export default function ApprovalPage() {
               a={aktif}
               editing={editing === aktif.id}
               onEdit={(v) => setEditing(v ? aktif.id : null)}
-              onDecide={(aksi, teks) => decide(aktif, aksi, teks)}
+              onDecide={(aksi, teks, catatan) => decide(aktif, aksi, teks, catatan)}
               onKembali={() => setBukaDetail(false)}
               busy={busy}
               error={errors[aktif.id] ?? null}

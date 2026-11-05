@@ -1,16 +1,12 @@
 """Endpoint ClaimGuard & Compliance Check (prefix /api/compliance). Semua endpoint butuh login (JWT).
 
-- POST /api/compliance/audit                          audit teks (+ draft_id opsional, Idempotency-Key opsional)
+- POST /api/compliance/audit                          audit teks atau isi draf (Idempotency-Key opsional)
 - GET  /api/compliance/latest-audit                   audit terbaru per product_id/draft_id (tanpa memanggil LLM)
 - GET  /api/compliance/audits?draft_id=               riwayat audit draf
-- GET  /api/compliance/drafts[?product_id=]           daftar draf
-- GET  /api/compliance/drafts/{id}                    draf + audit terbaru
-- POST /api/compliance/drafts/{id}/apply-recommendation   terapkan rekomendasi (confirm=true) → audit ulang otomatis
-- POST /api/compliance/drafts/{id}/discard            buang draf (confirm=true, soft delete)
-- POST /api/compliance/drafts/{id}/approve            setujui draf (confirm=true; NEED_REVIEW hanya admin + catatan)
+- GET  /api/compliance/tinjauan/{draft_id}            audit dan keputusan satu draf untuk peninjau (izin konten)
 - GET  /api/compliance/registry                       rujukan regulasi & aturan yang dipakai
 
-Batasan: otorisasi per produk belum ada — setiap pengguna login dapat melihat semua draf/audit. Endpoint ini tidak
+Batasan: otorisasi per produk belum ada — setiap pengguna login dapat melihat semua audit. Endpoint ini tidak
 boleh dibuka publik di produksi tanpa kontrol akses tambahan."""
 
 import logging
@@ -24,8 +20,8 @@ from src.compliance import ClaimGuardEngine, ClaimGuardInputError, JalurUtamaRev
 from . import compliance as svc
 from .config import get_settings
 from .db import get_db
-from .models import User
-from .security import current_user
+from .models import ContentDraft, User
+from .security import current_user, require_izin
 
 log = logging.getLogger("aage.compliance")
 router = APIRouter(prefix="/api/compliance")
@@ -81,6 +77,14 @@ def latest_audit(product_id: str | None = None, draft_id: int | None = None,
 @router.get("/audits")
 def audits(draft_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
     return {"items": [svc.serialize_audit(a) for a in svc.history(db, draft_id)]}
+
+
+@router.get("/tinjauan/{draft_id}")
+def tinjauan(draft_id: int, user: User = Depends(require_izin("konten")), db: Session = Depends(get_db)):
+    d = db.get(ContentDraft, draft_id)
+    if d is None:
+        raise HTTPException(404, "Konten tidak ditemukan")
+    return svc.tinjauan(db, d)
 
 
 @router.get("/registry")
