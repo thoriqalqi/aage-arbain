@@ -11,12 +11,13 @@ import difflib
 import html
 import json
 import re
+from datetime import date
 from urllib.parse import urlsplit
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .. import claimguard, ledger, llm
+from .. import claimguard, clock, ledger, llm
 from ..config import get_settings
 from ..kb import retriever, verifikasi
 from ..models import Approval, ApprovedClaim, Chunk, ContentDraft, ContentVersion, LedgerEvent, Product
@@ -741,6 +742,162 @@ def archive(db: Session, d: ContentDraft, aktor: str) -> ContentDraft:
                   ringkasan=f"Draf '{d.judul}' diarsipkan", outcome="diarsipkan")
     db.commit()
     return d
+
+
+KANAL_TERBIT = {
+    "situs": {"label": "Situs web", "wajib_alamat": True},
+    "instagram": {"label": "Instagram", "wajib_alamat": True},
+    "marketplace": {"label": "Marketplace", "wajib_alamat": True},
+    "whatsapp": {"label": "WhatsApp", "wajib_alamat": False},
+    "cetak": {"label": "Cetak", "wajib_alamat": False},
+    "lainnya": {"label": "Lainnya", "wajib_alamat": False},
+}
+_TIPE_TERBIT = ("konten_diterbitkan", "konten_terbit_dibatalkan")
+_MAKS_ALAMAT = 500
+_MAKS_CATATAN = 500
+# Ledger tidak bisa dihapus, jadi nomor pelanggan tidak boleh ikut tercatat.
+_NOMOR_HP = re.compile(r"(?<!\d)(?:\+?62|0)[\s.-]?8(?:[\s.-]?\d){7,}")
+
+
+class TerbitTakAda(ContentError):
+    pass
+
+
+class KonflikTerbit(ContentError):
+    pass
+
+
+def _tolak_nomor(teks: str, kolom: str) -> None:
+    if _NOMOR_HP.search(teks):
+        raise ContentError(f"{kolom} memuat nomor telepon. Catatan ini tidak bisa dihapus, jadi tulis tanpa nomor.")
+
+
+def _rapikan_alamat(alamat: str) -> str:
+    """Alamat hanya diperiksa bentuknya dan tidak pernah dibuka oleh server."""
+    alamat = alamat.strip()
+    if not alamat:
+        return ""
+    if len(alamat) > _MAKS_ALAMAT:
+        raise ContentError(f"Alamat maksimal {_MAKS_ALAMAT} karakter.")
+    try:
+        u = urlsplit(alamat)
+        host = u.hostname
+    except ValueError:
+        raise ContentError("Alamat tidak valid.") from None
+    if u.scheme.lower() not in ("http", "https") or not host or re.search(r"[\s\x00-\x1f\x7f]", alamat):
+        raise ContentError("Alamat harus lengkap dan diawali http:// atau https://.")
+    if u.username is not None or u.password is not None:
+        raise ContentError("Alamat tidak boleh memuat nama pengguna atau kata sandi.")
+    _tolak_nomor(alamat, "Alamat")
+    return alamat
+
+
+def _alamat_sama(a: str, b: str) -> bool:
+    return a.rstrip("/") == b.rstrip("/")
+
+
+def daftar_terbit(db: Session, d: ContentDraft) -> list[dict]:
+    """Catatan terbit terbaru lebih dulu. Pembatalan adalah event tersendiri karena Ledger append-only."""
+    rows = list(db.scalars(select(LedgerEvent).where(LedgerEvent.objek_ref == f"content:{d.id}", LedgerEvent.tipe_event.in_(_TIPE_TERBIT))
+                           .order_by(LedgerEvent.id.desc())))
+    batal = {e.data.get("event_id"): e for e in rows if e.tipe_event == "konten_terbit_dibatalkan"}
+    versi_kini = nomor_versi(db, d.id)
+    out = []
+    for e in rows:
+        if e.tipe_event != "konten_diterbitkan":
+            continue
+        b = batal.get(e.id)
+        kanal = e.data.get("kanal", "")
+        out.append({"event_id": e.id, "kanal": kanal, "kanal_label": KANAL_TERBIT.get(kanal, {}).get("label", kanal),
+                    "alamat": e.data.get("alamat", ""), "tanggal": e.data.get("tanggal", ""), "catatan": e.data.get("catatan", ""),
+                    "versi": e.data.get("versi"), "versi_berbeda": e.data.get("versi") != versi_kini, "aktor": e.aktor, "dicatat_pada": e.waktu,
+                    "dibatalkan": {"alasan": b.data.get("alasan", ""), "aktor": b.aktor, "pada": b.waktu} if b else None})
+    return out
+
+
+def hitung_terbit(db: Session, content_ids: list[int]) -> dict[int, int]:
+    """Jumlah catatan terbit yang masih berlaku per draf, dengan satu kueri untuk seluruh daftar."""
+    refs = {f"content:{i}": i for i in content_ids}
+    if not refs:
+        return {}
+    rows = list(db.execute(select(LedgerEvent.id, LedgerEvent.objek_ref, LedgerEvent.tipe_event, LedgerEvent.data)
+                           .where(LedgerEvent.tipe_event.in_(_TIPE_TERBIT), LedgerEvent.objek_ref.in_(list(refs)))))
+    batal = {r.data.get("event_id") for r in rows if r.tipe_event == "konten_terbit_dibatalkan"}
+    hasil: dict[int, int] = {}
+    for r in rows:
+        if r.tipe_event == "konten_diterbitkan" and r.id not in batal:
+            hasil[refs[r.objek_ref]] = hasil.get(refs[r.objek_ref], 0) + 1
+    return hasil
+
+
+def catat_terbit(db: Session, d: ContentDraft, *, kanal: str, alamat: str, tanggal: date, catatan: str, aktor: str) -> dict:
+    """Catatan staf bahwa konten sudah terbit. Sistem tidak menerbitkan apa pun dan tidak memeriksa halamannya."""
+    db.scalar(select(ContentDraft.id).where(ContentDraft.id == d.id).with_for_update())
+    if d.status != "disetujui":
+        raise ContentError("Bukti terbit hanya bisa dicatat untuk konten yang sudah disetujui.")
+    if d.claim_verdict == claimguard.BLOCKED:
+        raise ContentError("Konten Diblokir ClaimGuard tidak boleh diterbitkan.")
+    _produk_aktif(db, d)
+    info = KANAL_TERBIT.get(kanal)
+    if info is None:
+        raise ContentError(f"Kanal tidak dikenal: {kanal}")
+    alamat, catatan = _rapikan_alamat(alamat), catatan.strip()
+    if info["wajib_alamat"] and not alamat:
+        raise ContentError(f"Kanal {info['label']} wajib menyertakan alamat halaman atau unggahan.")
+    if not alamat and not catatan:
+        raise ContentError("Tanpa alamat, isi catatan tentang tempat konten ini terbit.")
+    if len(catatan) > _MAKS_CATATAN:
+        raise ContentError(f"Catatan maksimal {_MAKS_CATATAN} karakter.")
+    _tolak_nomor(catatan, "Catatan")
+    if tanggal > clock.now().astimezone(clock.WIB).date():
+        raise ContentError("Tanggal terbit tidak boleh di masa depan.")
+    if tanggal < clock.aware(d.dibuat_pada).astimezone(clock.WIB).date():
+        raise ContentError("Tanggal terbit tidak boleh sebelum draf dibuat.")
+    for lama in daftar_terbit(db, d):
+        if lama["dibatalkan"] is None and lama["kanal"] == kanal and alamat and _alamat_sama(lama["alamat"], alamat):
+            raise KonflikTerbit("Alamat ini sudah dicatat untuk kanal yang sama.")
+    versi = nomor_versi(db, d.id)
+    ev = ledger.record(db, "konten_diterbitkan", objek_ref=f"content:{d.id}", product_id=d.product_id, aktor=aktor,
+                       ringkasan=f"Konten '{d.judul}' dicatat terbit di {info['label']}"[:280], verdict=d.claim_verdict, outcome="diterbitkan",
+                       alasan="Dicatat staf, alamat tidak diperiksa sistem",
+                       data={"kanal": kanal, "alamat": alamat, "tanggal": tanggal.isoformat(), "catatan": catatan, "versi": versi})
+    db.commit()
+    return next(x for x in daftar_terbit(db, d) if x["event_id"] == ev.id)
+
+
+def batalkan_terbit(db: Session, d: ContentDraft, event_id: int, *, alasan: str, aktor: str) -> dict:
+    """Catatan lama tetap ada di Ledger. Pembatalan bisa dilakukan walau draf sudah berubah status."""
+    db.scalar(select(ContentDraft.id).where(ContentDraft.id == d.id).with_for_update())
+    alasan = alasan.strip()
+    if len(re.findall(r"[^\W\d_]", alasan)) < 3:
+        raise ContentError("Isi alasan pembatalan.")
+    if len(alasan) > _MAKS_CATATAN:
+        raise ContentError(f"Alasan maksimal {_MAKS_CATATAN} karakter.")
+    _tolak_nomor(alasan, "Alasan")
+    catatan = next((x for x in daftar_terbit(db, d) if x["event_id"] == event_id), None)
+    if catatan is None:
+        raise TerbitTakAda("Catatan terbit tidak ditemukan pada konten ini.")
+    if catatan["dibatalkan"] is not None:
+        raise KonflikTerbit("Catatan terbit ini sudah dibatalkan.")
+    ledger.record(db, "konten_terbit_dibatalkan", objek_ref=f"content:{d.id}", product_id=d.product_id, aktor=aktor,
+                  ringkasan=f"Bukti terbit {catatan['kanal_label']} untuk '{d.judul}' dibatalkan"[:280], alasan=alasan,
+                  outcome="dibatalkan", data={"event_id": event_id, "alasan": alasan})
+    db.commit()
+    return next(x for x in daftar_terbit(db, d) if x["event_id"] == event_id)
+
+
+def status_integrasi() -> dict:
+    """Keadaan sebenarnya. CMS dan Search Console belum punya penghubung di kode, jadi selalu belum terhubung."""
+    s = get_settings()
+    situs, pola = s.situs_resmi.strip(), s.pola_url_produk.strip()
+    return {"items": [
+        {"id": "domain", "label": "Domain resmi", "siap": bool(situs),
+         "detail": situs or "SITUS_RESMI belum diisi. Alamat situs tidak ditulis di konten."},
+        {"id": "pola_url", "label": "Alamat halaman produk", "siap": bool(pola),
+         "detail": pola or "POLA_URL_PRODUK belum diisi. Saran internal link tanpa alamat."},
+        {"id": "cms", "label": "CMS", "siap": False, "detail": "Belum terhubung. Terbitkan manual, lalu catat bukti terbitnya."},
+        {"id": "search_console", "label": "Search Console", "siap": False, "detail": "Belum terhubung. Belum ada data kueri, klik, atau indeks."},
+    ]}
 
 
 def _inline(teks: str) -> str:

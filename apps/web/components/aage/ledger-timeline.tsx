@@ -44,6 +44,8 @@ export const EVENT_META: Record<string, { label: string; icon: LucideIcon }> = {
   konten_dibuat: { label: "Konten dibuat", icon: Sparkles },
   konten_disetujui: { label: "Konten disetujui", icon: ClipboardCheck },
   konten_diekspor: { label: "Konten diekspor", icon: ArrowUpRight },
+  konten_diterbitkan: { label: "Bukti terbit dicatat", icon: ClipboardCheck },
+  konten_terbit_dibatalkan: { label: "Bukti terbit dibatalkan", icon: ClipboardCheck },
   audit_halaman: { label: "Audit halaman", icon: FileSearch },
   prospek_dibuat: { label: "Prospek dibuat", icon: Compass },
   prospek_status: { label: "Status prospek", icon: Gavel },

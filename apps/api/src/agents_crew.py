@@ -691,7 +691,8 @@ class AAGECrew:
         s.emit("lead_miner_agent", f"Klasifikasi selesai: {sum(1 for x in leads if x['skor_urgensi'] >= 70)} prospek prioritas tinggi", "success")
         return leads
 
-    def write_content(self, product_id: str, topik: str) -> dict:
+    def write_content(self, product_id: str, topik: str, antrean: bool = True) -> dict:
+        """Konten simulasi dari data contoh. Konten sungguhan dibuat lewat Studio Konten (aage/content/studio.py)."""
         s = self.stream
         s.emit("geo_content_agent", f"Menyusun konten GEO untuk {product_id}: “{topik}”", "progress")
         draft = build_geo_content(product_id, topik)
@@ -705,7 +706,7 @@ class AAGECrew:
         self._pause(0.9)
         s.emit("geo_content_agent", f"Draf “{draft['judul']}” selesai: {len(draft['faq'])} FAQ, JSON-LD Product+FAQPage", "success")
         audit = self.guard(draft["markdown"] + "\n" + " ".join(f["a"] for f in draft["faq"]), product_id, "geo_content_agent")
-        if self.human_in_the_loop:
+        if self.human_in_the_loop and antrean:
             self._hitl({"jenis": "konten", "judul": f"Review konten: {draft['judul']}", "konten": draft, "audit_status": audit["status"]})
         return {"draft": draft, "audit": audit}
 
@@ -738,7 +739,8 @@ class AAGECrew:
         s.tick(2)
         hasil["nego"].append(self.negotiate("Madu Stamina Plus 30 box, minta diskon 15% kalau bisa", "ARB-002", 30, 15, "Toko Obat Barokah"))
         s.tick(3)
-        hasil["konten"] = self.write_content("ARB-002", "madu untuk stamina pelanggan apotek")
+        hasil["konten"] = self.write_content("ARB-002", "madu untuk stamina pelanggan apotek", antrean=False)
+        s.emit("geo_content_agent", "Draf ini simulasi dan tidak masuk antrean. Konten sungguhan dibuat di Studio Konten.", "info")
         s.tick(2)
         s.emit("claim_guard_agent", "Memeriksa draf promosi lama dari tim marketing (situs mitra)…", "progress")
         hasil["promo_lama"] = self.guard(DRAF_PROMO_MELANGGAR, "ARB-002", "draf promosi marketing")

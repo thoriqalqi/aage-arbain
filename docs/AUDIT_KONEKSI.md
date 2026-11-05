@@ -67,7 +67,8 @@ Alur inti dari kanal, AI, ClaimGuard, Ledger, sampai antrean staf tersambung dan
 |---|---|
 | `/compliance/audit`, `/audits`, `/drafts`, `/drafts/{id}`, `apply-recommendation`, `approve`, `discard`, `registry` | Seluruh modul Compliance Check tanpa layar |
 | `/compliance/latest-audit` | Hanya dipanggil `lib/use-latest-audit.ts`, dan hook itu tidak dipakai komponen mana pun |
-| `/agents/content`, `/agents/leads` | Hanya alur CrewAI |
+| `/agents/content` | Belum ada tombol. Sejak 5 November 2026 memakai Studio Konten, bukan CrewAI |
+| `/agents/leads` | Hanya alur CrewAI |
 | `/reminders/repeat-order` | **Fitur penting tanpa tombol** |
 | `/auth/me`, `/ledger-types`, `/content/sample-page`, `/prospects/search`, `/kb/products/import`, `POST /kb/claims` | Sisa atau alat bantu |
 | `/webhook/*`, `/health` | Memang bukan untuk frontend |

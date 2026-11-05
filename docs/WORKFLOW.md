@@ -72,7 +72,9 @@ sequenceDiagram
 `AAGECrew(human_in_the_loop=True)` (default). CrewAI menamai parameter bawaannya `Task.human_input`:
 
 - **CLI** (`python -m src.agents_crew workday`): tugas deal final & konten memakai `human_input=True` (konfirmasi di terminal saat mode LLM).
-- **API / dashboard**: item masuk tabel `approvals` (`agen_negosiasi`, `agen_deal_final`, `agen_konten`) dan tampil di halaman Approval; keputusan staf tercatat di Ledger.
+- **API / dashboard**: item masuk tabel `approvals` (`agen_negosiasi`, `agen_deal_final`) dan tampil di halaman Approval; keputusan staf tercatat di Ledger. Baris `agen_konten` lama tetap ada, tetapi tidak dibuat lagi karena simulasi workday tidak punya draf.
+- **Konten sungguhan**: `POST /api/agents/content` dan `POST /api/content/generate` memakai Studio Konten (`aage/content/studio.py`), lalu masuk Approval lewat `/submit`. `src/agents_crew.py` hanya menulis konten simulasi dari data contoh.
+- **Bukti terbit**: staf mencatat kanal, alamat, dan tanggal di Studio Konten. Catatan masuk Ledger (`konten_diterbitkan`, `konten_terbit_dibatalkan`) dan alamatnya tidak dibuka sistem. Kebutuhan dari mitra untuk CMS, Search Console, dan domain ada di `docs/KEBUTUHAN_MITRA_KONTEN.md`.
 
 ## Stream log ke Next.js
 

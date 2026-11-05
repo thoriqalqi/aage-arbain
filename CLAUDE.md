@@ -7,7 +7,7 @@ Asisten AI sales untuk CV Arba'in: produk herbal/suplemen, penjualan grosir B2B 
 - LLM: lewat TokenHarbor (DeepSeek), memakai jalur `openai_compat`.
 - Katalog di repo masih simulasi, bukan data resmi mitra.
 
-Acuan lain: `docs/PRD.md`, `docs/WORKFLOW.md`, `docs/UJI_AI_SALES.md`, `docs/UJI_TELEGRAM.md`, `apps/api/eval/laporan_perbaikan.md`.
+Acuan lain: `docs/PRD.md`, `docs/WORKFLOW.md`, `docs/UJI_AI_SALES.md`, `docs/UJI_TELEGRAM.md`, `docs/KEBUTUHAN_MITRA_KONTEN.md`, `apps/api/eval/laporan_perbaikan.md`.
 Di cabang WIP juga ada `docs/PINDAH_KOMPUTER.md` dan `docs/IMPOR_KATALOG.md`.
 
 ## Aturan yang tidak boleh dilanggar

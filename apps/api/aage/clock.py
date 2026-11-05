@@ -9,6 +9,8 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from datetime import datetime, timedelta, timezone
 
+WIB = timezone(timedelta(hours=7))
+
 _override: ContextVar[tuple[datetime, float] | None] = ContextVar("aage_clock_override", default=None)
 
 

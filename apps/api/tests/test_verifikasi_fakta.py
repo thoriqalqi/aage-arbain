@@ -495,10 +495,11 @@ def test_agen_data_contoh_ditolak_di_produksi(client, auth, produksi, metode, al
     assert r.status_code == 409 and "mode demo" in r.text
 
 
-def test_agen_konten_data_contoh_ditolak_di_produksi(client, produksi):
+def test_agen_konten_data_belum_terverifikasi_ditolak_di_produksi(client, db, produksi):
     auth = _token(client, "marketing@aage.local", "marketing123")
-    r = client.post("/api/agents/content", json={"produk": "Madu Stamina", "topik": "stamina"}, headers=auth)
-    assert r.status_code == 409 and "mode demo" in r.text
+    p = db.scalars(select(Product).where(Product.aktif.is_(True)).order_by(Product.id)).first()
+    r = client.post("/api/agents/content", json={"produk": p.nama, "topik": "stamina"}, headers=auth)
+    assert r.status_code == 400 and "belum terverifikasi" in r.text
 
 
 def test_rekomendasi_lead_tanpa_fakta_tertahan_di_produksi(db, produksi):

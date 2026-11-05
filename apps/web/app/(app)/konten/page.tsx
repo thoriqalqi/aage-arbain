@@ -1,6 +1,6 @@
 "use client"
 
-import { Archive, Check, CheckCircle2, Copy, Download, FileSearch, LoaderCircle, Pencil, RotateCcw, Send, Sparkles, XCircle } from "lucide-react"
+import { Archive, Check, CheckCircle2, CircleDashed, Copy, Download, FileSearch, LoaderCircle, Pencil, RotateCcw, Send, Sparkles, XCircle } from "lucide-react"
 import { motion } from "motion/react"
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
@@ -20,7 +20,22 @@ import { cn } from "@/lib/utils"
 
 const field = "h-10 w-full rounded-md border border-line bg-white px-3 text-[14px] outline-none focus:border-brand-500"
 
-type Draft = Omit<BaseDraft, "tipe" | "status"> & { tipe: string; status: string }
+type Draft = Omit<BaseDraft, "tipe" | "status"> & { tipe: string; status: string; terbit?: number }
+type BuktiTerbit = {
+  event_id: number
+  kanal: string
+  kanal_label: string
+  alamat: string
+  tanggal: string
+  catatan: string
+  versi: number | null
+  versi_berbeda: boolean
+  aktor: string
+  dicatat_pada: string
+  dibatalkan: { alasan: string; aktor: string; pada: string } | null
+}
+type DataTerbit = { items: BuktiTerbit[]; kanal: Record<string, { label: string; wajib_alamat: boolean }>; versi_sekarang: number }
+type Integrasi = { items: { id: string; label: string; siap: boolean; detail: string }[] }
 type Referensi = {
   jenis: "katalog" | "klaim" | "dokumen"
   judul: string
@@ -386,6 +401,161 @@ function RiwayatPanel({ draft, onRestored }: { draft: Draft; onRestored: (d: Dra
   )
 }
 
+/** Tanggal hari ini di zona pengguna, format yang dipakai input date. */
+function hariIni() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+}
+
+function tanggalTerbit(iso: string) {
+  const [y, m, d] = iso.split("-").map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
+}
+
+function CatatanTerbit({ item, contentId, onChanged }: { item: BuktiTerbit; contentId: number; onChanged: () => void }) {
+  const [alasan, setAlasan] = useState("")
+  const [terbuka, setTerbuka] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const batal = item.dibatalkan
+
+  async function kirim() {
+    setBusy(true)
+    try {
+      await api(`/api/content/${contentId}/terbit/${item.event_id}/batal`, { method: "POST", json: { alasan } })
+      toast.success("Catatan dibatalkan. Riwayatnya tetap ada di Ledger.")
+      onChanged()
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <li className={cn("rounded-lg border border-line bg-white p-3 text-[13px]", batal && "bg-soft")}>
+      <div className="flex flex-wrap items-center gap-2">
+        <Pill>{item.kanal_label}</Pill>
+        <span className="font-medium">Terbit {tanggalTerbit(item.tanggal)}</span>
+        {item.versi != null && <span className="text-subtle-foreground">versi {item.versi}</span>}
+        {batal && <span className="font-medium text-muted-foreground">Dibatalkan</span>}
+        <span className="ml-auto text-[12px] text-subtle-foreground">Dicatat {item.aktor.replace(/^staf:/, "")}, {formatDateTime(item.dicatat_pada)}</span>
+      </div>
+      {/^https?:\/\//i.test(item.alamat) && (
+        <a href={item.alamat} target="_blank" rel="noreferrer noopener" className="mt-1 block break-all text-info underline">{item.alamat}</a>
+      )}
+      {item.catatan && <p className="mt-1 text-muted-foreground">{item.catatan}</p>}
+      {batal && <p className="mt-1 text-muted-foreground">Dibatalkan oleh {batal.aktor.replace(/^staf:/, "")}, {formatDateTime(batal.pada)}: {batal.alasan}</p>}
+      {!batal && item.versi_berbeda && <p className="mt-1 text-review">Isi draf sudah berubah sejak versi yang dicatat ini.</p>}
+      {!batal && (terbuka ? (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <input value={alasan} onChange={(e) => setAlasan(e.target.value)} maxLength={500} placeholder="Alasan pembatalan" aria-label="Alasan pembatalan" className={cn(field, "min-w-52 flex-1")} />
+          <AButton onClick={kirim} disabled={busy || alasan.trim().length < 3}>
+            {busy && <LoaderCircle className="size-4 animate-spin" />} Batalkan catatan
+          </AButton>
+          <AButton variant="ghost" onClick={() => setTerbuka(false)} disabled={busy}>Tutup</AButton>
+        </div>
+      ) : (
+        <div className="mt-2"><AButton variant="ghost" onClick={() => setTerbuka(true)}>Batalkan catatan</AButton></div>
+      ))}
+    </li>
+  )
+}
+
+function TerbitPanel({ draft, data, gagal, onChanged }: { draft: Draft; data?: DataTerbit; gagal: boolean; onChanged: () => void }) {
+  const [kanal, setKanal] = useState("situs")
+  const [alamat, setAlamat] = useState("")
+  const [tanggal, setTanggal] = useState(hariIni)
+  const [catatan, setCatatan] = useState("")
+  const [busy, setBusy] = useState(false)
+
+  if (gagal && !data) return <p className="text-[13px] text-muted-foreground">Bukti terbit belum bisa dimuat dari server.</p>
+  if (!data) return <div className="shimmer h-32 rounded-lg" />
+  const wajibAlamat = data.kanal[kanal]?.wajib_alamat ?? false
+  const lengkap = wajibAlamat ? alamat.trim() !== "" : alamat.trim() !== "" || catatan.trim() !== ""
+
+  async function simpan() {
+    setBusy(true)
+    try {
+      await api(`/api/content/${draft.id}/terbit`, { method: "POST", json: { kanal, alamat, tanggal, catatan } })
+      toast.success("Bukti terbit dicatat di Ledger")
+      setAlamat("")
+      setCatatan("")
+      onChanged()
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-[13px] text-muted-foreground">Ini catatan staf. AAGE tidak menerbitkan konten dan tidak membuka alamatnya, jadi catatan ini bukan bukti halamannya masih tayang.</p>
+      {draft.status === "disetujui" ? (
+        <div className="grid gap-3 rounded-lg border border-line bg-white p-4 md:grid-cols-2">
+          <label className="grid gap-1 text-[12px] text-muted-foreground">
+            Kanal
+            <select value={kanal} onChange={(e) => setKanal(e.target.value)} className={field}>
+              {Object.entries(data.kanal).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+            </select>
+          </label>
+          <label className="grid gap-1 text-[12px] text-muted-foreground">
+            Tanggal terbit
+            <input type="date" value={tanggal} max={hariIni()} onChange={(e) => setTanggal(e.target.value)} className={field} />
+          </label>
+          <label className="grid gap-1 text-[12px] text-muted-foreground md:col-span-2">
+            <span>Alamat halaman atau unggahan <span className="text-subtle-foreground">({wajibAlamat ? "wajib" : "opsional"})</span></span>
+            <input value={alamat} onChange={(e) => setAlamat(e.target.value)} maxLength={500} placeholder="https://…" className={field} />
+          </label>
+          <label className="grid gap-1 text-[12px] text-muted-foreground md:col-span-2">
+            <span>Catatan <span className="text-subtle-foreground">({wajibAlamat ? "opsional" : "wajib bila tanpa alamat"})</span></span>
+            <input value={catatan} onChange={(e) => setCatatan(e.target.value)} maxLength={500} placeholder="Tempat terbit atau keterangan lain" className={field} />
+            <span className="text-subtle-foreground">Jangan tulis nama atau nomor pelanggan. Catatan tidak bisa dihapus, hanya bisa dibatalkan.</span>
+          </label>
+          <div className="md:col-span-2">
+            <AButton onClick={simpan} disabled={busy || !lengkap || !tanggal}>
+              {busy ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />} Catat bukti terbit
+            </AButton>
+          </div>
+        </div>
+      ) : (
+        <p className="text-[13px] text-muted-foreground">Bukti terbit baru bisa dicatat setelah konten disetujui.</p>
+      )}
+      {data.items.length === 0 ? (
+        <p className="text-[13px] text-muted-foreground">Belum ada catatan terbit.</p>
+      ) : (
+        <ul className="space-y-2">
+          {data.items.map((t) => <CatatanTerbit key={t.event_id} item={t} contentId={draft.id} onChanged={onChanged} />)}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+function SambunganMitra() {
+  const { data, error } = useSWR<Integrasi>("/api/content/integrasi", fetcher)
+  return (
+    <Panel className="mt-4 overflow-hidden">
+      <div className="border-b border-line px-4 py-3.5 text-[14.5px] font-semibold">Sambungan mitra</div>
+      {error && !data && <p className="px-4 py-3 text-[13px] text-muted-foreground">Status belum bisa dimuat dari server.</p>}
+      {!error && !data && <div className="shimmer m-4 h-24 rounded-lg" />}
+      {data && (
+        <ul className="divide-y divide-line">
+          {data.items.map((it) => (
+            <li key={it.id} className="flex items-start gap-2 px-4 py-3 text-[13px]">
+              {it.siap ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-ok" /> : <CircleDashed className="mt-0.5 size-4 shrink-0 text-subtle-foreground" />}
+              <div className="min-w-0">
+                <div className="font-medium">{it.label}</div>
+                <div className="text-[12px] break-words text-muted-foreground">{it.detail}</div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
+  )
+}
+
 function Studio() {
   const { data: products } = useSWR<{ items: Product[] }>("/api/kb/products", fetcher)
   const { data: list, mutate: mutateList } = useSWR<{ items: Draft[]; format?: Record<string, FormatInfo> }>("/api/content", fetcher)
@@ -400,6 +570,9 @@ function Studio() {
   const [draft, setDraft] = useState<Draft | null>(null)
   const [elapsed, setElapsed] = useState<number | null>(null)
   const { data: seo, error: seoGagal } = useSWR<SeoReport>(draft ? `/api/content/${draft.id}/seo` : null, fetcher)
+  const { data: terbit, error: terbitGagal, mutate: mutateTerbit } = useSWR<DataTerbit>(draft ? `/api/content/${draft.id}/terbit` : null, fetcher)
+  const terbitAktif = terbit?.items.filter((t) => !t.dibatalkan) ?? []
+  const terbitLama = terbitAktif.filter((t) => t.versi_berbeda)
   const topikOk = (topik.match(/[A-Za-z]/g)?.length ?? 0) >= 3
 
   useEffect(() => {
@@ -466,7 +639,8 @@ function Studio() {
 
   const report = draft?.claim_report as Report | undefined
   const fmt = draft ? (formats[draft.tipe] ?? { label: draft.tipe, web: true }) : null
-  const step = !draft ? 1 : draft.status === "disetujui" ? 3 : 2
+  const adaTerbitKini = terbitAktif.length > terbitLama.length
+  const step = !draft ? 1 : draft.status !== "disetujui" ? 2 : adaTerbitKini ? 4 : 3
   const canEdit = draft && ["draf", "ditolak", "disetujui"].includes(draft.status)
   const blocked = draft?.claim_verdict === "blocked"
 
@@ -476,7 +650,8 @@ function Studio() {
         <div className="flex flex-wrap gap-5">
           <Step n={1} title="Produk & topik" active={step === 1} done={step > 1} />
           <Step n={2} title="Edit & ajukan" active={step === 2} done={step > 2} />
-          <Step n={3} title="Disetujui & ekspor" active={step === 3} done={false} />
+          <Step n={3} title="Disetujui & ekspor" active={step === 3} done={step > 3} />
+          <Step n={4} title="Catat bukti terbit" active={false} done={step === 4} />
         </div>
         <Panel className="grid gap-4 p-5 md:grid-cols-2">
           <label className="grid gap-1 text-[12px] text-muted-foreground">
@@ -553,6 +728,11 @@ function Studio() {
                   Draf AI diganti template karena memuat fakta di luar data produk: {report.fakta_asing.join(", ")}.
                 </p>
               )}
+              {terbitLama.length > 0 && (
+                <p className="rounded-lg bg-review-bg/70 px-3 py-2 text-[13px] text-foreground">
+                  Isi draf sudah berubah sejak dicatat terbit. {terbitLama.length} tempat terbit masih memakai versi lama dan tidak ikut berubah.
+                </p>
+              )}
 
               {editing ? (
                 <DraftEditor
@@ -568,7 +748,7 @@ function Studio() {
                 />
               ) : (
                 <Tabs defaultValue="isi" key={draft.id}>
-                  <TabsList className="w-full flex-wrap justify-start group-data-horizontal/tabs:h-auto">
+                  <TabsList className="w-full flex-wrap justify-start group-data-horizontal/tabs:h-auto [&>*]:flex-none">
                     <TabsTrigger value="isi">Isi</TabsTrigger>
                     {fmt?.web && <TabsTrigger value="faq">FAQ</TabsTrigger>}
                     {fmt?.web && <TabsTrigger value="jsonld">JSON-LD</TabsTrigger>}
@@ -577,6 +757,7 @@ function Studio() {
                     <TabsTrigger value="sumber">Sumber</TabsTrigger>
                     <TabsTrigger value="seo">Kata kunci & tautan</TabsTrigger>
                     <TabsTrigger value="riwayat">Riwayat</TabsTrigger>
+                    <TabsTrigger value="terbit">Bukti terbit</TabsTrigger>
                   </TabsList>
                   <TabsContent value="isi" className="pt-3">
                     <Markdown text={draft.isi ?? ""} />
@@ -628,6 +809,18 @@ function Studio() {
                         setDraft(d)
                         mutateList()
                         segarkanDraf(d.id)
+                      }}
+                    />
+                  </TabsContent>
+                  <TabsContent value="terbit" className="pt-3">
+                    <TerbitPanel
+                      key={draft.id}
+                      draft={draft}
+                      data={terbit}
+                      gagal={Boolean(terbitGagal)}
+                      onChanged={() => {
+                        mutateTerbit()
+                        mutateList()
                       }}
                     />
                   </TabsContent>
@@ -691,6 +884,7 @@ function Studio() {
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
                     <VerdictBadge verdict={d.claim_verdict as Verdict} />
                     <StatusPill status={d.status} />
+                    {(d.terbit ?? 0) > 0 && <Pill>Terbit {d.terbit}</Pill>}
                     <span className="text-[11.5px] text-subtle-foreground">{formatDateTime(d.dibuat_pada)}</span>
                   </div>
                 </button>
@@ -699,6 +893,7 @@ function Studio() {
             {list?.items.length === 0 && <li className="px-4 py-3 text-[13px] text-muted-foreground">Belum ada draf.</li>}
           </ul>
         </Panel>
+        <SambunganMitra />
       </aside>
     </div>
   )

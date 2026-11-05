@@ -5,10 +5,11 @@
 - POST /api/agents/negotiate          Sales agent + ClaimGuard (status AUTO_APPROVED / NEED_HUMAN_CONFIRMATION)
 - POST /api/agents/audit              ClaimGuard agent: status, pasal Perban BPOM 30/2023, teks terpotong
 - POST /api/agents/leads              Lead miner: prospek + skor urgensi
-- POST /api/agents/content            GEO agent: draf konten (+ audit)
+- POST /api/agents/content            draf konten lewat Studio Konten, memakai katalog aktif di database
 - POST /api/agents/invoice/approve    staf menyetujui deal → invoice disusun sebagai pratinjau, tidak dikirim ke mana pun
 
-Item human-in-the-loop masuk tabel approvals; audit BLOCKED dan keputusan staf tercatat di Ledger."""
+Item human-in-the-loop masuk tabel approvals. Konten simulasi workday tidak termasuk karena tidak punya draf di Studio.
+Audit BLOCKED dan keputusan staf tercatat di Ledger."""
 
 import json
 import os
@@ -20,9 +21,12 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from . import ledger, settings_store
+from . import serializers as ser
 from .config import get_settings
+from .content import studio
 from .db import SessionLocal, get_db
-from .models import Approval, User
+from .kb import retriever
+from .models import Approval, Product, User
 from .security import current_user, require_izin
 
 settings = get_settings()
@@ -169,19 +173,32 @@ def leads(body: LeadsIn, user: User = Depends(current_user)):
 
 
 class ContentIn(BaseModel):
-    produk: str
+    produk: str = Field(..., min_length=2, max_length=120, description="Nama atau SKU produk di katalog aktif")
     topik: str = ""
+    target: str = Field("apotek", pattern="^(apotek|konsumen)$")
+    tipe: str = Field("artikel", pattern="^(artikel|deskripsi|caption_ig|broadcast_wa|marketplace|brosur)$")
+
+
+def _produk_konten(db: Session, teks: str) -> Product:
+    """Nama yang cocok ke beberapa produk ditolak supaya draf tidak dibuat untuk produk yang salah."""
+    calon = retriever.find_products(db, teks, limit=6)
+    tepat = [p for p in calon if teks.strip().casefold() in (p.nama.casefold(), p.sku.casefold())]
+    if len(tepat) == 1 or len(calon) == 1:
+        return (tepat or calon)[0]
+    if not calon:
+        raise HTTPException(404, f"Produk '{teks}' tidak ada di katalog aktif")
+    raise HTTPException(409, f"'{teks}' cocok dengan beberapa produk: {', '.join(p.nama for p in calon)}. Tulis nama lengkap atau SKU.")
 
 
 @router.post("/content")
 def content(body: ContentIn, user: User = Depends(require_izin("konten")), db: Session = Depends(get_db)):
-    _pagar_data_demo(db)
-    p = crew_mod.db().find(body.produk)
-    if p is None:
-        raise HTTPException(404, f"Produk '{body.produk}' tidak ditemukan")
-    crew = _new_crew(user, speed=0)
-    result, events = _collect(crew, lambda c: c.write_content(p["id"], body.topik))
-    return {**result, "log": events}
+    """Mesin yang sama dengan Studio Konten: fakta terverifikasi, ClaimGuard, versi, dan Ledger."""
+    p = _produk_konten(db, body.produk)
+    try:
+        d = studio.generate(db, product_id=p.id, topik=body.topik, target=body.target, tipe=body.tipe, aktor=f"staf:{user.nama}")
+    except studio.ContentError as exc:
+        raise HTTPException(400, str(exc)) from None
+    return ser.content(d)
 
 
 class InvoiceIn(BaseModel):

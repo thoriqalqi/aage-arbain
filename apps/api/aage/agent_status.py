@@ -11,7 +11,7 @@ yang mengerjakannya, lalu agen dianggap "bekerja" bila ada event dalam 90 detik 
 
 import json
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -26,7 +26,7 @@ from .security import current_user, punya_izin, require_admin
 
 router = APIRouter()
 
-WIB = timezone(timedelta(hours=7))
+WIB = clock.WIB
 ACTIVE_WINDOW_S = 90
 STREAM_TICK_S = 2.0
 STREAM_MAX_S = 600  # klien menyambung ulang setelah ini
@@ -37,7 +37,7 @@ AGENT_EVENTS: dict[str, tuple[str, ...]] = {
     "sales": ("retrieval", "draf_jawaban", "pesan_keluar", "draf_pesanan", "pengingat_repeat_order",
               "invoice_dikirim", "invoice_disusun", "agen_hitl"),
     "content": ("konten_dibuat", "konten_diedit", "konten_disetujui", "konten_diekspor", "konten_diarsipkan",
-                "audit_halaman"),
+                "konten_diterbitkan", "konten_terbit_dibatalkan", "audit_halaman"),
     "claimguard": ("claimguard", "claimguard_inbound", "agen_claimguard", "claimguard_playground",
                    "compliance_audit", "compliance_tindakan"),
     "evaluation": ("evaluasi_dimulai", "evaluasi_selesai"),

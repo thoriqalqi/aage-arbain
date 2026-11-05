@@ -761,12 +761,19 @@ def content_list(arsip: bool = False, user: User = Depends(require_izin("konten"
     if not arsip:
         stmt = stmt.where(ContentDraft.status != "diarsipkan")
     formats = {k: {"label": v["label"], "web": v["web"]} for k, v in studio.FORMATS.items()}
-    return {"items": [ser.content(d, full=False) for d in db.scalars(stmt)], "format": formats}
+    drafs = list(db.scalars(stmt))
+    terbit = studio.hitung_terbit(db, [d.id for d in drafs])
+    return {"items": [{**ser.content(d, full=False), "terbit": terbit.get(d.id, 0)} for d in drafs], "format": formats}
 
 
 @router.get("/content/sample-page", response_class=HTMLResponse)
 def content_sample_page():
     return audit_svc.SAMPLE_PAGE
+
+
+@router.get("/content/integrasi")
+def content_integrasi(user: User = Depends(require_izin("konten"))):
+    return studio.status_integrasi()
 
 
 @router.get("/content/{content_id}")
@@ -832,6 +839,54 @@ def content_pulihkan(content_id: int, nomor: int, user: User = Depends(require_i
     except studio.ContentError as exc:
         raise HTTPException(409, str(exc)) from None
     return ser.content(d)
+
+
+def _terbit_json(t: dict) -> dict:
+    b = t["dibatalkan"]
+    return {**t, "dicatat_pada": ser.ts(t["dicatat_pada"]), "dibatalkan": {**b, "pada": ser.ts(b["pada"])} if b else None}
+
+
+@router.get("/content/{content_id}/terbit")
+def content_terbit(content_id: int, user: User = Depends(require_izin("konten")), db: Session = Depends(get_db)):
+    d = _draf_atau_404(db, content_id)
+    return {"items": [_terbit_json(t) for t in studio.daftar_terbit(db, d)], "kanal": studio.KANAL_TERBIT, "versi_sekarang": studio.nomor_versi(db, d.id)}
+
+
+class TerbitIn(BaseModel):
+    kanal: str
+    tanggal: date
+    alamat: str = ""
+    catatan: str = ""
+
+
+@router.post("/content/{content_id}/terbit")
+def content_catat_terbit(content_id: int, body: TerbitIn, user: User = Depends(require_izin("konten")), db: Session = Depends(get_db)):
+    d = _draf_atau_404(db, content_id)
+    try:
+        return _terbit_json(studio.catat_terbit(db, d, kanal=body.kanal, alamat=body.alamat, tanggal=body.tanggal, catatan=body.catatan,
+                                                aktor=f"staf:{user.nama}"))
+    except studio.KonflikTerbit as exc:
+        raise HTTPException(409, str(exc)) from None
+    except studio.ContentError as exc:
+        raise HTTPException(422, str(exc)) from None
+
+
+class BatalTerbitIn(BaseModel):
+    alasan: str
+
+
+@router.post("/content/{content_id}/terbit/{event_id}/batal")
+def content_batal_terbit(content_id: int, event_id: int, body: BatalTerbitIn, user: User = Depends(require_izin("konten")),
+                         db: Session = Depends(get_db)):
+    d = _draf_atau_404(db, content_id)
+    try:
+        return _terbit_json(studio.batalkan_terbit(db, d, event_id, alasan=body.alasan, aktor=f"staf:{user.nama}"))
+    except studio.TerbitTakAda as exc:
+        raise HTTPException(404, str(exc)) from None
+    except studio.KonflikTerbit as exc:
+        raise HTTPException(409, str(exc)) from None
+    except studio.ContentError as exc:
+        raise HTTPException(422, str(exc)) from None
 
 
 class RecheckIn(BaseModel):

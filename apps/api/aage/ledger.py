@@ -27,6 +27,8 @@ EVENT_TYPES = {
     "konten_diekspor": "Konten diekspor",
     "konten_diedit": "Konten diedit",
     "konten_diarsipkan": "Konten diarsipkan",
+    "konten_diterbitkan": "Bukti terbit dicatat",
+    "konten_terbit_dibatalkan": "Bukti terbit dibatalkan",
     "audit_halaman": "Audit halaman",
     "prospek_dibuat": "Prospek dibuat",
     "prospek_status": "Status prospek berubah",
@@ -73,7 +75,8 @@ EVENT_TYPES = {
 
 # Yang boleh dibaca peran tanpa izin penjualan. Daftar putih: tipe baru tertutup sampai sengaja ditambahkan.
 TIPE_UNTUK_MARKETING = frozenset({
-    "konten_dibuat", "konten_disetujui", "konten_diekspor", "konten_diedit", "konten_diarsipkan", "audit_halaman", "claimguard",
+    "konten_dibuat", "konten_disetujui", "konten_diekspor", "konten_diedit", "konten_diarsipkan", "konten_diterbitkan",
+    "konten_terbit_dibatalkan", "audit_halaman", "claimguard",
     "claimguard_playground", "compliance_audit", "compliance_tindakan", "agen_claimguard", "approval_dibuat", "approval_diputus",
 })
 
