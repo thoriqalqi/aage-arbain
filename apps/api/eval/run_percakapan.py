@@ -55,6 +55,7 @@ def main() -> None:
     from aage.config import get_settings
     from aage.db import SessionLocal, init_db
     from aage.models import Conversation, LedgerEvent, Product
+    from aage import settings_store
     from aage.seed import seed_base
 
     meter = None
@@ -68,6 +69,7 @@ def main() -> None:
     init_db(drop=True)
     with SessionLocal() as s:
         seed_base(s)
+        settings_store.pasang_mode_data(s, "demo", "eval")  # dataset bergantung pada katalog simulasi
         run_eval.KATALOG[:] = [n for (n,) in s.execute(select(Product.nama).where(Product.aktif.is_(True)))]
 
     keluaran = HERE / args.keluaran / "hasil_llm_percakapan.jsonl" if args.keluaran else None

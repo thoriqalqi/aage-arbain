@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .. import llm
+from ..kb import verifikasi
 from ..models import ApprovedClaim, Product
 from ..textutil import content_tokens, cosine, stem
 from . import registry
@@ -144,11 +145,14 @@ def _token_overlap(a: str, b: str) -> float:
     return len(ta & tb) / len(tb)
 
 
-def _load_claims(db: Session, product_ids: list[int] | None) -> list[ApprovedClaim]:
+def _load_claims(db: Session, product_ids: list[int] | None, saring: bool = True) -> list[ApprovedClaim]:
     q = select(ApprovedClaim).join(Product).where(Product.aktif.is_(True))
     if product_ids:
         q = q.where(ApprovedClaim.product_id.in_(product_ids))
-    return list(db.scalars(q))
+    if not saring:
+        return list(db.scalars(q))
+    sar = verifikasi.Saringan.dari(db)
+    return [c for c in db.scalars(q) if sar.boleh_klaim(c)]
 
 
 _OBJ_ALIAS = {"badan": "tubuh", "sehat": "kesehatan", "imunitas": "daya tahan", "imun": "daya tahan", "gizi": "nutrisi",
@@ -229,12 +233,14 @@ def check(
     *,
     product_ids: list[int] | None = None,
     use_llm: bool = True,
+    saring_fakta: bool = True,
 ) -> CheckResult:
+    """`saring_fakta=False` hanya untuk menilai pesan masuk: rute pembeli tidak boleh bergantung pada status verifikasi."""
     started = time.perf_counter()
-    claims = _load_claims(db, product_ids)
+    claims = _load_claims(db, product_ids, saring_fakta)
     product_scoped = bool(product_ids and claims)
     if product_ids and not claims:
-        claims = _load_claims(db, None)
+        claims = _load_claims(db, None, saring_fakta)
     product_names = {p.id: p.nama for p in db.scalars(select(Product))}
     results: list[SentenceResult] = []
     model = llm.OFFLINE_MODEL

@@ -18,7 +18,8 @@ from sqlalchemy.orm import Session
 from .. import claimguard, clock, ledger
 from ..agents.sales import max_discount
 from ..config import get_settings
-from ..models import ApprovedClaim, Product, Prospect
+from ..kb import verifikasi
+from ..models import ApprovedClaim, Document, Product, Prospect
 
 log = logging.getLogger("aage.prospek.market")
 settings = get_settings()
@@ -88,9 +89,11 @@ def market_audit(wilayah: str) -> dict:
 
 def _produk_topik(db: Session, topik: dict, n: int = 2) -> list[tuple[Product, str]]:
     out = []
+    sar = verifikasi.Saringan.dari(db)
     rows = db.execute(select(Product, ApprovedClaim).join(ApprovedClaim).where(Product.aktif.is_(True)).order_by(Product.sku))
     for p, c in rows:
-        if any(k in c.teks_klaim.lower() for k in topik["kata_klaim"]) and p.id not in {x.id for x, _ in out}:
+        if any(k in c.teks_klaim.lower() for k in topik["kata_klaim"]) and p.id not in {x.id for x, _ in out} \
+                and sar.boleh_produk(p, "produk") and sar.boleh_klaim(c):
             out.append((p, c.teks_klaim.rstrip(".")))
         if len(out) >= n:
             break
@@ -113,9 +116,20 @@ def next_best_action(db: Session, p: Prospect, market: dict) -> dict:
     prioritas = "TINGGI" if p.skor >= 70 else "SEDANG" if p.skor >= 45 else "RENDAH"
     dasar.append(f"Opportunity Score {p.skor}/100 ({p.jarak_km} km dari gudang) → prioritas {prioritas.lower()}.")
 
-    diskon = max(max_discount(db, prod, BUNDLE_BOX)[0] for prod, _ in produk) if produk else 0
-    ongkir = "gratis ongkir (kebijakan Kota Semarang ≥25 box)" if p.wilayah.lower() == "kota semarang" else "ongkir sesuai ekspedisi"
-    dasar.append(f"Kebijakan penjualan: diskon volume hingga {diskon:g}% mulai {BUNDLE_BOX} box; {ongkir}.")
+    # Rekomendasi internal ini ikut aturan yang sama: fakta yang tidak lolos verifikasi tidak dipakai.
+    sar = verifikasi.Saringan.dari(db)
+    bertier = [prod for prod, _ in produk if sar.boleh_produk(prod, "tier_diskon")]
+    diskon = max(max_discount(db, prod, BUNDLE_BOX)[0] for prod in bertier) if bertier else 0
+    kebijakan_lolos = any(sar.lolos_dokumen(d) for d in db.scalars(
+        select(Document.id).where(Document.aktif.is_(True), Document.judul.like("Kebijakan Penjualan%"))))
+    if not kebijakan_lolos:
+        ongkir = "ongkir dikonfirmasi staf"
+    else:
+        ongkir = "gratis ongkir (kebijakan Kota Semarang ≥25 box)" if p.wilayah.lower() == "kota semarang" else "ongkir sesuai ekspedisi"
+    if bertier:
+        dasar.append(f"Kebijakan penjualan: diskon volume hingga {diskon:g}% mulai {BUNDLE_BOX} box; {ongkir}.")
+    else:
+        dasar.append(f"Data diskon volume belum terverifikasi; {ongkir}.")
 
     if p.telepon:
         kanal = "Hubungi via telepon/WhatsApp setelah consent tercatat (pesan pembuka sudah lolos ClaimGuard)."
@@ -131,14 +145,20 @@ def next_best_action(db: Session, p: Prospect, market: dict) -> dict:
     }[p.status]
     nama_produk = " dan ".join(f"{prod.nama}" for prod, _ in produk) or "produk lini daya tahan tubuh"
     klaim = "; ".join(f"{prod.nama}: {k.lower()}" for prod, k in produk)
-    teks = (f"Rekomendasi AAGE (prioritas {prioritas.lower()}): {langkah}. {sinyal} Tawarkan {nama_produk} dalam bundling "
-            f"{BUNDLE_BOX} box dengan diskon volume {diskon:g}% dan {ongkir}. {kanal}")
+    if produk and bertier:
+        tawaran = f"Tawarkan {nama_produk} dalam bundling {BUNDLE_BOX} box dengan diskon volume {diskon:g}% dan {ongkir}."
+    elif produk:
+        tawaran = f"Tawarkan {nama_produk}; diskon dan {ongkir} menunggu data terverifikasi."
+    else:
+        tawaran = "Data produk belum terverifikasi, jadi belum ada produk atau harga yang bisa ditawarkan. Hubungi staf penjualan."
+    teks = f"Rekomendasi AAGE (prioritas {prioritas.lower()}): {langkah}. {sinyal} {tawaran} {kanal}"
     chk = claimguard.check(db, teks, product_ids=[prod.id for prod, _ in produk] or None, use_llm=False)
     if chk.verdict != claimguard.ALLOWED:
         teks = chk.safe_text
     return {
         "prioritas": prioritas, "langkah": langkah, "topik": topik["label"], "teks": teks,
-        "produk": [{"sku": prod.sku, "nama": prod.nama, "izin_edar": prod.no_izin_edar, "klaim_resmi": k} for prod, k in produk],
+        "produk": [{"sku": prod.sku, "nama": prod.nama, "izin_edar": prod.no_izin_edar if sar.boleh_produk(prod, "izin_edar") else "",
+                    "klaim_resmi": k} for prod, k in produk],
         "klaim_ringkas": klaim, "penawaran": {"bundling_box": BUNDLE_BOX, "diskon_persen": diskon, "ongkir": ongkir},
         "kanal": kanal, "dasar": dasar, "verdict": chk.verdict, "aturan": chk.rules_triggered,
         "dirumuskan": clock.now().isoformat(), "metode": "deterministik (sinyal berita + data prospek + katalog + kebijakan)",

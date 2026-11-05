@@ -17,6 +17,8 @@ settings = get_settings()
 
 AGENT_IDS = ("orchestrator", "opportunity", "sales", "content", "claimguard", "evaluation")
 MODES = ("saran", "setujui", "otonom")
+# Produksi: data simulasi tidak disajikan sebagai fakta. Demo: boleh, dengan label. Tanpa pilihan tersimpan = produksi.
+MODE_DATA = ("produksi", "demo")
 # "Otonom" hanya untuk jawaban katalog berisiko rendah (Sales Assistant), dan tetap di dalam gerbang ClaimGuard.
 OTONOM_ALLOWED = {"sales"}
 
@@ -60,6 +62,19 @@ def anggaran(db: Session) -> dict[str, float]:
             "bulanan_rp": float(saved.get("bulanan_rp", settings.budget_monthly_rp))}
 
 
+def mode_data(db: Session) -> str:
+    mode = _raw(db, "mode_data").get("mode")
+    return mode if mode in MODE_DATA else MODE_DATA[0]
+
+
+def pasang_mode_data(db: Session, mode: str, aktor: str = "uji") -> None:
+    """Untuk tes dan eval pada database sementara. Perubahan dari dashboard lewat `update` agar tercatat di Ledger."""
+    if mode not in MODE_DATA:
+        raise InvalidSetting(f"Mode data tidak dikenal: {mode}")
+    _put(db, "mode_data", {"mode": mode}, aktor)
+    db.commit()
+
+
 def budget_exceeded(db: Session) -> bool:
     from . import llm
 
@@ -85,6 +100,7 @@ def snapshot(db: Session) -> dict:
         "anggaran": anggaran(db),
         "budget_terlampaui": budget_exceeded(db),
         "boleh_otonom": sorted(OTONOM_ALLOWED),
+        "mode_data": mode_data(db),
     }
 
 
@@ -133,6 +149,14 @@ def update(db: Session, patch: dict, aktor: str) -> dict:
         if cur["harian_rp"] > cur["bulanan_rp"]:
             raise InvalidSetting("Budget harian tidak boleh melebihi budget bulanan")
         _put(db, "anggaran", cur, aktor)
+
+    if "mode_data" in patch:
+        baru, lama = patch["mode_data"], mode_data(db)
+        if baru not in MODE_DATA:
+            raise InvalidSetting(f"Mode data tidak dikenal: {baru}")
+        if baru != lama:
+            changes.append(f"mode_data: {lama} → {baru}")
+            _put(db, "mode_data", {"mode": baru}, aktor)
 
     if changes:
         ledger.record(db, "pengaturan_diubah", aktor=aktor, ringkasan="; ".join(changes)[:280],

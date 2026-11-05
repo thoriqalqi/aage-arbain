@@ -4,6 +4,7 @@ import json
 
 from .claimguard import LABELS
 from .clock import aware
+from .kb import verifikasi
 from .models import (
     Approval,
     Contact,
@@ -68,15 +69,23 @@ def ledger_event(e: LedgerEvent) -> dict:
             "latensi_ms": e.latensi_ms, "aktor": e.aktor, "outcome": e.outcome, "data": e.data}
 
 
-def product(p: Product, with_details: bool = True) -> dict:
+def _verifikasi_produk(p: Product, sar) -> dict:
+    per_fakta = {j: st for j in verifikasi.JENIS_PRODUK if (st := sar.status_produk(p, j)) is not None}
+    return {"terlemah": verifikasi.terlemah(list(per_fakta.values())) or verifikasi.BELUM, "per_fakta": per_fakta}
+
+
+def product(p: Product, with_details: bool = True, sar=None) -> dict:
     d = {"id": p.id, "sku": p.sku, "nama": p.nama, "kategori": p.kategori, "komposisi": p.komposisi,
          "kemasan": p.kemasan, "satuan_grosir": p.satuan_grosir, "no_izin_edar": p.no_izin_edar,
          "harga_dasar": p.harga_dasar, "moq": p.moq, "sumber_data": p.sumber_data, "aktif": p.aktif,
          "stok": p.stok, "deskripsi": p.deskripsi or "",
          "halal": ((p.data_teknis or {}).get("sertifikasi_halal") or {}).get("status"),
          "bko": ((p.data_teknis or {}).get("status_bebas_bko") or {}).get("hasil")}
+    if sar is not None:
+        d["verifikasi"] = _verifikasi_produk(p, sar)
     if with_details:
-        d["klaim"] = [{"id": c.id, "teks": c.teks_klaim, "sumber": c.sumber_dokumen, "diverifikasi_oleh": c.diverifikasi_oleh}
+        d["klaim"] = [{"id": c.id, "teks": c.teks_klaim, "sumber": c.sumber_dokumen, "diverifikasi_oleh": c.diverifikasi_oleh,
+                       **({"status_verifikasi": sar.status_klaim(c)} if sar is not None else {})}
                       for c in p.claims]
         d["tier"] = [{"min_qty": r.min_qty, "diskon_maks_persen": r.diskon_maks_persen} for r in p.pricing]
     return d

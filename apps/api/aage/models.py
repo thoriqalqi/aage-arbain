@@ -1,10 +1,11 @@
 """Model data AAGE (PRD §7). Satu database; `ledger_events` = sumber tunggal KPI dan audit."""
 
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import (
     JSON,
     Boolean,
+    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -102,6 +103,26 @@ class PricingRule(Base):
     diskon_maks_persen: Mapped[float] = mapped_column(Float)
 
     product: Mapped[Product] = relationship(back_populates="pricing")
+
+
+class VerifikasiFakta(Base):
+    """Status satu fakta: objek_tipe produk (per jenis fakta), klaim, atau dokumen. Tanpa baris = belum diverifikasi.
+    `nilai_hash` mengikat verifikasi ke nilai saat diperiksa; nilai yang berubah membatalkannya (lihat kb/verifikasi.py)."""
+
+    __tablename__ = "verifikasi_fakta"
+    __table_args__ = (UniqueConstraint("objek_tipe", "objek_id", "jenis_fakta", name="uq_verifikasi_fakta_objek"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    objek_tipe: Mapped[str] = mapped_column(String(16))  # produk | klaim | dokumen
+    objek_id: Mapped[int] = mapped_column(Integer)
+    jenis_fakta: Mapped[str] = mapped_column(String(24))
+    status_verifikasi: Mapped[str] = mapped_column(String(24), default="belum_diverifikasi", index=True)  # terverifikasi | simulasi | belum_diverifikasi | kedaluwarsa
+    diverifikasi_oleh: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    diverifikasi_pada: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sumber_bukti: Mapped[str | None] = mapped_column(Text, nullable=True)
+    berlaku_sampai: Mapped[date | None] = mapped_column(Date, nullable=True)
+    nilai_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    diubah_oleh: Mapped[str] = mapped_column(String(120), default="sistem")
+    diubah_pada: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
 class Document(Base):

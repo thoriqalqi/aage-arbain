@@ -103,6 +103,8 @@ Setiap modul punya acceptance criteria (AC) yang diuji sebelum demo; modul diang
 
 AC: unggah 1 katalog CSV berisi ≥20 produk selesai <1 menit; setiap potongan menyimpan sumber + versi; mengganti versi katalog tidak menghapus jejak versi lama di Ledger.
 
+Verifikasi knowledge: setiap fakta punya status `terverifikasi`, `simulasi`, `belum_diverifikasi`, atau `kedaluwarsa`, dengan verifikator, sumber bukti, dan masa berlaku. Bot, ClaimGuard, Studio Konten, dan rekomendasi Leads hanya memakai fakta yang lolos. Hanya admin yang bisa memverifikasi, dan impor tidak bisa melakukannya.
+
 ### M2 — AI Sales Assistant WhatsApp
 
 - Kanal utama: WhatsApp Cloud API (nomor uji Meta). Kanal cadangan: web chat bergaya WhatsApp di dashboard, memakai pipeline yang sama.

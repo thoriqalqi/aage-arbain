@@ -5,7 +5,7 @@ from sqlalchemy import select
 
 from aage.channels import fonnte
 from aage.db import SessionLocal
-from aage.models import Approval, ApprovedClaim, LedgerEvent
+from aage.models import Approval, ApprovedClaim, LedgerEvent, VerifikasiFakta
 
 
 def _token(client, email, sandi):
@@ -83,17 +83,21 @@ def test_hanya_admin_yang_memverifikasi_klaim_dan_tercatat(client, auth, admin, 
         klaim = db.scalars(select(ApprovedClaim).limit(1)).first()
         cid, semula = klaim.id, klaim.diverifikasi_oleh
     try:
-        assert client.post(f"/api/kb/claims/{cid}/verify", headers=auth).status_code == 403
-        assert client.post(f"/api/kb/claims/{cid}/verify", headers=marketing).status_code == 403
+        bukti = {"sumber_bukti": "Salinan izin edar BPOM"}
+        assert client.post(f"/api/kb/claims/{cid}/verify", json=bukti, headers=auth).status_code == 403
+        assert client.post(f"/api/kb/claims/{cid}/verify", json=bukti, headers=marketing).status_code == 403
         with SessionLocal() as db:
             assert db.get(ApprovedClaim, cid).diverifikasi_oleh == semula
-        r = client.post(f"/api/kb/claims/{cid}/verify", headers=admin)
+        assert client.post(f"/api/kb/claims/{cid}/verify", json={"sumber_bukti": ""}, headers=admin).status_code == 422
+        r = client.post(f"/api/kb/claims/{cid}/verify", json=bukti, headers=admin)
         assert r.status_code == 200 and r.json()["diverifikasi_oleh"]
         with SessionLocal() as db:
-            assert db.scalar(select(LedgerEvent.id).where(LedgerEvent.tipe_event == "klaim_diverifikasi", LedgerEvent.objek_ref == f"claim:{cid}"))
+            assert db.scalar(select(LedgerEvent.id).where(LedgerEvent.tipe_event == "fakta_status_diubah", LedgerEvent.objek_ref == f"klaim:{cid}:klaim"))
     finally:
         with SessionLocal() as db:
             db.get(ApprovedClaim, cid).diverifikasi_oleh = semula
+            baris = db.scalar(select(VerifikasiFakta).where(VerifikasiFakta.objek_tipe == "klaim", VerifikasiFakta.objek_id == cid))
+            baris.status_verifikasi = "simulasi"
             db.commit()
 
 

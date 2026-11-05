@@ -85,6 +85,14 @@ Catatan:
 - Migrasi awal `0001` tidak bisa dibatalkan, karena membatalkannya berarti menghapus semua data. Untuk kembali ke keadaan sebelumnya, pulihkan dari cadangan.
 - Migrasi awal di Supabase sudah ditandai dengan `alembic stamp 0001`. Riwayat `skema_awal_aage` di dashboard Supabase berasal dari pembuatan pertama dan tidak dipakai lagi.
 
+### Migrasi 0003: verifikasi knowledge
+
+Migrasi ini membuat tabel `verifikasi_fakta` dengan RLS aktif dan memberi status `simulasi` pada data yang bersumber simulasi. Tidak ada baris yang menjadi `terverifikasi`, dan tabel lain tidak diubah. Mode data berada di tabel `settings`, dengan bawaan produksi bila belum diisi.
+
+Sesudah migrasi, mode produksi membuat bot tidak mengutip harga, izin, dan klaim dari katalog simulasi. Admin perlu memilih mode demo selama masih memakai data simulasi.
+
+`alembic downgrade 0002` menghapus tabel itu dan pilihan mode, termasuk hasil verifikasi yang sudah dicatat admin. Jejaknya tetap ada di Ledger.
+
 ## Backup dan restore
 
 **Paket gratis Supabase tidak punya backup otomatis.** Kalau proyek terhapus, datanya hilang permanen. Skrip di bawah tidak butuh `pg_dump`, dan sudah diuji dengan data asli.

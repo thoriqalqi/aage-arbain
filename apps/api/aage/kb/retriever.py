@@ -11,6 +11,7 @@ from .. import llm
 from ..db import IS_POSTGRES
 from ..models import Chunk, Document, Product
 from ..textutil import content_tokens, cosine, expand, stem
+from . import verifikasi
 
 
 @dataclass
@@ -40,7 +41,9 @@ def _keyword_score(query_terms: set[str], text: str) -> float:
 
 
 def retrieve(db: Session, query: str, *, k: int = 4, product_ids: list[int] | None = None,
-             min_score: float = 0.18) -> list[Hit]:
+             min_score: float = 0.18, saring: bool = True) -> list[Hit]:
+    """Dokumen yang tidak lolos verifikasi tidak ikut. Chunk katalog tetap ikut karena dipakai mencocokkan produk;
+    faktanya disaring per jenis oleh penyusun jawaban."""
     qvec = llm.embed(query)
     stmt = select(Chunk).options(joinedload(Chunk.document)).where(Chunk.aktif.is_(True))
     if product_ids:
@@ -52,6 +55,9 @@ def retrieve(db: Session, query: str, *, k: int = 4, product_ids: list[int] | No
         q = bindparam("qvec", qvec, type_=Vector(len(qvec)))
         stmt = stmt.order_by(Chunk.embedding.op("<=>")(q)).limit(40)
     candidates = list(db.scalars(stmt).unique())
+    if saring:
+        sar = verifikasi.Saringan.dari(db)
+        candidates = [ch for ch in candidates if ch.document.tipe == "katalog" or sar.lolos_dokumen(ch.document_id)]
 
     q_terms = {stem(t) for t in expand(content_tokens(query))}
     hits = []

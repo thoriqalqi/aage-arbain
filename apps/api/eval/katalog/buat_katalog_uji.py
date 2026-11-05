@@ -58,7 +58,8 @@ def _baris(p) -> list:
     nilai = {"sku": sku, "nama": nama, "kategori": kat, "harga_per_box": harga, "satuan": "box", "kemasan": kemasan,
              "moq": moq, "stok": "" if stok is None else stok, "klaim_disetujui": klaim, "izin_edar": izin,
              "halal_status": hs, "halal_nomor": hn, "halal_lembaga": "BPJPH" if hn else "", "bko_hasil": bko,
-             "bko_nomor_laporan": f"LHU-{sku}" if bko else "", "diskon_volume": diskon, "kata_kunci": kunci}
+             "bko_nomor_laporan": f"LHU-{sku}" if bko else "", "diskon_volume": diskon, "kata_kunci": kunci,
+             "status_verifikasi": "simulasi", "sumber_bukti": "Katalog uji buatan tim, bukan data resmi"}
     return [nilai.get(k.nama, "") for k in KOLOM_PRODUK]
 
 
@@ -96,7 +97,7 @@ DATASET = [
 
 
 def main() -> None:
-    (HERE / "katalog_uji_b.xlsx").write_bytes(_workbook([_baris(p) for p in PRODUK], [list(k) for k in KEBIJAKAN]))
+    (HERE / "katalog_uji_b.xlsx").write_bytes(_workbook([_baris(p) for p in PRODUK], [[*k, "simulasi", "Katalog uji buatan tim, bukan data resmi"] for k in KEBIJAKAN]))
     with (HERE.parent / "dataset_katalog_uji.csv").open("w", encoding="utf-8", newline="") as f:
         w = csv.writer(f)
         w.writerow(["id", "pesan", "kategori", "jawaban_diharapkan", "harus_diblokir", "riwayat", "tipe"])

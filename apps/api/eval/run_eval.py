@@ -333,6 +333,7 @@ def main() -> None:
 
     from aage.db import SessionLocal, init_db
     from aage.main import app
+    from aage import settings_store
     from aage.seed import seed_base
 
     fresh = not db_path.exists()
@@ -340,6 +341,7 @@ def main() -> None:
     if fresh:
         with SessionLocal() as s:
             seed_base(s)
+            settings_store.pasang_mode_data(s, "demo", "eval")  # dataset bergantung pada katalog simulasi
     from aage.models import Product
 
     if args.katalog and fresh:

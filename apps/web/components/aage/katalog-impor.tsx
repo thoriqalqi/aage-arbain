@@ -103,6 +103,8 @@ function Pratinjau({ data, onSelesai, onBatal }: { data: KatalogPratinjau; onSel
           <div className="font-semibold">Pratinjau: {data.nama_file}</div>
           <div className="text-[12.5px] text-muted-foreground">
             Katalog belum berubah. Periksa ringkasan di bawah, lalu terapkan atau batalkan.
+            {r.status_verifikasi &&
+              ` Status baris: ${r.status_verifikasi.simulasi ?? 0} simulasi, ${r.status_verifikasi.belum_diverifikasi ?? 0} belum diverifikasi, ${r.status_verifikasi.kedaluwarsa ?? 0} kedaluwarsa. Impor tidak menandai data terverifikasi; admin memverifikasinya di tab Verifikasi.`}
           </div>
         </div>
         <AButton size="icon" variant="ghost" onClick={batal} aria-label="Batalkan pratinjau">

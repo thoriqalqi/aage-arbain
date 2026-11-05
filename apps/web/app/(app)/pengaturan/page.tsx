@@ -3,7 +3,7 @@
 import { Lock, UserRoundCheck } from "lucide-react"
 import { Suspense, useState } from "react"
 import { toast } from "sonner"
-import useSWR from "swr"
+import useSWR, { useSWRConfig } from "swr"
 
 import { AButton } from "@/components/aage/button"
 import { AutonomyPicker } from "@/components/aage/autonomy-picker"
@@ -33,6 +33,61 @@ const CORE_RULES = [
 ]
 
 const ALWAYS_ESCALATE = ["Harga", "MOQ", "Negosiasi", "Klaim kesehatan"]
+
+const MODE_DATA = [
+  { nilai: "produksi", judul: "Produksi", teks: "AI hanya mengutip fakta terverifikasi yang masih berlaku. Data simulasi tidak disajikan." },
+  { nilai: "demo", judul: "Demo", teks: "AI boleh menjawab data simulasi dengan label data contoh. Data belum diverifikasi tetap tidak dikutip." },
+] as const
+
+function ModeData() {
+  const { role } = useRole()
+  const { mutate: mutateGlobal } = useSWRConfig()
+  const { data, mutate } = useSWR<SettingsSnapshot>("/api/settings", fetcher)
+  const [saving, setSaving] = useState(false)
+  if (!data) return <SkeletonRows rows={2} />
+  const aktif = data.mode_data
+
+  async function ganti(mode: "produksi" | "demo") {
+    setSaving(true)
+    try {
+      await mutate(await saveSettings({ mode_data: mode }), { revalidate: false })
+      await mutateGlobal("/api/status")
+      toast.success(`Mode data: ${mode}. Perubahan tercatat di Ledger`)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Gagal menyimpan mode data")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Panel className="p-5">
+      <h2 className="text-[14px] font-semibold">Mode data</h2>
+      <p className="mt-0.5 text-[13px] text-muted-foreground">Menentukan fakta yang boleh dikutip AI. Hanya Admin yang dapat mengubahnya.</p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        {MODE_DATA.map((m) => (
+          <button
+            key={m.nilai}
+            type="button"
+            aria-pressed={aktif === m.nilai}
+            disabled={role !== "admin" || saving || aktif === m.nilai}
+            onClick={() => ganti(m.nilai)}
+            className={cn(
+              "rounded-[12px] border border-line p-4 text-left disabled:cursor-default",
+              aktif === m.nilai ? "border-forest-700 bg-soft" : role === "admin" && "hover:bg-soft",
+            )}
+          >
+            <div className="text-[13.5px] font-medium">
+              {m.judul}
+              {aktif === m.nilai ? " (aktif)" : ""}
+            </div>
+            <div className="mt-1 text-[12px] text-muted-foreground">{m.teks}</div>
+          </button>
+        ))}
+      </div>
+    </Panel>
+  )
+}
 
 function Kebijakan() {
   return (
@@ -255,7 +310,12 @@ function PengaturanInner() {
           { value: "katalog", label: "Katalog" },
         ]}
       />
-      {tab === "kebijakan" && <Kebijakan />}
+      {tab === "kebijakan" && (
+        <div className="space-y-5">
+          <ModeData />
+          <Kebijakan />
+        </div>
+      )}
       {tab === "otonomi" && <Otonomi />}
       {tab === "anggaran" && <Anggaran />}
       {tab === "katalog" && <KatalogManager />}

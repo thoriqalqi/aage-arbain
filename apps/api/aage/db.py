@@ -184,6 +184,34 @@ def _pastikan_skema_terbaru() -> None:
             "Kalau database lebih baru: ambil kode terbaru dengan git pull. Lihat docs/DATABASE_ONLINE.md.")
 
 
+# Sama dengan migrasi 0003, untuk database lokal yang memakai init_db. Tidak pernah membuat status terverifikasi.
+_ISI_VERIFIKASI_AWAL = (
+    "INSERT INTO verifikasi_fakta (objek_tipe, objek_id, jenis_fakta, status_verifikasi, diubah_oleh, diubah_pada) "
+    "SELECT 'produk', p.id, j.jenis, 'simulasi', 'isi awal', CURRENT_TIMESTAMP FROM products p CROSS JOIN ("
+    "SELECT 'produk' AS jenis UNION ALL SELECT 'harga' UNION ALL SELECT 'moq' UNION ALL SELECT 'tier_diskon' UNION ALL "
+    "SELECT 'stok' UNION ALL SELECT 'izin_edar' UNION ALL SELECT 'halal' UNION ALL SELECT 'bko' UNION ALL SELECT 'aturan_pakai') j "
+    "WHERE p.sumber_data IN ('simulasi', 'sintetis') OR p.no_izin_edar LIKE '%SIM%' OR CAST(p.data_teknis AS TEXT) LIKE '%-SIM-%' "
+    "ON CONFLICT (objek_tipe, objek_id, jenis_fakta) DO NOTHING",
+    "INSERT INTO verifikasi_fakta (objek_tipe, objek_id, jenis_fakta, status_verifikasi, diubah_oleh, diubah_pada) "
+    "SELECT 'klaim', c.id, 'klaim', 'simulasi', 'isi awal', CURRENT_TIMESTAMP FROM approved_claims c JOIN products p ON p.id = c.product_id "
+    "WHERE p.sumber_data IN ('simulasi', 'sintetis') OR p.no_izin_edar LIKE '%SIM%' OR CAST(p.data_teknis AS TEXT) LIKE '%-SIM-%' "
+    "ON CONFLICT (objek_tipe, objek_id, jenis_fakta) DO NOTHING",
+    "INSERT INTO verifikasi_fakta (objek_tipe, objek_id, jenis_fakta, status_verifikasi, diubah_oleh, diubah_pada) "
+    "SELECT 'dokumen', d.id, 'dokumen', 'simulasi', 'isi awal', CURRENT_TIMESTAMP FROM documents d "
+    "WHERE LOWER(d.judul) LIKE '%simulasi%' OR LOWER(d.judul) LIKE '%sintetis%' OR LOWER(d.judul) LIKE '%data contoh%' "
+    "ON CONFLICT (objek_tipe, objek_id, jenis_fakta) DO NOTHING",
+)
+
+
+def _isi_verifikasi_awal() -> None:
+    """Database lokal lama sudah berisi data simulasi tetapi tabel verifikasinya masih kosong."""
+    with engine.begin() as conn:
+        if conn.scalar(text("SELECT COUNT(*) FROM verifikasi_fakta")):
+            return
+        for sql in _ISI_VERIFIKASI_AWAL:
+            conn.exec_driver_sql(sql.replace("%", "%%") if IS_POSTGRES else sql)
+
+
 def init_db(drop: bool = False) -> None:
     from . import ledger_chain, models, settings_store  # noqa: F401  (registrasi tabel)
 
@@ -208,6 +236,7 @@ def init_db(drop: bool = False) -> None:
     _add_missing_columns()
     _migrate_channel_identity()
     _isi_kolom_leads()
+    _isi_verifikasi_awal()
     if IS_POSTGRES:
         with engine.begin() as conn:
             conn.exec_driver_sql(LEDGER_GUARD_SQL)

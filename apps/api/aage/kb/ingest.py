@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from .. import ledger, llm
 from ..models import ApprovedClaim, Chunk, Document, PricingRule, Product
 from ..textutil import rupiah
+from . import verifikasi
 
 CATALOG_COLUMNS = {"sku", "nama"}
 
@@ -89,6 +90,8 @@ def import_catalog(db: Session, rows: list[dict], *, judul: str = "Katalog Produ
 
     n_claims = 0
     chunk_ids = []
+    catat = verifikasi.PencatatImpor(db, aktor)
+    catat.dokumen(doc.id, verifikasi.status_awal_dokumen(judul))
     for row in rows:
         sku = row["sku"].strip()
         p = db.scalar(select(Product).where(Product.sku == sku))
@@ -127,6 +130,11 @@ def import_catalog(db: Session, rows: list[dict], *, judul: str = "Katalog Produ
         db.add(ch)
         db.flush()
         chunk_ids.append(ch.id)
+        # Jalur ini dipakai seed dan unggahan lama: asal datanya saja yang menentukan, tidak pernah terverifikasi.
+        status = verifikasi.status_awal_produk(p.sumber_data)
+        catat.produk(p, status)
+        for c in db.scalars(select(ApprovedClaim).where(ApprovedClaim.product_id == p.id)):
+            catat.klaim_baru(c, status)
 
     ledger.record(db, "katalog_diimpor", aktor=aktor, objek_ref=f"document:{doc.id}",
                   ringkasan=f"{judul} v{versi}: {len(rows)} produk, {n_claims} klaim baru",
@@ -224,7 +232,8 @@ def extract_text(filename: str | None, content: bytes | None, url: str | None) -
 
 
 def ingest_document(db: Session, *, judul: str, text: str, tipe: str, url: str | None = None,
-                    aktor: str = "admin", commit: bool = True) -> Document:
+                    aktor: str = "admin", commit: bool = True, status: str | None = None,
+                    sumber_bukti: str | None = None, berlaku=None, verifikasi_lama: int | None = None) -> Document:
     versi = _next_version(db, judul)
     old_doc_ids = select(Document.id).where(Document.judul == judul).scalar_subquery()
     db.execute(update(Chunk).where(Chunk.document_id.in_(old_doc_ids)).values(aktif=False))
@@ -238,6 +247,9 @@ def ingest_document(db: Session, *, judul: str, text: str, tipe: str, url: str |
         low = piece.lower()
         pid = next((p.id for p in products if p.nama.lower() in low), None)
         db.add(Chunk(document_id=doc.id, product_id=pid, teks=piece, halaman=i, embedding=llm.embed(piece), versi=versi))
+    catat = verifikasi.PencatatImpor(db, aktor)
+    if verifikasi_lama is None or not catat.bawa_dokumen(verifikasi_lama, doc.id):
+        catat.dokumen(doc.id, status or verifikasi.status_awal_dokumen(judul), sumber_bukti, berlaku)
     ledger.record(db, "dokumen_diingest", aktor=aktor, objek_ref=f"document:{doc.id}",
                   ringkasan=f"{judul} v{versi}: {len(pieces)} potongan",
                   sumber_ref=[{"document_id": doc.id, "versi": versi, "judul": judul, "url": url}],

@@ -18,10 +18,11 @@ from sqlalchemy.orm import Session
 
 from .. import claimguard, clock, inbox, ledger, llm, settings_store
 from ..channels import sender
+from ..kb import verifikasi
 from ..kb.retriever import Hit, find_products, retrieve
 from ..models import Approval, Contact, Conversation, Message, PermintaanTakTerpenuhi, Product
 from ..config import get_settings
-from . import drafter, gaya, memori, normalisasi, pemahaman, penjaga, tindakan
+from . import drafter, gaya, gerbang_fakta, memori, normalisasi, pemahaman, penjaga, tindakan
 from .tahap import sinyal_baru, tahap_baru
 from .router import INTENTS, RouteResult, jelas_jualan, route
 from .sales import parse_order_lines, riwayat_terakhir
@@ -115,7 +116,7 @@ def router_node(state: State, config) -> dict:
     db = _db(config)
     conv, asli, trace = state["conv"], state["text"], state["trace_id"]
     text = normalisasi.rapikan(asli)  # "brp hrg" → "berapa harga"; teks asli tetap tersimpan di pesan & Ledger
-    inbound = claimguard.check(db, pemahaman.samarkan_usaha(text), use_llm=False)
+    inbound = claimguard.check(db, pemahaman.samarkan_usaha(text), use_llm=False, saring_fakta=False)
     if inbound.verdict != claimguard.ALLOWED:
         ledger.record(
             db, "claimguard_inbound", trace_id=trace, conversation_id=conv.id, objek_ref=f"conversation:{conv.id}",
@@ -160,7 +161,14 @@ def _run_handler(db: Session, state: State) -> drafter.Draft:
 
 
 def _draf_dengan_tindakan(db: Session, state: State) -> drafter.Draft:
-    return tindakan.terapkan(db, _run_handler(db, state), state["intent"], state["conv"])
+    with verifikasi.sesi(db) as sar:
+        d = tindakan.terapkan(db, _run_handler(db, state), state["intent"], state["conv"])
+        d.memakai_simulasi, d.fakta_tertahan = sar.memakai_simulasi, sorted(sar.tertahan)
+    return d
+
+
+def _gerbang(db: Session, d: drafter.Draft, state: State) -> drafter.Draft:
+    return gerbang_fakta.terapkan(db, d, trace_id=state["trace_id"], conversation_id=state["conv"].id)
 
 
 def drafter_node(state: State, config) -> dict:
@@ -185,6 +193,7 @@ def drafter_node(state: State, config) -> dict:
             d.teks_template, d.text, d.gaya_result = d.text, g.teks, g.llm_result
     if state.get("bahasa") == "en" and d.text:
         d.text = f"{d.text}\n\n{CATATAN_BAHASA}"  # sebelum ClaimGuard, jadi tetap ikut diperiksa
+    d = _gerbang(db, d, state)
     # Tawaran "balas ya untuk staf" hanya berlaku untuk pesan berikutnya, bukan "ya" kapan pun sesudahnya.
     _merge_konteks(conv, {"tawar_staf": False, "langkah": None, **d.konteks})
     ledger.record_llm(
@@ -192,7 +201,8 @@ def drafter_node(state: State, config) -> dict:
         product_id=(d.product_ids or [None])[0], objek_ref=f"conversation:{conv.id}", sumber_ref=d.sources,
         ringkasan=(d.text or "(tidak ada jawaban otomatis)")[:280],
         alasan=f"Template '{d.template}'" + (f"; eskalasi: {d.escalate_reason}" if d.escalate else ""),
-        data={"template": d.template, "staff_draft": d.staff_draft, "escalate": d.escalate},
+        data={"template": d.template, "staff_draft": d.staff_draft, "escalate": d.escalate,
+              "memakai_simulasi": d.memakai_simulasi, "fakta_tertahan": d.fakta_tertahan},
     )
     if d.order_draft_id:
         ledger.record(db, "draf_pesanan", trace_id=state["trace_id"], conversation_id=conv.id,
@@ -209,7 +219,7 @@ def claimguard_node(state: State, config) -> dict:
     if check is not None and check.verdict != claimguard.ALLOWED and d.template == "llm":
         # Draf LLM tidak lolos → susun ulang dengan template deterministik bersumber.
         with llm.disabled():
-            d = _draf_dengan_tindakan(db, state)
+            d = _gerbang(db, _draf_dengan_tindakan(db, state), state)
         check = claimguard.check(db, d.text, product_ids=d.product_ids or None) if d.text else None
     elif check is not None and check.verdict != claimguard.ALLOWED and d.teks_template:
         # Tulis ulang gaya bahasa tidak lolos → kembali ke draf template (catatan bahasa Inggris tetap dipasang).
@@ -219,6 +229,7 @@ def claimguard_node(state: State, config) -> dict:
                       alasan=f"ClaimGuard {check.label} membatalkan tulis ulang — template dipakai",
                       data={"template": d.template, "dipakai": False, "dibatalkan_claimguard": True, "teks_ditolak": d.text})
         d.text, d.teks_template, d.gaya_result = d.teks_template + catatan, None, None
+        d = _gerbang(db, d, state)
         check = claimguard.check(db, d.text, product_ids=d.product_ids or None)
     staff_check = claimguard.check(db, d.staff_draft, product_ids=d.product_ids or None) if d.staff_draft else None
     if check is not None:

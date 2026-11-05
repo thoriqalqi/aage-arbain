@@ -32,12 +32,15 @@ if adalah_online(_URL_TES):
 
 @pytest.fixture(scope="session")
 def seeded():
+    from aage import settings_store
     from aage.db import SessionLocal, init_db
     from aage.seed import seed_base
 
     init_db(drop=True)
     with SessionLocal() as db:
         seed_base(db)
+        # Katalog seed berisi data simulasi, jadi tes lama berjalan di mode demo. test_verifikasi_fakta menguji produksi.
+        settings_store.pasang_mode_data(db, "demo")
     return True
 
 

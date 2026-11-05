@@ -1,6 +1,6 @@
 "use client"
 
-import { BadgeCheck, FileUp, Link2, LoaderCircle, ShieldCheck, UploadCloud } from "lucide-react"
+import { FileUp, Link2, LoaderCircle, ShieldCheck, UploadCloud } from "lucide-react"
 import { useRef, useState } from "react"
 import { toast } from "sonner"
 import useSWR from "swr"
@@ -10,6 +10,7 @@ import { SkeletonRows } from "@/components/aage/empty-state"
 import { KatalogImpor } from "@/components/aage/katalog-impor"
 import { Panel, Surface } from "@/components/aage/panel"
 import { Pill } from "@/components/aage/status"
+import { StatusFakta, VerifikasiFakta } from "@/components/aage/verifikasi-fakta"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { api, fetcher, getUser } from "@/lib/api"
 import { normalizeRole } from "@/lib/rbac"
@@ -83,11 +84,6 @@ export function KatalogManager() {
     }
   }
 
-  async function verify(id: number) {
-    await api(`/api/kb/claims/${id}/verify`, { method: "POST" })
-    mutateProducts()
-  }
-
   const semua = products?.items ?? []
   const items = semua.filter((p) => p.aktif)
   const arsip = semua.length - items.length
@@ -101,6 +97,7 @@ export function KatalogManager() {
       <Tabs defaultValue="produk">
         <TabsList className="mb-4">
           <TabsTrigger value="produk">Produk ({items.length})</TabsTrigger>
+          <TabsTrigger value="verifikasi">Verifikasi</TabsTrigger>
           <TabsTrigger value="dokumen">Dokumen</TabsTrigger>
           <TabsTrigger value="klaim">Klaim disetujui</TabsTrigger>
           <TabsTrigger value="tier">Tier harga</TabsTrigger>
@@ -130,6 +127,7 @@ export function KatalogManager() {
                     <th className="px-3 py-2.5 text-right font-medium">MOQ</th>
                     <th className="px-3 py-2.5 text-right font-medium">Stok</th>
                     <th className="px-3 py-2.5 font-medium">Halal</th>
+                    <th className="px-3 py-2.5 font-medium">Status data</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -148,6 +146,7 @@ export function KatalogManager() {
                       <td className="tabular px-3 py-2.5 text-right">{p.moq}</td>
                       <td className="tabular px-3 py-2.5 text-right">{p.stok ?? <span className="text-subtle-foreground">–</span>}</td>
                       <td className="px-3 py-2.5 whitespace-nowrap">{p.halal ?? <span className="text-review">belum ada data</span>}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">{p.verifikasi && <StatusFakta status={p.verifikasi.terlemah} />}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -159,6 +158,10 @@ export function KatalogManager() {
               {arsip} produk lama dinonaktifkan oleh impor (tidak dihapus — riwayat pesanan & Ledger tetap utuh).
             </p>
           )}
+        </TabsContent>
+
+        <TabsContent value="verifikasi">
+          <VerifikasiFakta onBerubah={() => mutateProducts()} />
         </TabsContent>
 
         <TabsContent value="dokumen" className="space-y-4">
@@ -223,14 +226,9 @@ export function KatalogManager() {
                       <ShieldCheck className="size-4 text-ok" />
                       <span className="min-w-0 flex-1">{c.teks}</span>
                       <span className="text-[12px] text-subtle-foreground">{c.sumber}</span>
-                      {c.diverifikasi_oleh ? (
-                        <Pill className="bg-ok-bg text-ok">
-                          <BadgeCheck className="size-3.5" /> {c.diverifikasi_oleh}
-                        </Pill>
-                      ) : (
-                        <AButton size="sm" variant="outline" onClick={() => verify(c.id)}>
-                          Verifikasi
-                        </AButton>
+                      {c.status_verifikasi && <StatusFakta status={c.status_verifikasi} />}
+                      {c.status_verifikasi === "terverifikasi" && c.diverifikasi_oleh && (
+                        <span className="text-[12px] text-muted-foreground">{c.diverifikasi_oleh}</span>
                       )}
                     </li>
                   ))}

@@ -16,6 +16,7 @@ Di cabang WIP juga ada `docs/PINDAH_KOMPUTER.md` dan `docs/IMPOR_KATALOG.md`.
 - Semua dataset dan tes tetap 100% di mode template dan LLM. Jangan mengubah ekspektasi dataset lama tanpa melaporkannya secara eksplisit.
 - Jalur sensitif (klaim kesehatan, medis, darurat, komplain, manipulasi) diputuskan aturan keras dan menang atas dorongan closing.
 - Dilarang mengarang harga, diskon, stok, ongkir, dosis, sertifikat, cabang, atau riwayat pembeli.
+- Fakta hanya dikutip bila lolos `aage/kb/verifikasi.py`. Hanya admin yang bisa menandai terverifikasi, dan impor tidak bisa melakukannya. Tes dan eval berjalan di mode demo karena katalognya simulasi; bawaan aplikasi adalah produksi.
 - `.env`, `aage.db`, token, dan kunci API tidak boleh ter-commit atau ditampilkan. Periksa nama kunci saja, jangan nilainya.
 
 ## Arsitektur

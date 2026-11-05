@@ -153,6 +153,29 @@ export type CheckResult = {
   text?: string
 }
 
+export type StatusVerifikasi = "terverifikasi" | "simulasi" | "belum_diverifikasi" | "kedaluwarsa"
+
+export type FaktaVerifikasi = {
+  objek_tipe: "produk" | "klaim" | "dokumen"
+  objek_id: number
+  jenis_fakta: string
+  label: string
+  nilai: string
+  status: StatusVerifikasi
+  nilai_berubah: boolean
+  diverifikasi_oleh: string | null
+  diverifikasi_pada: string | null
+  sumber_bukti: string | null
+  berlaku_sampai: string | null
+  produk: { id: number; sku: string; nama: string } | null
+}
+
+export type VerifikasiDaftar = {
+  mode_data: "produksi" | "demo"
+  ringkasan: Record<StatusVerifikasi, number>
+  items: FaktaVerifikasi[]
+}
+
 export type Product = {
   id: number
   sku: string
@@ -170,8 +193,9 @@ export type Product = {
   deskripsi: string
   halal: string | null
   bko: string | null
-  klaim: { id: number; teks: string; sumber: string; diverifikasi_oleh: string | null }[]
+  klaim: { id: number; teks: string; sumber: string; diverifikasi_oleh: string | null; status_verifikasi?: StatusVerifikasi }[]
   tier: { min_qty: number; diskon_maks_persen: number }[]
+  verifikasi?: { terlemah: StatusVerifikasi; per_fakta: Record<string, StatusVerifikasi> }
 }
 
 export type ContentDraft = {
@@ -494,6 +518,7 @@ export type Kpi = {
 }
 
 export type Status = {
+  mode_data?: "produksi" | "demo"
   llm: { aktif: boolean; model: string; judge: string | null }
   whatsapp: { aktif: boolean; kanal_cadangan: string }
   kanal: Record<Channel, { label: string; aktif: boolean; jendela_balas_jam: number | null }>
@@ -538,6 +563,7 @@ export type KatalogPratinjau = {
       dinonaktifkan: number
       kebijakan: number | null
       kebijakan_error: number
+      status_verifikasi?: Partial<Record<StatusVerifikasi, number>>
     }
     error: KatalogMasalah[]
     peringatan: KatalogMasalah[]

@@ -26,6 +26,19 @@ Dashboard → **Pengaturan → Katalog → Produk** (khusus admin).
 - Angka di kebijakan dipakai AI apa adanya: MOQ campuran ("total minimal N box"), tier diskon awal, gudang, kota gratis
   ongkir, metode bayar (COD/QRIS hanya dianggap berlaku bila disebut di kebijakan).
 
+## Status verifikasi
+
+Kolom `status_verifikasi`, `sumber_bukti`, dan `berlaku_sampai` ada di sheet Produk dan Kebijakan.
+
+- Isi yang diterima: `simulasi`, `belum_diverifikasi`, `kedaluwarsa`. Baris kosong dianggap `belum_diverifikasi` dan muncul sebagai peringatan.
+- Impor tidak bisa menandai `terverifikasi`. Nilai itu dianggap `belum_diverifikasi` dan muncul sebagai peringatan.
+- Nomor izin, halal, atau BKO berpola simulasi (`SIM…`, `-SIM-`) membuat baris itu berstatus `simulasi`.
+- Admin memverifikasi per fakta di Pengaturan → Katalog → Verifikasi, dengan sumber bukti. Nama diambil dari akun yang login, dan perubahannya masuk Ledger.
+- Impor ulang dengan nilai sama mempertahankan verifikasi lama. Nilai yang berubah membatalkannya.
+- Kebijakan diverifikasi per versi dokumen. Satu baris tanpa status membuat seluruh dokumen `belum_diverifikasi`. Versi baru dengan isi sama membawa verifikasi versi lama.
+
+Perilaku bot ada di `apps/api/aage/kb/verifikasi.py`. Fakta terverifikasi dan masih berlaku dijawab biasa. Data simulasi hanya dijawab di mode demo, dengan label. Fakta lain tidak dikutip dan bot menawarkan staf. Mode diatur admin di Pengaturan → Kebijakan, dengan bawaan produksi.
+
 ## API
 | Endpoint | Fungsi |
 |---|---|

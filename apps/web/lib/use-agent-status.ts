@@ -41,12 +41,14 @@ export type SettingsSnapshot = {
   anggaran: { harian_rp: number; bulanan_rp: number }
   budget_terlampaui: boolean
   boleh_otonom: string[]
+  mode_data: "produksi" | "demo"
 }
 
 export type SettingsPatch = Partial<{
   otonomi: Record<string, AutonomyMode>
   jeda: Record<string, boolean>
   anggaran: Partial<{ harian_rp: number; bulanan_rp: number }>
+  mode_data: "produksi" | "demo"
 }>
 
 export function saveSettings(patch: SettingsPatch) {

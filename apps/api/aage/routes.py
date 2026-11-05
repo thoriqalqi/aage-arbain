@@ -2,7 +2,7 @@
 
 import hmac
 import logging
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, PlainTextResponse, Response
@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from . import agent_status, claimguard, clock, eval_api, inbox, kpi, ledger, ledger_chain, llm
+from . import agent_status, claimguard, clock, eval_api, inbox, kpi, ledger, ledger_chain, llm, settings_store
 from . import approvals as approval_svc
 from . import serializers as ser
 from .agents.drafter import _template_source
@@ -23,7 +23,7 @@ from .config import get_settings
 from .content import audit as audit_svc
 from .content import studio
 from .db import SessionLocal, get_db
-from .kb import ingest, katalog_impor
+from .kb import ingest, katalog_impor, verifikasi
 from .kb.retriever import document_by_id
 from .models import (
     Approval,
@@ -75,8 +75,9 @@ def me(user: User = Depends(current_user)):
 
 
 @router.get("/status")
-def status():
+def status(db: Session = Depends(get_db)):
     return {
+        "mode_data": settings_store.mode_data(db),
         "llm": {"aktif": settings.llm_enabled, "model": settings.llm_model if settings.llm_enabled else llm.OFFLINE_MODEL,
                 "judge": settings.llm_judge_model if settings.llm_enabled else None},
         "whatsapp": {"aktif": settings.wa_enabled, "penyedia": settings.wa_channel, "kanal_cadangan": "webchat"},
@@ -463,7 +464,8 @@ def kpi_endpoint(from_: datetime | None = Query(None, alias="from"), to: datetim
 
 @router.get("/kb/products")
 def kb_products(user: User = Depends(current_user), db: Session = Depends(get_db)):
-    return {"items": [ser.product(p) for p in db.scalars(select(Product).order_by(Product.sku))]}
+    sar = verifikasi.Saringan(db)
+    return {"mode_data": sar.mode, "items": [ser.product(p, sar=sar) for p in db.scalars(select(Product).order_by(Product.sku))]}
 
 
 @router.post("/kb/products/import")
@@ -601,16 +603,51 @@ def kb_add_claim(body: ClaimIn, user: User = Depends(require_admin), db: Session
     return {"id": c.id}
 
 
+class BuktiIn(BaseModel):
+    sumber_bukti: str = Field(..., max_length=500)
+    berlaku_sampai: date | None = None
+
+
 @router.post("/kb/claims/{claim_id}/verify")
-def kb_verify_claim(claim_id: int, user: User = Depends(require_izin("klaim.verifikasi")), db: Session = Depends(get_db)):
+def kb_verify_claim(claim_id: int, body: BuktiIn, user: User = Depends(require_izin("klaim.verifikasi")), db: Session = Depends(get_db)):
     c = db.get(ApprovedClaim, claim_id)
     if c is None:
         raise HTTPException(404, "Klaim tidak ditemukan")
-    c.diverifikasi_oleh = user.nama
-    ledger.record(db, "klaim_diverifikasi", objek_ref=f"claim:{c.id}", product_id=c.product_id, aktor=f"staf:{user.nama}", model=None,
-                  ringkasan=f"Klaim #{c.id} diverifikasi oleh {user.nama}")
+    return _ubah_status(db, user, verifikasi.KLAIM, c.id, verifikasi.KLAIM, verifikasi.TERVERIFIKASI, body.sumber_bukti, body.berlaku_sampai)
+
+
+class StatusFaktaIn(BaseModel):
+    objek_tipe: str = Field(..., max_length=16)
+    objek_id: int
+    jenis_fakta: str = Field(..., max_length=24)
+    status: str = Field(..., max_length=24)
+    sumber_bukti: str | None = Field(None, max_length=500)
+    berlaku_sampai: date | None = None
+
+
+def _ubah_status(db: Session, user: User, tipe: str, objek_id: int, jenis: str, status_baru: str, bukti: str | None,
+                 berlaku: date | None) -> dict:
+    try:
+        b = verifikasi.ubah_status(db, objek_tipe=tipe, objek_id=objek_id, jenis_fakta=jenis, status=status_baru,
+                                   sumber_bukti=bukti, berlaku_sampai=berlaku, user=user)
+    except verifikasi.StatusDitolak as exc:
+        db.rollback()
+        raise HTTPException(422, str(exc)) from exc
     db.commit()
-    return {"id": c.id, "diverifikasi_oleh": c.diverifikasi_oleh}
+    return {"objek_tipe": tipe, "objek_id": objek_id, "jenis_fakta": jenis, "status": b.status_verifikasi,
+            "diverifikasi_oleh": b.diverifikasi_oleh, "sumber_bukti": b.sumber_bukti,
+            "berlaku_sampai": b.berlaku_sampai.isoformat() if b.berlaku_sampai else None}
+
+
+@router.get("/kb/verifikasi")
+def kb_verifikasi(status: str | None = None, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    pilihan = [s for s in (status or "").split(",") if s]
+    return verifikasi.daftar(db, pilihan or None)
+
+
+@router.put("/kb/verifikasi")
+def kb_ubah_verifikasi(body: StatusFaktaIn, user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    return _ubah_status(db, user, body.objek_tipe, body.objek_id, body.jenis_fakta, body.status, body.sumber_bukti, body.berlaku_sampai)
 
 
 # ------------------------------------------------------------------ ClaimGuard

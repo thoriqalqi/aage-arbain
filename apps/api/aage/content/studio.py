@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .. import claimguard, ledger, llm
+from ..kb import verifikasi
 from ..models import Approval, ApprovedClaim, Chunk, ContentDraft, LedgerEvent, Product
 from ..textutil import rupiah
 
@@ -39,6 +40,17 @@ OPT_OUT = "Balas STOP bila tidak ingin menerima info produk lagi."
 
 class ContentError(Exception):
     pass
+
+
+def _pagar_fakta(db: Session, p: Product) -> None:
+    """Konten memuat identitas, izin, harga, dan klaim sekaligus, jadi semuanya harus lolos verifikasi."""
+    sar = verifikasi.Saringan(db)
+    tertahan = [verifikasi.JENIS_PRODUK[j] for j in ("produk", "izin_edar", "harga") if not sar.boleh_produk(p, j)]
+    if not all([sar.boleh_klaim(c) for c in db.scalars(select(ApprovedClaim).where(ApprovedClaim.product_id == p.id))]):
+        tertahan.append(verifikasi.LABEL_KLAIM)
+    if tertahan:
+        raise ContentError(f"Data {p.nama} belum terverifikasi ({', '.join(tertahan)}), mode data: {sar.mode}. "
+                           "Verifikasi dulu di halaman Katalog.")
 
 
 def _claims(db: Session, p: Product) -> list[str]:
@@ -240,6 +252,7 @@ def generate(db: Session, *, product_id: int, topik: str, target: str, tipe: str
     p = db.get(Product, product_id)
     if p is None:
         raise ContentError("Produk tidak ditemukan")
+    _pagar_fakta(db, p)
     data, res = _llm_generate(db, p, topik, target, tipe)
     source = "llm"
     if data is not None:
@@ -379,6 +392,8 @@ def export(db: Session, d: ContentDraft, aktor: str) -> dict:
         raise ContentError("Konten harus disetujui lewat antrean Approval sebelum diekspor.")
     if d.claim_verdict == claimguard.BLOCKED:
         raise ContentError("Konten Diblokir ClaimGuard tidak dapat diekspor.")
+    if d.product_id is not None and (p := db.get(Product, d.product_id)) is not None:
+        _pagar_fakta(db, p)
     web = FORMATS.get(d.tipe, {}).get("web", True)
     out: dict = {"format": "html" if web else "teks", "markdown": f"# {d.judul}\n\n{d.isi}", "json_ld": d.json_ld}
     if web:

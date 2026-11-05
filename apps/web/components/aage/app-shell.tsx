@@ -300,6 +300,21 @@ function Topbar({ onOpenCommand, onOpenNav }: { onOpenCommand: () => void; onOpe
       </button>
 
       <div className="ml-auto flex items-center gap-1.5">
+        {status?.mode_data && (
+          <span
+            className={cn(
+              "inline-flex h-8 items-center gap-1.5 rounded-full border border-line px-3 text-[12px] font-medium whitespace-nowrap",
+              status.mode_data === "demo" ? "bg-review-bg text-review" : "bg-card text-muted-foreground",
+            )}
+            title={
+              status.mode_data === "demo"
+                ? "Mode demo: AI boleh menjawab data simulasi dengan label data contoh"
+                : "Mode produksi: AI hanya mengutip fakta terverifikasi yang masih berlaku"
+            }
+          >
+            Mode {status.mode_data}
+          </span>
+        )}
         <span
           className="hidden h-8 items-center gap-1.5 rounded-full border border-line bg-card px-3 text-[12px] text-muted-foreground md:inline-flex"
           title={liveChannels.length ? `Kanal live: ${liveChannels.join(", ")}` : "Belum ada kanal live — memakai simulator"}

@@ -54,6 +54,8 @@ EVENT_TYPES = {
     "invoice_dikirim": "Invoice dikirim",
     "invoice_disusun": "Invoice disusun (tidak dikirim)",
     "klaim_diverifikasi": "Klaim produk diverifikasi",
+    "fakta_status_diubah": "Status verifikasi fakta diubah",
+    "fakta_tertahan": "Fakta belum terverifikasi ditahan",
     "compliance_audit": "ClaimGuard Compliance Check",
     "compliance_tindakan": "Tindakan manusia atas draf (Compliance)",
     "pengaturan_diubah": "Pengaturan diubah",

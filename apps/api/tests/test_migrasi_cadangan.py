@@ -149,6 +149,74 @@ def test_migrasi_0002_mengisi_baris_lead_lama_tanpa_menghapus():
 
 
 @perlu_postgres
+def test_migrasi_0003_status_simulasi_rls_bisa_diulang_dan_rollback():
+    engine = create_engine(URL)
+    _kosongkan(engine)
+    h = _alembic("upgrade", "0002")
+    assert h.returncode == 0, h.stderr
+    produk = ("INSERT INTO products (sku, nama, kategori, komposisi, kemasan, satuan_grosir, no_izin_edar, harga_dasar, moq, kata_kunci, "
+              "sumber_data, aktif, larangan, data_teknis, deskripsi) VALUES (:sku, :nama, '', '', '', 'box', :izin, 1000, 1, '', :sumber, true, "
+              "'[]', '{}', '')")
+    with engine.begin() as c:
+        c.execute(text(produk), {"sku": "A", "nama": "Simulasi", "izin": "POM SD SIM1", "sumber": "impor"})
+        c.execute(text(produk), {"sku": "B", "nama": "Sintetis", "izin": "POM TR 1", "sumber": "sintetis"})
+        c.execute(text(produk), {"sku": "C", "nama": "Impor mitra", "izin": "POM TR 2", "sumber": "impor"})
+        ids = dict(c.execute(text("SELECT sku, id FROM products")).all())
+        c.execute(text("INSERT INTO approved_claims (product_id, teks_klaim, sumber_dokumen, diverifikasi_oleh) VALUES "
+                       "(:a, 'klaim a', '', 'Tim (simulasi)'), (:c, 'klaim c', '', 'Tim')"), {"a": ids["A"], "c": ids["C"]})
+        c.execute(text("INSERT INTO documents (judul, tipe, versi, aktif, diunggah_pada) VALUES "
+                       "('Kebijakan (data contoh/sintetis)', 'teks', 1, true, now()), ('Panduan mitra', 'teks', 1, true, now())"))
+        c.execute(text("INSERT INTO settings (kunci, nilai, diubah_oleh, diubah_pada) VALUES ('otonomi', '{}', 'tes', now())"))
+
+    def isi():
+        with engine.connect() as c:
+            return {
+                "status": [tuple(b) for b in c.execute(text(
+                    "SELECT objek_tipe, status_verifikasi, count(*) FROM verifikasi_fakta GROUP BY 1, 2 ORDER BY 1, 2"))],
+                "produk_c": c.scalar(text("SELECT count(*) FROM verifikasi_fakta WHERE objek_tipe='produk' AND objek_id=:i"), {"i": ids["C"]}),
+                "rls": c.scalar(text("SELECT relrowsecurity FROM pg_class WHERE relname='verifikasi_fakta'")),
+                "terverifikasi": c.scalar(text("SELECT count(*) FROM verifikasi_fakta WHERE status_verifikasi='terverifikasi' OR diverifikasi_oleh IS NOT NULL")),
+                "klaim_lama": c.scalar(text("SELECT count(*) FROM approved_claims WHERE diverifikasi_oleh IS NOT NULL")),
+                "produk": c.scalar(text("SELECT count(*) FROM products")),
+            }
+
+    h = _alembic("upgrade", "0003")
+    assert h.returncode == 0, h.stderr
+    pertama = isi()
+    # 9 jenis fakta untuk 2 produk simulasi, 1 klaim, 1 dokumen. Impor mitra tanpa pola simulasi tetap tanpa baris = belum diverifikasi.
+    assert pertama["status"] == [("dokumen", "simulasi", 1), ("klaim", "simulasi", 1), ("produk", "simulasi", 18)]
+    assert pertama["produk_c"] == 0 and pertama["rls"] is True and pertama["terverifikasi"] == 0
+    assert pertama["klaim_lama"] == 2 and pertama["produk"] == 3, "kolom dan tabel lain tidak boleh diubah"
+
+    # Diulang: isi yang sudah ada tidak berubah dan tidak ganda. Baris buatan admin tidak tertimpa.
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    modul = ScriptDirectory.from_config(Config(str(HERE / "alembic.ini"))).get_revision("0003").module
+    with engine.begin() as c:
+        for sql in (modul.BUAT_TABEL, modul.AKTIFKAN_RLS, modul.BUAT_INDEKS, modul.ISI_PRODUK, modul.ISI_KLAIM, modul.ISI_DOKUMEN):
+            c.exec_driver_sql(sql.replace("%", "%%"))
+    assert isi() == pertama
+
+    with engine.begin() as c:
+        c.execute(text("INSERT INTO settings (kunci, nilai, diubah_oleh, diubah_pada) VALUES ('mode_data', '{\"mode\": \"demo\"}', 'tes', now())"))
+    h = _alembic("downgrade", "0002")
+    assert h.returncode == 0, h.stderr
+    with engine.connect() as c:
+        assert c.scalar(text("SELECT to_regclass('public.verifikasi_fakta')")) is None
+        assert c.scalar(text("SELECT count(*) FROM settings WHERE kunci='mode_data'")) == 0
+        assert c.scalar(text("SELECT count(*) FROM settings WHERE kunci='otonomi'")) == 1
+        assert c.scalar(text("SELECT count(*) FROM products")) == 3
+        assert c.scalar(text("SELECT version_num FROM alembic_version")) == "0002"
+    h = _alembic("upgrade", "head")
+    assert h.returncode == 0, h.stderr
+    assert isi() == pertama
+    h = _alembic("check")
+    assert h.returncode == 0 and "No new upgrade operations" in h.stdout + h.stderr, h.stdout + h.stderr
+    engine.dispose()
+
+
+@perlu_postgres
 def test_cadangkan_hapus_pulihkan_kembali_sama(tmp_path):
     engine = create_engine(URL)
     _skema_alembic_dan_data(engine)

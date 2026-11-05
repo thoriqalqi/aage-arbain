@@ -19,7 +19,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from . import ledger
+from . import ledger, settings_store
 from .config import get_settings
 from .db import SessionLocal, get_db
 from .models import Approval, User
@@ -66,6 +66,12 @@ def _persist_event(ev: "crew_mod.AgentEvent", aktor: str) -> None:
             db.commit()
 
 
+def _pagar_data_demo(db: Session) -> None:
+    """Agen ini memakai berkas data contoh (`mock_products.json`), bukan katalog terverifikasi."""
+    if settings_store.mode_data(db) != "demo":
+        raise HTTPException(409, "Agen ini memakai data contoh, jadi hanya berjalan di mode demo. Mode data aktif: produksi.")
+
+
 def _new_crew(user: User, speed: float, persist: bool = True) -> "crew_mod.AAGECrew":
     aktor = f"staf:{user.nama}"
     stream = crew_mod.ActivityStream(on_event=(lambda ev: _persist_event(ev, aktor)) if persist else None)
@@ -86,7 +92,9 @@ def agents_info(user: User = Depends(current_user)):
 
 
 @router.get("/workday/stream")
-def workday_stream(wilayah: str = "Kota Semarang", speed: float = 1.0, user: User = Depends(current_user)):
+def workday_stream(wilayah: str = "Kota Semarang", speed: float = 1.0, user: User = Depends(current_user),
+                   db: Session = Depends(get_db)):
+    _pagar_data_demo(db)
     if not _LOCK.acquire(blocking=False):
         raise HTTPException(409, "Workday lain sedang berjalan — tunggu hingga selesai.")
     crew = _new_crew(user, max(0.25, min(speed, 8.0)))
@@ -119,7 +127,8 @@ def _collect(crew: "crew_mod.AAGECrew", fn) -> tuple[object, list[dict]]:
 
 
 @router.post("/negotiate")
-def negotiate(body: NegotiateIn, user: User = Depends(current_user)):
+def negotiate(body: NegotiateIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    _pagar_data_demo(db)
     crew = _new_crew(user, speed=0)
     p = crew_mod.db().find(body.produk)
     if p is None:
@@ -165,7 +174,8 @@ class ContentIn(BaseModel):
 
 
 @router.post("/content")
-def content(body: ContentIn, user: User = Depends(current_user)):
+def content(body: ContentIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    _pagar_data_demo(db)
     p = crew_mod.db().find(body.produk)
     if p is None:
         raise HTTPException(404, f"Produk '{body.produk}' tidak ditemukan")
@@ -187,6 +197,7 @@ def invoice_approve(body: InvoiceIn, user: User = Depends(require_izin("penjuala
     """Staf menyetujui deal final (HITL). Harga dihitung ulang di server dari matriks_harga_b2b — klien tidak bisa
     mengirim harga sendiri. Pengiriman WhatsApp dinonaktifkan karena jalur ini melewati channels/sender.py dan belum ada
     kanal WhatsApp resmi: invoice hanya disusun, diaudit ClaimGuard, dan dicatat."""
+    _pagar_data_demo(db)
     p = crew_mod.db().find(body.produk)
     if p is None:
         raise HTTPException(404, "Produk tidak ditemukan")

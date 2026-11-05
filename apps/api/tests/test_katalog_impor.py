@@ -54,8 +54,10 @@ def test_templates_are_valid_imports(db):
         assert len(valid) == 2 and error == []
         assert any(p["kolom"] == "halal_status" for p in peringatan)  # contoh baris kosong → peringatan, bukan error
     _, kebijakan = k.baca_file("t.xlsx", k.template_xlsx())
-    valid_k, error_k = k.validasi_kebijakan(kebijakan)
+    valid_k, error_k, peringatan_k = k.validasi_kebijakan(kebijakan)
     assert len(valid_k) == 5 and error_k == []
+    # Contoh kebijakan tidak berstatus: harus tampak sebagai peringatan, bukan diam-diam dianggap beres.
+    assert len(peringatan_k) == 5 and {p["kolom"] for p in peringatan_k} == {"status_verifikasi"}
 
 
 def test_row_errors_are_reported_with_row_column_reason(db):
@@ -94,7 +96,8 @@ def test_preview_changes_nothing_and_reports_diff(db):
 
 
 def test_apply_replaces_catalog_and_agent_uses_new_data(db, pulihkan_katalog):
-    imp = k.buat_pratinjau(db, "baru.csv", _csv(BARU), "tes")
+    # Fakta impor baru dikutip sesudah berstatus; tes ini memakai data contoh di mode demo.
+    imp = k.buat_pratinjau(db, "baru.csv", _csv([{**r, "status_verifikasi": "simulasi"} for r in BARU]), "tes")
     hasil = k.terapkan(db, imp.token, "tes")
     assert hasil["produk"] == 2 and hasil["dinonaktifkan"] >= 50 and hasil["kebijakan_versi"] is None
     assert _aktif(db) == {"Madu Klanceng Lereng 400 g", "Kapsul Kunir Sehat 60"}
@@ -151,6 +154,7 @@ def test_policy_sheet_replaces_policy(db, pulihkan_katalog):
     wb = load_workbook(io.BytesIO(k.template_xlsx()))
     ws = wb["Kebijakan"]
     for row in ws.iter_rows(min_row=2):
+        row[2].value = "simulasi"  # kolom status_verifikasi; tanpa ini kebijakan baru tidak dikutip
         if row[0].value == "pembayaran":
             row[1].value = "Pembayaran di muka melalui transfer bank atau QRIS. Tempo pembayaran 21 hari untuk pelanggan tetap."
     buf = io.BytesIO()

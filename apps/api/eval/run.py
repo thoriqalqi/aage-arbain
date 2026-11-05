@@ -69,6 +69,7 @@ def run(offline: bool, rebuild_qa: bool) -> dict:
     from aage.agents.graph import handle_inbound
     from aage.db import SessionLocal, init_db
     from aage.models import Conversation, LedgerEvent, OrderDraft, Product
+    from aage import settings_store
     from aage.seed import seed_base
     from sqlalchemy import select
 
@@ -81,6 +82,7 @@ def run(offline: bool, rebuild_qa: bool) -> dict:
     init_db(drop=True)
     db = SessionLocal()
     seed_base(db)
+    settings_store.pasang_mode_data(db, "demo", "eval")  # dataset bergantung pada katalog simulasi
     ctx = llm.disabled() if offline else nullcontext()
     latencies: list[float] = []
     result: dict = {"mode": "offline (deterministik)" if offline or not llm.settings.llm_enabled else llm.settings.llm_model}

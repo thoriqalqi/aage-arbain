@@ -12,14 +12,16 @@ import csv
 import io
 import re
 import secrets
+from collections import Counter
 from dataclasses import dataclass
+from datetime import date
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from .. import clock, ledger, llm
 from ..models import ApprovedClaim, Chunk, Document, KatalogImpor, PricingRule, Product
-from . import ingest
+from . import ingest, verifikasi
 
 KATALOG_JUDUL = "Katalog Produk"
 KEBIJAKAN_JUDUL = "Kebijakan Penjualan"
@@ -36,6 +38,13 @@ class Kolom:
     petunjuk: str
 
 
+KOLOM_VERIFIKASI = [
+    Kolom("status_verifikasi", False, "belum_diverifikasi", "simulasi",
+          "simulasi / belum_diverifikasi / kedaluwarsa. Kosong = belum_diverifikasi. Impor tidak bisa menandai terverifikasi; "
+          "itu dilakukan admin di halaman Katalog."),
+    Kolom("sumber_bukti", False, "Salinan izin edar BPOM", "", "Dokumen sumber datanya. Dicatat untuk membantu admin memverifikasi."),
+    Kolom("berlaku_sampai", False, "2027-12-31", "", "Tanggal berlaku (opsional), mis. 2027-12-31 atau 31/12/2027. Sesudah lewat, AI tidak mengutip."),
+]
 KOLOM_PRODUK = [
     Kolom("sku", False, "ARB-101", "", "Kode unik produk. Kosongkan untuk dibuat otomatis dari nama. Dipakai mencocokkan "
           "produk lama saat impor ulang."),
@@ -64,12 +73,14 @@ KOLOM_PRODUK = [
     Kolom("kata_kunci", False, "stamina energi madu jahe", "kelor teh", "Kata pencarian tambahan (sinonim)."),
     Kolom("kata_terlarang", False, "menyembuhkan|obat kuat", "", "Frasa yang tidak boleh dipakai untuk produk ini, pisahkan |."),
     Kolom("het_per_botol", False, "78000", "", "Harga eceran tertinggi per botol (opsional)."),
+    *KOLOM_VERIFIKASI,
 ]
 KOLOM_KEBIJAKAN = [
     Kolom("topik", True, "pengiriman", "", "Salah satu: " + ", ".join(
         ["minimum_order", "harga_diskon", "pengiriman", "pembayaran", "retur", "pesan_ulang", "penyimpanan"])),
     Kolom("isi", True, "Pengiriman dari gudang Semarang ke seluruh Jawa Tengah dalam 1–3 hari kerja.", "",
           "Isi kebijakan dalam kalimat lengkap. AI mengutip kalimat dari sini."),
+    *KOLOM_VERIFIKASI,
 ]
 # Topik → judul bagian dokumen yang dicari agent saat menjawab kebijakan (agents/drafter._KEBIJAKAN_TOPIK).
 TOPIK = {
@@ -95,6 +106,7 @@ ALIAS = {
     "izin_bpom": "izin_edar", "klaim": "klaim_disetujui", "status_halal": "halal_status", "nomor_halal": "halal_nomor",
     "lembaga_halal": "halal_lembaga", "hasil_bko": "bko_hasil", "uji_bko": "bko_hasil", "tier_diskon": "diskon_volume",
     "larangan": "kata_terlarang", "het": "het_per_botol", "minimal_order": "moq", "min_order": "moq",
+    "status": "status_verifikasi", "bukti": "sumber_bukti",
 }
 STATUS_HALAL = {"bersertifikat halal": "Bersertifikat Halal", "halal": "Bersertifikat Halal",
                 "dalam proses": "Dalam proses", "tidak bersertifikat": "Tidak bersertifikat"}
@@ -311,6 +323,15 @@ def validasi_produk(baris: list[tuple[int, dict]], db: Session) -> tuple[list[di
         klaim = _daftar(r.get("klaim_disetujui", ""))
         if not klaim:
             w("klaim_disetujui", "Klaim kosong — AI tidak akan menyebut manfaat produk ini.")
+        verif, e_verif, w_verif = verifikasi.baca_kolom_status(r)
+        for kolom, alasan in e_verif:
+            e(kolom, alasan)
+        for kolom, alasan in w_verif:
+            w(kolom, alasan)
+        bernomor = {"izin_edar": r.get("izin_edar", ""), "halal": r.get("halal_nomor", ""), "bko": r.get("bko_nomor_laporan", "")}
+        if verif["status"] != verifikasi.SIMULASI and any(verifikasi.tampak_simulasi(j, v) for j, v in bernomor.items()):
+            verif["status"] = verifikasi.SIMULASI
+            w("status_verifikasi", "Ada nomor berpola simulasi: baris ini otomatis berstatus simulasi.")
         dikenal = {k.nama for k in KOLOM_PRODUK}
         for k in sorted(set(r) - dikenal):
             if r[k]:
@@ -327,13 +348,13 @@ def validasi_produk(baris: list[tuple[int, dict]], db: Session) -> tuple[list[di
             "deskripsi": r.get("deskripsi", ""), "komposisi": r.get("komposisi", ""), "klaim": klaim,
             "no_izin_edar": r.get("izin_edar", ""), "halal": halal, "bko": bko, "aturan_pakai": r.get("aturan_pakai", "").strip(), "tiers": sorted(tiers),
             "kata_kunci": r.get("kata_kunci", ""), "larangan": _daftar(r.get("kata_terlarang", "")),
-            "het_per_botol": het,
+            "het_per_botol": het, "verifikasi": verif,
         })
     return valid, error, peringatan
 
 
-def validasi_kebijakan(baris: list[tuple[int, dict]]) -> tuple[list[dict], list[dict]]:
-    valid, error, dipakai = [], [], {}
+def validasi_kebijakan(baris: list[tuple[int, dict]]) -> tuple[list[dict], list[dict], list[dict]]:
+    valid, error, peringatan, dipakai = [], [], [], {}
     judul_ke_kunci = {v.lower(): k for k, v in TOPIK.items()}
     for n, r in baris:
         topik = _kunci(r.get("topik", ""))
@@ -346,9 +367,13 @@ def validasi_kebijakan(baris: list[tuple[int, dict]]) -> tuple[list[dict], list[
         elif len(isi) < 15:
             error.append({"baris": n, "kolom": "isi", "alasan": "Isi kebijakan terlalu pendek (minimal satu kalimat)."})
         else:
-            dipakai[topik] = n
-            valid.append({"baris": n, "topik": topik, "judul": TOPIK[topik], "isi": isi})
-    return valid, error
+            verif, e_verif, w_verif = verifikasi.baca_kolom_status(r)
+            error.extend({"baris": n, "kolom": kolom, "alasan": alasan} for kolom, alasan in e_verif)
+            peringatan.extend({"baris": n, "kolom": kolom, "alasan": alasan, "sheet": "Kebijakan"} for kolom, alasan in w_verif)
+            if not e_verif:
+                dipakai[topik] = n
+                valid.append({"baris": n, "topik": topik, "judul": TOPIK[topik], "isi": isi, "verifikasi": verif})
+    return valid, error, peringatan
 
 
 # ------------------------------------------------------------------ pratinjau & penerapan
@@ -384,9 +409,11 @@ def buat_pratinjau(db: Session, nama_file: str, isi: bytes, aktor: str) -> Katal
         raise FileTidakValid("File hanya berisi kebijakan. Unggah template lengkap (sheet Produk + Kebijakan) agar "
                              "katalog dan kebijakan diganti bersamaan.")
     produk, error, peringatan = validasi_produk(produk_baris, db)
-    kebijakan, error_k = validasi_kebijakan(kebijakan_baris or [])
+    kebijakan, error_k, peringatan_k = validasi_kebijakan(kebijakan_baris or [])
     for x in error_k:
         x["sheet"] = "Kebijakan"
+    peringatan = peringatan + peringatan_k
+    status_baris = Counter(r["verifikasi"]["status"] for r in produk)
     lama = {p.sku: p for p in db.scalars(select(Product))}
     aktif = {p.sku for p in lama.values() if p.aktif}
     baru = [r["nama"] for r in produk if r["sku"] not in lama]
@@ -398,11 +425,13 @@ def buat_pratinjau(db: Session, nama_file: str, isi: bytes, aktor: str) -> Katal
                       "baru": len(baru), "diubah": len(diubah), "tetap": len(produk) - len(baru) - len(diubah),
                       "dinonaktifkan": len(nonaktif),
                       "kebijakan": len(kebijakan) if kebijakan_baris is not None else None,
-                      "kebijakan_error": len(error_k)},
+                      "kebijakan_error": len(error_k),
+                      "status_verifikasi": {s: status_baris.get(s, 0) for s in verifikasi.STATUS if s != verifikasi.TERVERIFIKASI}},
         "error": error + error_k, "peringatan": peringatan[:300], "jumlah_peringatan": len(peringatan),
         "baru": baru, "diubah": diubah, "dinonaktifkan": nonaktif,
         "contoh": [{k: r[k] for k in ("baris", "sku", "nama", "harga_dasar", "moq", "stok", "no_izin_edar")}
-                   | {"halal": r["halal"].get("status"), "bko": r["bko"].get("hasil")} for r in produk[:15]],
+                   | {"halal": r["halal"].get("status"), "bko": r["bko"].get("hasil"),
+                      "status_verifikasi": r["verifikasi"]["status"]} for r in produk[:15]],
         "versi_katalog": _versi_katalog(db),
     }
     imp = KatalogImpor(token=secrets.token_urlsafe(16), nama_file=nama_file[:300], produk=produk,
@@ -450,8 +479,21 @@ def terapkan(db: Session, token: str, aktor: str, *, lewati_error: bool = False)
         raise
 
 
+def _tanggal(teks: str | None) -> date | None:
+    return date.fromisoformat(teks) if teks else None
+
+
+def _status_kebijakan(kebijakan: list[dict]) -> tuple[str, str | None, date | None]:
+    """Satu status per versi dokumen: satu baris lemah melemahkan seluruh dokumen, berlaku sampai tanggal paling awal."""
+    verif = [k.get("verifikasi") or {"status": verifikasi.BELUM} for k in kebijakan]
+    bukti = "; ".join(dict.fromkeys(v["sumber_bukti"] for v in verif if v.get("sumber_bukti"))) or None
+    berlaku = min((_tanggal(v["berlaku_sampai"]) for v in verif if v.get("berlaku_sampai")), default=None)
+    return verifikasi.terlemah([v["status"] for v in verif]) or verifikasi.BELUM, bukti, berlaku
+
+
 def _terapkan(db: Session, imp: KatalogImpor, aktor: str) -> dict:
     now = clock.now()
+    catat = verifikasi.PencatatImpor(db, aktor)
     versi = max([d.versi for d in db.scalars(select(Document).where(Document.tipe == "katalog"))], default=0) + 1
     lama_doc = select(Document.id).where(Document.tipe == "katalog").scalar_subquery()
     db.execute(update(Chunk).where(Chunk.document_id.in_(lama_doc)).values(aktif=False))
@@ -479,6 +521,7 @@ def _terapkan(db: Session, imp: KatalogImpor, aktor: str) -> dict:
         p.sumber_data, p.aktif = "impor", True
         db.flush()
         dipakai.add(p.id)
+        klaim_lama = {c.teks_klaim: c.id for c in db.scalars(select(ApprovedClaim).where(ApprovedClaim.product_id == p.id))}
         # Klaim & tier lama diganti seluruhnya: klaim yang tidak ada lagi di file tidak boleh tetap dipakai ClaimGuard.
         db.query(ApprovedClaim).filter(ApprovedClaim.product_id == p.id).delete()
         db.query(PricingRule).filter(PricingRule.product_id == p.id).delete()
@@ -491,6 +534,11 @@ def _terapkan(db: Session, imp: KatalogImpor, aktor: str) -> dict:
         db.refresh(p)
         teks = ingest.product_chunk_text(p, r["klaim"])
         db.add(Chunk(document_id=doc.id, product_id=p.id, teks=teks, embedding=llm.embed(teks), versi=versi))
+        v = r.get("verifikasi") or {"status": verifikasi.BELUM}
+        v_args = (v["status"], v.get("sumber_bukti"), _tanggal(v.get("berlaku_sampai")))
+        catat.produk(p, *v_args)
+        catat.ganti_klaim(klaim_lama, list(p.claims), *v_args)
+    catat.dokumen(doc.id, verifikasi.terlemah([(r.get("verifikasi") or {}).get("status") for r in imp.produk]) or verifikasi.BELUM)
 
     nonaktif = list(db.scalars(select(Product).where(Product.aktif.is_(True), Product.id.not_in(dipakai))))
     for p in nonaktif:
@@ -498,16 +546,22 @@ def _terapkan(db: Session, imp: KatalogImpor, aktor: str) -> dict:
 
     kebijakan_doc = None
     if imp.laporan.get("ganti_kebijakan"):
+        doc_lama = db.scalar(select(Document).where(Document.aktif.is_(True), Document.judul.like(f"{KEBIJAKAN_JUDUL}%"))
+                             .order_by(Document.id.desc()))
+        isi_sama = {k: i for k, i, *_ in _kebijakan_aktif(db)} == {k["topik"]: k["isi"] for k in imp.kebijakan}
         lama_k = select(Document.id).where(Document.judul.like(f"{KEBIJAKAN_JUDUL}%")).scalar_subquery()
         db.execute(update(Chunk).where(Chunk.document_id.in_(lama_k)).values(aktif=False))
         db.execute(update(Document).where(Document.judul.like(f"{KEBIJAKAN_JUDUL}%")).values(aktif=False))
+        st_k, bukti_k, berlaku_k = _status_kebijakan(imp.kebijakan)
         kebijakan_doc = ingest.ingest_document(db, judul=KEBIJAKAN_JUDUL, text=_kebijakan_markdown(imp.kebijakan),
-                                               tipe="teks", aktor=aktor, commit=False)
+                                               tipe="teks", aktor=aktor, commit=False, status=st_k, sumber_bukti=bukti_k,
+                                               berlaku=berlaku_k, verifikasi_lama=doc_lama.id if doc_lama and isi_sama else None)
 
     imp.status, imp.diterapkan_pada = "diterapkan", now
     ringkas = {"versi": versi, "produk": len(imp.produk), "klaim": n_klaim, "dinonaktifkan": len(nonaktif),
                "kebijakan_versi": kebijakan_doc.versi if kebijakan_doc else None,
-               "baris_dilewati": imp.laporan["ringkasan"]["error"]}
+               "baris_dilewati": imp.laporan["ringkasan"]["error"],
+               "status_fakta": dict(catat.hitung)}
     ledger.record(db, "katalog_diimpor", aktor=aktor, objek_ref=f"document:{doc.id}", outcome="sukses",
                   ringkasan=f"{sumber}: {len(imp.produk)} produk, {n_klaim} klaim, {len(nonaktif)} dinonaktifkan"
                   + (", kebijakan diganti" if kebijakan_doc else ""),
@@ -547,6 +601,8 @@ def _workbook(produk: list[list], kebijakan: list[list]) -> bytes:
         "2. Unggah di dashboard → Pengaturan → Katalog. Sistem menampilkan pratinjau & error per baris sebelum apa pun diganti.",
         "3. Produk yang tidak ada di file akan dinonaktifkan (tidak dihapus). Hapus sheet Kebijakan bila kebijakan tidak diubah.",
         "4. Kolom opsional boleh kosong. Data kosong TIDAK dikarang: AI menjawab 'belum ada datanya' dan meneruskan ke staf.",
+        "5. Impor tidak bisa menandai data terverifikasi. Sesudah diunggah, admin memverifikasi per fakta di halaman Katalog. "
+        "Sebelum itu AI tidak mengutip datanya.",
         "Judul kolom hijau tua = wajib.", "",
     ]:
         ws.append([teks])
@@ -589,7 +645,7 @@ def template_kebijakan_csv() -> bytes:
     return _csv(KOLOM_KEBIJAKAN, [list(x) for x in CONTOH_KEBIJAKAN])
 
 
-def _baris_ekspor(p: Product) -> list:
+def _baris_ekspor(p: Product, sar: verifikasi.Saringan) -> list:
     t = p.data_teknis or {}
     halal, bko = t.get("sertifikasi_halal") or {}, t.get("status_bebas_bko") or {}
     nilai = {
@@ -603,6 +659,8 @@ def _baris_ekspor(p: Product) -> list:
         "diskon_volume": "|".join(f"{r.min_qty}:{r.diskon_maks_persen:g}" for r in p.pricing),
         "kata_kunci": p.kata_kunci, "kata_terlarang": "|".join(p.larangan or []),
         "het_per_botol": "" if p.het_per_botol is None else p.het_per_botol,
+        "status_verifikasi": verifikasi.terlemah([sar.status_produk(p, j) for j in verifikasi.JENIS_PRODUK]) or verifikasi.BELUM,
+        "sumber_bukti": "", "berlaku_sampai": "",
     }
     return [nilai[k.nama] for k in KOLOM_PRODUK]
 
@@ -622,5 +680,9 @@ def _kebijakan_aktif(db: Session) -> list[list]:
 
 def ekspor_xlsx(db: Session) -> bytes:
     """Katalog aktif dalam format template — untuk diedit mitra lalu diunggah ulang."""
-    produk = [_baris_ekspor(p) for p in db.scalars(select(Product).where(Product.aktif.is_(True)).order_by(Product.id))]
-    return _workbook(produk, _kebijakan_aktif(db))
+    sar = verifikasi.Saringan(db)
+    produk = [_baris_ekspor(p, sar) for p in db.scalars(select(Product).where(Product.aktif.is_(True)).order_by(Product.id))]
+    doc = db.scalar(select(Document).where(Document.aktif.is_(True), Document.judul.like(f"{KEBIJAKAN_JUDUL}%"))
+                    .order_by(Document.id.desc()))
+    status_k = sar.status_dokumen(doc.id) if doc else verifikasi.BELUM
+    return _workbook(produk, [[*k, status_k] for k in _kebijakan_aktif(db)])

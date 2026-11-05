@@ -83,6 +83,7 @@ def main() -> None:
     from aage.config import get_settings
     from aage.db import SessionLocal, init_db
     from aage.models import Approval, Conversation, PermintaanTakTerpenuhi, Product
+    from aage import settings_store
     from aage.seed import seed_base
 
     if args.mode == "llm" and not get_settings().llm_enabled:
@@ -94,6 +95,7 @@ def main() -> None:
     init_db(drop=True)
     with SessionLocal() as s:
         seed_base(s)
+        settings_store.pasang_mode_data(s, "demo", "eval")  # dataset bergantung pada katalog simulasi
         run_eval.KATALOG[:] = [n for (n,) in s.execute(select(Product.nama).where(Product.aktif.is_(True)))]
 
     folder = HERE / args.keluaran if args.keluaran else HERE

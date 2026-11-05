@@ -145,7 +145,7 @@ def get_settings_view(user: User = Depends(current_user), db: Session = Depends(
 
 @router.put("/settings")
 def put_settings(patch: dict = Body(...), user: User = Depends(require_admin), db: Session = Depends(get_db)):
-    allowed = {"otonomi", "jeda", "anggaran"}
+    allowed = {"otonomi", "jeda", "anggaran", "mode_data"}
     unknown = set(patch) - allowed
     if unknown:
         raise HTTPException(422, f"Kunci tidak dikenal: {', '.join(sorted(unknown))}")

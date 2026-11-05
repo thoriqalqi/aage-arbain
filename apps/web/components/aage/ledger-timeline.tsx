@@ -57,6 +57,8 @@ export const EVENT_META: Record<string, { label: string; icon: LucideIcon }> = {
   invoice_dikirim: { label: "Invoice dikirim", icon: ReceiptText },
   invoice_disusun: { label: "Invoice disusun (tidak dikirim)", icon: ReceiptText },
   klaim_diverifikasi: { label: "Klaim produk diverifikasi", icon: ShieldCheck },
+  fakta_status_diubah: { label: "Status verifikasi fakta diubah", icon: ShieldCheck },
+  fakta_tertahan: { label: "Fakta belum terverifikasi ditahan", icon: ShieldCheck },
   pengaturan_diubah: { label: "Pengaturan diubah", icon: SlidersHorizontal },
   evaluasi_dimulai: { label: "Evaluasi dimulai", icon: FlaskConical },
   evaluasi_selesai: { label: "Evaluasi selesai", icon: FlaskConical },
